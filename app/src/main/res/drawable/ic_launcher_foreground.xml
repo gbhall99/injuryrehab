@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Stylised lower leg + foot with a heart, on the adaptive-icon safe zone -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M48,28 L48,62 L72,62 L72,70 L40,70 L40,28 Z" />
+    <path
+        android:fillColor="#A5D6A7"
+        android:pathData="M58,34 C58,31 61,29 63,31 C65,29 68,31 68,34 C68,37 63,41 63,41 C63,41 58,37 58,34 Z" />
+</vector>
