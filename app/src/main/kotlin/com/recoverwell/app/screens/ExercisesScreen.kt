@@ -41,9 +41,7 @@ object ExercisesScreen {
         col.addView(Ui.caption(a, "Phases unlock by date and physio confirmation. " +
             "Locked phases are view-only."))
         col.addView(Ui.spacer(a, 10))
-        col.addView(Forms.choiceRow(a, ProtocolContent.phases.map { it.number }, { n ->
-            if (n <= current) "Phase $n" else "$n"
-        }, shown) { n ->
+        col.addView(Forms.choiceRow(a, ProtocolContent.phases.map { it.number }, { n -> "P$n" }, shown) { n ->
             viewedPhase = n
             a.refresh()
         })
