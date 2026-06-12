@@ -12,11 +12,11 @@ enum class Side { LEFT, RIGHT }
  */
 enum class Pathway { CONSERVATIVE_NON_SURGICAL }
 
-enum class WeightBearing(val label: String) {
-    NON_WEIGHT_BEARING("Non weight-bearing"),
-    PARTIAL("Partial weight-bearing"),
-    AS_TOLERATED("Weight-bearing as tolerated"),
-    FULL("Full weight-bearing")
+enum class WeightBearing(val label: String, val shortLabel: String) {
+    NON_WEIGHT_BEARING("Non weight-bearing", "None"),
+    PARTIAL("Partial weight-bearing", "Partial"),
+    AS_TOLERATED("Weight-bearing as tolerated", "As tolerated"),
+    FULL("Full weight-bearing", "Full")
 }
 
 enum class Swelling(val score: Int, val label: String) {

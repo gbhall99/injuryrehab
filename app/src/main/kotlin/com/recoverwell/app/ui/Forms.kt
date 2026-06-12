@@ -46,6 +46,7 @@ object Forms {
         initial: Int,
         min: Int,
         max: Int,
+        step: Int = 1,
         onChange: (Int) -> Unit
     ): LinearLayout {
         var value = initial
@@ -60,8 +61,8 @@ object Forms {
             valueView.text = value.toString()
             onChange(value)
         }
-        val minus = Ui.secondaryButton(ctx, "−") { set(value - 1) }
-        val plus = Ui.secondaryButton(ctx, "+") { set(value + 1) }
+        val minus = Ui.secondaryButton(ctx, "−") { set(value - step) }
+        val plus = Ui.secondaryButton(ctx, "+") { set(value + step) }
         minus.contentDescription = "Decrease $title"
         plus.contentDescription = "Increase $title"
         row.addView(Ui.weight(Ui.text(ctx, title, 16f), 1f))

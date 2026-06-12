@@ -109,13 +109,23 @@ object MoreScreen {
         })
         bootCard.addView(Ui.text(a, "Default: one wedge weekly from week 3 (typical NHS plan). Match whatever YOUR clinic prescribed.", 13f, Ui.WARN))
         bootCard.addView(Forms.label(a, "Weight-bearing status"))
-        bootCard.addView(Forms.choiceRow(a, WeightBearing.values().toList(), {
-            it.label.replace("weight-bearing", "WB").replace("Weight-bearing", "WB")
-        }, p.weightBearing) { p = p.copy(weightBearing = it) })
+        bootCard.addView(Forms.choiceRow(a, WeightBearing.values().toList(), { it.shortLabel }, p.weightBearing) {
+            p = p.copy(weightBearing = it)
+        })
         col.addView(bootCard)
 
         col.addView(Ui.section(a, "Appointments"))
         val apptCard = Ui.card(a)
+        // appointment edits rebuild the screen, so persist any typed-but-unsaved
+        // text fields first or they would be lost
+        fun saveWithTexts() {
+            a.store.saveProfile(p.copy(
+                name = nameEdit.text.toString().trim(),
+                injuryDescription = descEdit.text.toString().trim(),
+                goal = goalEdit.text.toString().trim()
+            ))
+            a.refresh()
+        }
         p.appointments.forEachIndexed { i, appt ->
             val row = Ui.row(a)
             row.addView(Ui.weight(Ui.text(a, "${appt.date} · ${appt.label}" + if (appt.completed) " ✓" else "", 15f), 1f))
@@ -123,13 +133,11 @@ object MoreScreen {
                 val list = p.appointments.toMutableList()
                 list[i] = appt.copy(completed = !appt.completed)
                 p = p.copy(appointments = list)
-                a.store.saveProfile(p)
-                a.refresh()
+                saveWithTexts()
             })
             row.addView(Ui.secondaryButton(a, "✕") {
                 p = p.copy(appointments = p.appointments.filterIndexed { j, _ -> j != i })
-                a.store.saveProfile(p)
-                a.refresh()
+                saveWithTexts()
             })
             apptCard.addView(row)
         }
@@ -140,8 +148,7 @@ object MoreScreen {
         apptCard.addView(Ui.fullWidth(Ui.secondaryButton(a, "Add appointment") {
             val label = newLabel.text.toString().ifBlank { "Appointment" }
             p = p.copy(appointments = p.appointments + Appointment(newDate, label, false))
-            a.store.saveProfile(p)
-            a.refresh()
+            saveWithTexts()
         }, a))
         col.addView(apptCard)
 

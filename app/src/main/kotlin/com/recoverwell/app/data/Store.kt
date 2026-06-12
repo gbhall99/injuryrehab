@@ -120,15 +120,18 @@ class Store private constructor(context: Context) :
         )
     }
 
+    // ordered by insertion so "the last event for a slot wins" is well-defined
     fun eventsOn(date: LocalDate): List<EventLog> =
-        readableDatabase.rawQuery("SELECT json FROM events WHERE date = ?", arrayOf(date.toString())).use { c ->
+        readableDatabase.rawQuery(
+            "SELECT json FROM events WHERE date = ? ORDER BY rowid", arrayOf(date.toString())
+        ).use { c ->
             val out = ArrayList<EventLog>()
             while (c.moveToNext()) out.add(BackupCodec.eventFrom(Json.parse(c.getString(0))))
             out
         }
 
     fun allEvents(): List<EventLog> =
-        readableDatabase.rawQuery("SELECT json FROM events", emptyArray()).use { c ->
+        readableDatabase.rawQuery("SELECT json FROM events ORDER BY rowid", emptyArray()).use { c ->
             val out = ArrayList<EventLog>()
             while (c.moveToNext()) out.add(BackupCodec.eventFrom(Json.parse(c.getString(0))))
             out

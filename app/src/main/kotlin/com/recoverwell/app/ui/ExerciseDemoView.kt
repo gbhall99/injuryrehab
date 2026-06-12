@@ -19,6 +19,16 @@ import kotlin.math.sin
  */
 class ExerciseDemoView(context: Context) : View(context) {
 
+    companion object {
+        /**
+         * Test hook: JVM test schedulers (Robolectric) execute posted frame
+         * callbacks immediately, which would turn the 60fps loop into a spin.
+         * Always true in the real app.
+         */
+        @JvmStatic
+        var frameLoopEnabled = true
+    }
+
     data class Pose(
         val torso: Float = 0f,   // lean from vertical, + = forward
         val thighA: Float = 0f,  // injured-side leg; 0 = straight down, + = hip flexion
@@ -90,7 +100,7 @@ class ExerciseDemoView(context: Context) : View(context) {
 
     private val ticker = object : Runnable {
         override fun run() {
-            if (!isAttachedToWindow || !playing) return
+            if (!isAttachedToWindow || !playing || !frameLoopEnabled) return
             val now = System.nanoTime() / 1_000_000
             if (lastTick != 0L) elapsed += (now - lastTick).coerceAtMost(64)
             lastTick = now
@@ -102,12 +112,15 @@ class ExerciseDemoView(context: Context) : View(context) {
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         lastTick = 0L
-        postOnAnimation(ticker)
+        if (frameLoopEnabled) postOnAnimation(ticker)
     }
 
     override fun onVisibilityChanged(changedView: View, visibility: Int) {
         super.onVisibilityChanged(changedView, visibility)
-        if (visibility == VISIBLE && playing) { lastTick = 0L; postOnAnimation(ticker) }
+        if (visibility == VISIBLE && playing && frameLoopEnabled) {
+            lastTick = 0L
+            postOnAnimation(ticker)
+        }
     }
 
     private fun demo(): Demo = DemoLibrary.demos[demoId] ?: DemoLibrary.demos.getValue("ankle_pump")

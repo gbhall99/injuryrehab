@@ -48,7 +48,9 @@ object ScheduleEngine {
             )
         }
 
-    fun slotKey(time: LocalTime): String = "%02d:%02d".format(time.hour, time.minute)
+    /** Locale-independent: slot keys are stored identifiers, never display text. */
+    fun slotKey(time: LocalTime): String =
+        String.format(java.util.Locale.ROOT, "%02d:%02d", time.hour, time.minute)
 
     /** Wedge-change items due on [date] according to the editable wedge plan. */
     fun wedgeChangesOn(profile: Profile, date: LocalDate): List<ChecklistItem> =

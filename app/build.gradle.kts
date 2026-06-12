@@ -114,13 +114,13 @@ val aaptPackage by tasks.registering(Exec::class) {
     val resDir = file("src/main/res")
     inputs.file(manifest)
     inputs.dir(resDir)
-    outputs.file(apkDir.map { it.file("recoverwell-unsigned.apk") })
+    outputs.file(apkDir.map { it.file("recoverwell-base.apk") })
     commandLine(
         "aapt", "package", "-f",
         "-M", manifest.toString(),
         "-S", resDir.toString(),
         "-I", platformJar,
-        "-F", "${apkDir.get().asFile}/recoverwell-unsigned.apk",
+        "-F", "${apkDir.get().asFile}/recoverwell-base.apk",
         "--min-sdk-version", "26",
         "--target-sdk-version", "30",
         "--version-code", "1",
@@ -128,9 +128,16 @@ val aaptPackage by tasks.registering(Exec::class) {
     )
 }
 
+// aapt add mutates in place, so work on a copy to keep the pipeline idempotent
 val addDex by tasks.registering(Exec::class) {
     dependsOn(aaptPackage)
+    inputs.files(apkDir.map { it.file("recoverwell-base.apk") }, apkDir.map { it.file("classes.dex") })
+    outputs.file(apkDir.map { it.file("recoverwell-unsigned.apk") })
     workingDir(apkDir)
+    doFirst {
+        apkDir.get().file("recoverwell-base.apk").asFile
+            .copyTo(apkDir.get().file("recoverwell-unsigned.apk").asFile, overwrite = true)
+    }
     commandLine("aapt", "add", "recoverwell-unsigned.apk", "classes.dex")
 }
 

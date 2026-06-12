@@ -138,9 +138,14 @@ object ExercisesScreen {
                 val done = events.lastOrNull {
                     it.refId == spec.id && it.slotKey == slot
                 }?.status == EventStatus.DONE
-                val label = if (done) "✓ Session $session done" else "Mark session $session done"
+                val label = if (done) "✓ Session $session done (tap to undo)" else "Mark session $session done"
                 col.addView(Ui.fullWidth(
-                    if (done) Ui.secondaryButton(a, label) {} else Ui.button(a, label) {
+                    if (done) Ui.secondaryButton(a, label) {
+                        Forms.confirm(a, "Undo", "Mark session $session as not done?") {
+                            Reminders.recordEvent(a, ScheduleEngine.ItemKind.EXERCISE, spec.id, slot, EventStatus.SKIPPED)
+                            a.refresh()
+                        }
+                    } else Ui.button(a, label) {
                         Reminders.recordEvent(a, ScheduleEngine.ItemKind.EXERCISE, spec.id, slot, EventStatus.DONE)
                         a.popOverlay()
                     }, a
@@ -179,7 +184,8 @@ object ExercisesScreen {
         val card = Ui.card(a)
         card.addView(Forms.stepper(a, "Sets", sets, 1, 10) { sets = it })
         card.addView(Forms.stepper(a, "Reps", reps, 1, 50) { reps = it })
-        card.addView(Forms.stepper(a, "Hold (seconds)", hold, 0, 1800) { hold = it })
+        val holdStep = if (spec.holdSeconds >= 120) 30 else if (spec.holdSeconds >= 30) 5 else 1
+        card.addView(Forms.stepper(a, "Hold (seconds)", hold, 0, 1800, step = holdStep) { hold = it })
         card.addView(Forms.stepper(a, "Sessions per day", perDay, 1, 8) { perDay = it })
         col.addView(card)
 

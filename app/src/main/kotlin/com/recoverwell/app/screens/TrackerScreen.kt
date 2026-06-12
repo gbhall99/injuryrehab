@@ -55,9 +55,7 @@ object TrackerScreen {
 
         form.addView(Forms.label(a, "Weight-bearing status"))
         form.addView(Forms.choiceRow(
-            a, WeightBearing.values().toList(),
-            { it.label.replace("weight-bearing", "WB").replace("Weight-bearing", "WB") },
-            log.weightBearing
+            a, WeightBearing.values().toList(), { it.shortLabel }, log.weightBearing
         ) { log = log.copy(weightBearing = it) })
 
         form.addView(Forms.label(a, "Range of movement (only if your physio measured it)"))

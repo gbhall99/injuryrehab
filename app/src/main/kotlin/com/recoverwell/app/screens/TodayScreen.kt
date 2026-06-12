@@ -146,6 +146,27 @@ object TodayScreen {
                     record(a, item, EventStatus.DONE)
                 }
             }
+            ScheduleEngine.ItemKind.WEDGE_CHANGE -> {
+                if (item.isDone) {
+                    Forms.confirm(a, "Undo", "Mark \"${item.title}\" as not done?") {
+                        record(a, item, EventStatus.SKIPPED)
+                    }
+                } else {
+                    // refId is "wedge_N" where N = wedges remaining after removal
+                    val after = item.refId.removePrefix("wedge_").toIntOrNull()
+                    Forms.confirm(
+                        a, "Wedge change",
+                        "Only change wedges if your clinic agreed this step. " +
+                            "Mark one wedge removed" +
+                            (after?.let { " ($it left in the boot)" } ?: "") + "?"
+                    ) {
+                        if (after != null) {
+                            a.store.saveProfile(a.store.profile().copy(currentWedges = after))
+                        }
+                        record(a, item, EventStatus.DONE)
+                    }
+                }
+            }
             else -> {
                 if (item.isDone) {
                     Forms.confirm(a, "Undo", "Mark \"${item.title}\" as not done?") {

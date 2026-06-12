@@ -144,8 +144,9 @@ class MainActivity : Activity() {
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         if (overlays.isNotEmpty()) {
-            // keep onboarding modal until completed
-            if (!store.profile().onboardingComplete) return
+            // onboarding stays modal as the root overlay, but screens stacked
+            // on top of it (e.g. red flags) can still be backed out of
+            if (!store.profile().onboardingComplete && overlays.size == 1) return
             popOverlay()
         } else {
             @Suppress("DEPRECATION")
