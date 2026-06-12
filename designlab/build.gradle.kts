@@ -4,6 +4,14 @@ plugins {
 
 kotlin {
     jvmToolchain(21)
+    coreLibrariesVersion = "1.7.21"
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    compilerOptions {
+        apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_1_7)
+        languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_1_7)
+    }
 }
 
 dependencies {
