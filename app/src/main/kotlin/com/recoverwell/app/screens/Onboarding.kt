@@ -4,7 +4,8 @@ import android.view.View
 import com.recoverwell.app.MainActivity
 import com.recoverwell.app.notify.Reminders
 import com.recoverwell.app.ui.Ui
-import com.recoverwell.core.protocol.ProtocolContent
+import com.recoverwell.core.protocol.ProtocolRegistry
+import com.recoverwell.core.protocol.RehabFramework
 
 /**
  * First-run flow, pre-filled with the user's real data (injury 2 June 2026,
@@ -19,18 +20,19 @@ object Onboarding {
         col.addView(Ui.spacer(a, 18))
         col.addView(Ui.display(a, "Welcome to RecoverWell"))
         col.addView(Ui.spacer(a, 4))
+        val protocol = ProtocolRegistry.forProfile(a.store.profile())
         col.addView(Ui.body(
             a,
-            "Your daily coach for conservative (non-surgical) Achilles rupture " +
-                "rehab - exercises, reminders and progress tracking, all the way " +
-                "back to the padel court."
+            "Your daily coach for ${protocol.injuryName.lowercase()} rehab " +
+                "(${protocol.variantName.lowercase()}) - exercises, reminders and " +
+                "progress tracking, all the way back to the padel court."
         ))
 
         col.addView(Ui.spacer(a, 12))
         val disc = Ui.card(a, Ui.WARN_BG)
         disc.addView(Ui.text(a, "Before you start", 16f, Ui.WARN, bold = true))
         disc.addView(Ui.spacer(a, 4))
-        disc.addView(Ui.text(a, ProtocolContent.DISCLAIMER, 14.5f))
+        disc.addView(Ui.text(a, RehabFramework.DISCLAIMER, 14.5f))
         col.addView(disc)
 
         val safety = Ui.card(a, Ui.DANGER_BG)

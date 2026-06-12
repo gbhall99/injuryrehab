@@ -6,7 +6,9 @@ import com.recoverwell.app.notify.Reminders
 import com.recoverwell.app.ui.Forms
 import com.recoverwell.app.ui.Ui
 import com.recoverwell.core.model.*
-import com.recoverwell.core.protocol.ProtocolContent
+import com.recoverwell.core.protocol.Defaults
+import com.recoverwell.core.protocol.ProtocolRegistry
+import com.recoverwell.core.protocol.RehabFramework
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
@@ -83,30 +85,47 @@ object MoreScreen {
             it.name.lowercase().replaceFirstChar { c -> c.uppercase() }
         }, p.side) { p = p.copy(side = it) })
 
-        card.addView(Forms.label(a, "Pathway"))
-        card.addView(Ui.text(a, "Conservative (non-surgical)", 15f, Ui.TEXT, bold = true))
-        card.addView(Ui.caption(a, "This app contains only the conservative protocol"))
+        card.addView(Forms.label(a, "Injury & protocol"))
+        card.addView(Forms.choiceRow(a, ProtocolRegistry.all.map { it.id }, { id ->
+            ProtocolRegistry.byId(id).injuryName
+        }, p.protocolId) { id ->
+            val proto = ProtocolRegistry.byId(id)
+            p = p.copy(
+                protocolId = id,
+                wedgePlan = proto.supportDevice?.plan ?: p.wedgePlan,
+                currentWedges = proto.supportDevice?.plan?.initialWedges ?: 0
+            )
+        })
+        card.addView(Ui.caption(a, ProtocolRegistry.byId(p.protocolId).variantName +
+            " · more protocols can be added to the registry"))
 
         card.addView(Forms.label(a, "Goal"))
         val goalEdit = Forms.editText(a, p.goal, "What are you working back to?")
         card.addView(goalEdit)
         col.addView(card)
 
-        col.addView(Ui.section(a, "Boot & weight-bearing"))
+        val device = ProtocolRegistry.byId(p.protocolId).supportDevice
+        col.addView(Ui.section(a, (device?.name ?: "Support") + " & weight-bearing"))
         val bootCard = Ui.card(a)
-        bootCard.addView(Forms.stepper(a, "Wedges in boot now", p.currentWedges, 0, 8) { p = p.copy(currentWedges = it) })
-        bootCard.addView(Forms.stepper(a, "Wedges fitted at start", p.wedgePlan.initialWedges, 1, 8) {
-            p = p.copy(wedgePlan = p.wedgePlan.copy(initialWedges = it))
-        })
-        bootCard.addView(Forms.stepper(a, "First removal · week", p.wedgePlan.removalStartWeek, 1, 12) {
-            p = p.copy(wedgePlan = p.wedgePlan.copy(removalStartWeek = it))
-        })
-        bootCard.addView(Forms.stepper(a, "Days between removals", p.wedgePlan.removalIntervalDays, 3, 28) {
-            p = p.copy(wedgePlan = p.wedgePlan.copy(removalIntervalDays = it))
-        })
-        bootCard.addView(Ui.spacer(a, 4))
-        bootCard.addView(Ui.caption(a, "Default: one wedge weekly from week 3 (typical NHS plan). " +
-            "Match whatever your clinic prescribed."))
+        if (device != null) {
+            val unit = device.unitName
+            val units = device.unitNamePlural
+            bootCard.addView(Forms.stepper(a, "${units.replaceFirstChar { it.uppercase() }} in ${device.name.lowercase()} now",
+                p.currentWedges, 0, 8) { p = p.copy(currentWedges = it) })
+            bootCard.addView(Forms.stepper(a, "${units.replaceFirstChar { it.uppercase() }} fitted at start",
+                p.wedgePlan.initialWedges, 1, 8) {
+                p = p.copy(wedgePlan = p.wedgePlan.copy(initialWedges = it))
+            })
+            bootCard.addView(Forms.stepper(a, "First removal · week", p.wedgePlan.removalStartWeek, 1, 12) {
+                p = p.copy(wedgePlan = p.wedgePlan.copy(removalStartWeek = it))
+            })
+            bootCard.addView(Forms.stepper(a, "Days between removals", p.wedgePlan.removalIntervalDays, 3, 28) {
+                p = p.copy(wedgePlan = p.wedgePlan.copy(removalIntervalDays = it))
+            })
+            bootCard.addView(Ui.spacer(a, 4))
+            bootCard.addView(Ui.caption(a, "Default: one $unit weekly from week " +
+                "${device.plan.removalStartWeek} (typical plan). Match whatever your clinic prescribed."))
+        }
         bootCard.addView(Forms.label(a, "Weight-bearing"))
         bootCard.addView(Forms.choiceRow(a, WeightBearing.values().toList(), { it.shortLabel }, p.weightBearing) {
             p = p.copy(weightBearing = it)
@@ -174,7 +193,7 @@ object MoreScreen {
         col.addView(Ui.caption(a, "Defaults follow the typical conservative protocol, anchored to " +
             "your injury date. Override them only to match what your physio agreed."))
         val profile = a.store.profile()
-        for (phase in ProtocolContent.phases) {
+        for (phase in ProtocolRegistry.forProfile(profile).phases) {
             val card = Ui.card(a)
             card.addView(Ui.text(a, "Phase ${phase.number} · ${phase.title}", 15.5f, Ui.TEXT, bold = true))
             val defaultDate = profile.injuryDate.plusWeeks(phase.startWeek.toLong())
@@ -451,12 +470,14 @@ object MoreScreen {
         val disc = Ui.card(a, Ui.WARN_BG)
         disc.addView(Ui.text(a, "What this app is - and is not", 16f, Ui.WARN, bold = true))
         disc.addView(Ui.spacer(a, 4))
-        disc.addView(Ui.text(a, ProtocolContent.DISCLAIMER, 14.5f))
+        disc.addView(Ui.text(a, RehabFramework.DISCLAIMER, 14.5f))
         col.addView(disc)
 
         col.addView(Ui.section(a, "Protocol basis"))
         val proto = Ui.card(a)
-        proto.addView(Ui.text(a, ProtocolContent.PROTOCOL_NAME, 15f, Ui.TEXT, bold = true))
+        val protocol = ProtocolRegistry.forProfile(a.store.profile())
+        proto.addView(Ui.text(a, "${protocol.injuryName} · ${protocol.variantName}", 15f, Ui.TEXT, bold = true))
+        proto.addView(Ui.caption(a, protocol.protocolName))
         proto.addView(Ui.spacer(a, 6))
         proto.addView(Ui.text(
             a,

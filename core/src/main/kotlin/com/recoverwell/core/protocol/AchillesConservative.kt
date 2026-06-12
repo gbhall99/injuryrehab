@@ -18,17 +18,11 @@ import java.time.LocalTime
  * prescription. The app marks them as physio-confirmable and they are
  * editable in Settings.
  */
-object ProtocolContent {
+object AchillesConservative {
 
-    const val PROTOCOL_NAME =
-        "Conservative (non-surgical) functional rehabilitation - UK NHS-style pathway"
+    const val ID = "achilles_rupture_conservative"
 
-    const val DISCLAIMER =
-        "RecoverWell supports - but never replaces - the advice of your physiotherapist " +
-            "and consultant. All timelines are typical-protocol placeholders: confirm every " +
-            "progression with your own clinical team before acting on it."
-
-    const val PLACEHOLDER_NOTE =
+    private const val PLACEHOLDER_NOTE =
         "Typical conservative-protocol timing - confirm with your physio. Your own plan may differ."
 
     // ------------------------------------------------------------------
@@ -40,6 +34,8 @@ object ProtocolContent {
             number = 1,
             title = "Immobilisation & protection",
             subtitle = "Weeks 0-2 · boot at full equinus, let the tendon ends knit",
+            tissueState = "Tendon ends knitting together - maximum protection",
+            deviceUsage = "Boot on at all times · {n} wedge(s), heel raised",
             startWeek = 0,
             endWeek = 2,
             entryCriteria = listOf(
@@ -78,6 +74,8 @@ object ProtocolContent {
             number = 2,
             title = "Progressive weight-bearing & wedge reduction",
             subtitle = "Weeks 2-8 · step the heel down gradually, build to full weight",
+            tissueState = "Early healing tissue forming - protected loading helps it organise",
+            deviceUsage = "Boot on at all times · {n} wedge(s)",
             startWeek = 2,
             endWeek = 8,
             entryCriteria = listOf(
@@ -117,6 +115,8 @@ object ProtocolContent {
             number = 3,
             title = "Early mobilisation out of the boot",
             subtitle = "Weeks 8-12 · wean off the boot, wake the ankle up gently",
+            tissueState = "Tendon consolidating - gentle movement, no stretch",
+            deviceUsage = "Weaning out of the boot, physio-guided",
             startWeek = 8,
             endWeek = 12,
             entryCriteria = listOf(
@@ -156,6 +156,8 @@ object ProtocolContent {
             number = 4,
             title = "Strengthening",
             subtitle = "Weeks 12-24 · rebuild the calf, balance and gait",
+            tissueState = "Tendon remodelling - progressive load makes it stronger",
+            deviceUsage = null,
             startWeek = 12,
             endWeek = 24,
             entryCriteria = listOf(
@@ -195,6 +197,8 @@ object ProtocolContent {
             number = 5,
             title = "Return to sport",
             subtitle = "Week 24 onwards · earn your way back to the padel court",
+            tissueState = "Tendon maturing - building sport-level capacity",
+            deviceUsage = null,
             startWeek = 24,
             endWeek = null,
             entryCriteria = listOf(
@@ -598,14 +602,6 @@ object ProtocolContent {
     // Red flags - kept one tap away throughout the app
     // ------------------------------------------------------------------
 
-    data class RedFlagSection(
-        val id: String,
-        val title: String,
-        val urgency: String,
-        val symptoms: List<String>,
-        val action: String
-    )
-
     val redFlags: List<RedFlagSection> = listOf(
         RedFlagSection(
             id = "pe",
@@ -671,30 +667,10 @@ object ProtocolContent {
     )
 
     // ------------------------------------------------------------------
-    // Pre-filled personal defaults (all editable in-app)
+    // Prefills (all editable in-app)
     // ------------------------------------------------------------------
 
-    fun defaultProfile(): Profile = Profile(
-        name = "",
-        injuryDate = LocalDate.of(2026, 6, 2),
-        side = Side.LEFT,
-        pathway = Pathway.CONSERVATIVE_NON_SURGICAL,
-        injuryDescription = "Full Achilles tendon rupture (left), injured playing padel; " +
-            "managed conservatively in a walking boot.",
-        goal = "Full recovery and return to playing padel",
-        appointments = listOf(
-            Appointment(LocalDate.of(2026, 6, 7), "Consultant review", completed = true)
-        ),
-        wedgePlan = WedgePlan(initialWedges = 5, removalStartWeek = 3, removalIntervalDays = 7),
-        currentWedges = 5,
-        weightBearing = WeightBearing.AS_TOLERATED,
-        physioConfirmedPhase = 1,
-        phaseStartOverrides = emptyMap(),
-        onboardingComplete = false,
-        disclaimerAcknowledged = false
-    )
-
-    fun defaultMedications(): List<Medication> = listOf(
+    private val prefillMedications: List<Medication> = listOf(
         Medication(
             id = "med_anticoagulant",
             name = "Anticoagulant",
@@ -706,7 +682,7 @@ object ProtocolContent {
         )
     )
 
-    fun defaultTasks(): List<RehabTask> = listOf(
+    private val prefillTasks: List<RehabTask> = listOf(
         RehabTask(
             id = "task_elevation",
             kind = TaskKind.ELEVATION,
@@ -733,4 +709,82 @@ object ProtocolContent {
             fromPhase = 1, toPhase = 3, dueDate = null, active = true
         )
     )
+
+    // ------------------------------------------------------------------
+    // The registry entry: everything above, wired as framework data
+    // ------------------------------------------------------------------
+
+    val protocol = InjuryProtocol(
+        id = ID,
+        injuryName = "Achilles tendon rupture",
+        variantName = "Conservative (non-surgical) · walking boot",
+        protocolName = "Conservative (non-surgical) functional rehabilitation - UK NHS-style pathway",
+        placeholderNote = PLACEHOLDER_NOTE,
+        sided = true,
+        supportDevice = SupportDevice(
+            name = "Walking boot",
+            unitName = "wedge",
+            unitNamePlural = "wedges",
+            reductionVerb = "remove 1 wedge",
+            plan = WedgePlan(initialWedges = 5, removalStartWeek = 3, removalIntervalDays = 7)
+        ),
+        phases = phases,
+        milestones = milestones,
+        redFlags = redFlags,
+        movementChecks = listOf(
+            MovementCheckSpec("Walk without the boot", 3,
+                "Not before ~week 8-10, physio-confirmed", "Physio-guided weaning only"),
+            MovementCheckSpec("Pull foot up past neutral / calf stretch", 4,
+                "Not before week 12 - tendon over-lengthening risk", "Gentle and physio-guided only"),
+            MovementCheckSpec("Drive a car", 4,
+                "Generally only out of the boot and able to emergency-brake - confirm with clinic and insurer",
+                "Confirm with clinic and insurer"),
+            MovementCheckSpec("Standing heel raises", 4,
+                "Phase 4 work - too early now", "Progress as prescribed"),
+            MovementCheckSpec("Run / jump", 5,
+                "Phase 5 work after strength benchmarks", "Graded programme once physio clears it"),
+            MovementCheckSpec("Play padel", 5,
+                "The end goal - but not yet",
+                "Drills first; competitive play typically 9-12 months with sign-off")
+        ),
+        bodySceneId = "lower_leg",
+        prefillDescription = "Full Achilles tendon rupture (left), injured playing padel; " +
+            "managed conservatively in a walking boot.",
+        prefillGoal = "Full recovery and return to playing padel",
+        prefillAppointments = listOf(
+            Appointment(LocalDate.of(2026, 6, 7), "Consultant review", completed = true)
+        ),
+        prefillMedications = prefillMedications,
+        prefillTasks = prefillTasks
+    )
+}
+
+/**
+ * Personal first-run seed for THIS build's user, layered over the protocol
+ * prefills. Every field is editable in-app.
+ */
+object Defaults {
+    fun profile(): Profile {
+        val p = ProtocolRegistry.default
+        return Profile(
+            protocolId = p.id,
+            name = "",
+            injuryDate = LocalDate.of(2026, 6, 2),
+            side = Side.LEFT,
+            pathway = Pathway.CONSERVATIVE_NON_SURGICAL,
+            injuryDescription = p.prefillDescription,
+            goal = p.prefillGoal,
+            appointments = p.prefillAppointments,
+            wedgePlan = p.supportDevice?.plan ?: WedgePlan(0, 1, 7),
+            currentWedges = p.supportDevice?.plan?.initialWedges ?: 0,
+            weightBearing = WeightBearing.AS_TOLERATED,
+            physioConfirmedPhase = 1,
+            phaseStartOverrides = emptyMap(),
+            onboardingComplete = false,
+            disclaimerAcknowledged = false
+        )
+    }
+
+    fun medications(): List<Medication> = ProtocolRegistry.default.prefillMedications
+    fun tasks(): List<RehabTask> = ProtocolRegistry.default.prefillTasks
 }

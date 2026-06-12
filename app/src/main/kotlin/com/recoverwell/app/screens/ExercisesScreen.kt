@@ -13,7 +13,7 @@ import com.recoverwell.core.logic.ScheduleEngine
 import com.recoverwell.core.model.EventStatus
 import com.recoverwell.core.model.ExerciseOverride
 import com.recoverwell.core.model.ExerciseSpec
-import com.recoverwell.core.protocol.ProtocolContent
+import com.recoverwell.core.protocol.ProtocolRegistry
 import java.time.LocalDate
 
 /** Per-phase exercise library with offline animated demonstrations. */
@@ -41,12 +41,13 @@ object ExercisesScreen {
         col.addView(Ui.caption(a, "Phases unlock by date and physio confirmation. " +
             "Locked phases are view-only."))
         col.addView(Ui.spacer(a, 10))
-        col.addView(Forms.choiceRow(a, ProtocolContent.phases.map { it.number }, { n -> "P$n" }, shown) { n ->
+        val protocol = ProtocolRegistry.forProfile(profile)
+        col.addView(Forms.choiceRow(a, protocol.phases.map { it.number }, { n -> "P$n" }, shown) { n ->
             viewedPhase = n
             a.refresh()
         })
 
-        val phase = ProtocolContent.phase(shown)
+        val phase = protocol.phase(shown)
         val locked = shown > current
         col.addView(Ui.spacer(a, 12))
         col.addView(Ui.headline(a, phase.title))

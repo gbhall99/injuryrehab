@@ -3,7 +3,7 @@ package com.recoverwell.core.logic
 import com.recoverwell.core.model.DailyLog
 import com.recoverwell.core.model.Profile
 import com.recoverwell.core.model.Swelling
-import com.recoverwell.core.protocol.ProtocolContent
+import com.recoverwell.core.protocol.ProtocolRegistry
 import java.time.LocalDate
 
 /**
@@ -34,23 +34,14 @@ object Capability {
     )
 
     fun snapshot(profile: Profile, today: LocalDate): Snapshot {
+        val protocol = ProtocolRegistry.forProfile(profile)
         val phase = PhaseEngine.currentPhase(profile, today)
         val weeks = PhaseEngine.weeksSinceInjury(profile, today)
         val expected = profile.wedgePlan.expectedWedges(profile.injuryDate, today)
-        val boot = when {
-            phase.number <= 2 && profile.currentWedges > 0 ->
-                "Boot on at all times · ${profile.currentWedges} wedge(s), heel raised"
-            phase.number <= 2 -> "Boot on at all times · neutral (no wedges)"
-            phase.number == 3 -> "Weaning out of boot, physio-guided"
-            else -> "Out of boot · supportive shoes"
-        }
-        val tendon = when (phase.number) {
-            1 -> "Tendon ends knitting together - maximum protection"
-            2 -> "Early healing tissue forming - protected loading helps it organise"
-            3 -> "Tendon consolidating - gentle movement, no stretch"
-            4 -> "Tendon remodelling - progressive load makes it stronger"
-            else -> "Tendon maturing - building sport-level capacity"
-        }
+        val boot = phase.deviceUsage?.replace("{n}", profile.currentWedges.toString())
+            ?: protocol.supportDevice?.let { "No ${it.name.lowercase()} needed in this phase" }
+            ?: "No support device for this protocol"
+        val tendon = phase.tissueState
         return Snapshot(
             phaseNumber = phase.number,
             phaseTitle = phase.title,
@@ -96,34 +87,37 @@ object Capability {
             )
         }
 
-        if (profile.currentWedges < expected) {
+        val device = ProtocolRegistry.forProfile(profile).supportDevice
+        if (device != null && profile.currentWedges < expected) {
             out.add(
                 Warning(
                     Severity.WARNING,
-                    "Wedges ahead of plan",
-                    "Boot has ${profile.currentWedges} wedge(s) but the plan expects $expected today. " +
-                        "Reducing heel raise early increases re-rupture risk - check with your physio."
+                    "${device.unitNamePlural.replaceFirstChar { it.uppercase() }} ahead of plan",
+                    "${device.name} has ${profile.currentWedges} ${device.unitNamePlural} but the plan " +
+                        "expects $expected today. Reducing support early increases re-injury risk - " +
+                        "check with your physio."
                 )
             )
         }
-        if (profile.currentWedges > expected) {
+        if (device != null && profile.currentWedges > expected) {
             out.add(
                 Warning(
                     Severity.INFO,
-                    "Wedges behind plan",
-                    "Boot has ${profile.currentWedges} wedge(s); the plan expects $expected. " +
-                        "Fine if your clinic chose this - otherwise a wedge change may be overdue."
+                    "${device.unitNamePlural.replaceFirstChar { it.uppercase() }} behind plan",
+                    "${device.name} has ${profile.currentWedges} ${device.unitNamePlural}; the plan expects " +
+                        "$expected. Fine if your clinic chose this - otherwise a change may be overdue."
                 )
             )
         }
 
-        if (phase.number <= 2 && latest?.bootWornAsPlanned == false) {
+        if (device != null && phase.deviceUsage != null && latest?.bootWornAsPlanned == false) {
             out.add(
                 Warning(
                     Severity.WARNING,
-                    "Boot not worn as planned",
-                    "In phase ${phase.number} the tendon has little of its own strength - even one " +
-                        "unbooted step risks re-rupture. Keep the boot on and tell your physio if it is a comfort problem."
+                    "${device.name} not worn as planned",
+                    "In phase ${phase.number} the healing tissue has little of its own strength - " +
+                        "going without the ${device.name.lowercase()} risks re-injury. Tell your " +
+                        "physio if it is a comfort problem."
                 )
             )
         }
@@ -156,37 +150,15 @@ object Capability {
         return out
     }
 
-    /** Phase-appropriate movement checks used by the digital twin screen. */
+    /** Phase-appropriate movement checks, defined by the active protocol. */
     data class MovementCheck(val movement: String, val allowed: Boolean, val note: String)
 
     fun movementChecks(profile: Profile, today: LocalDate): List<MovementCheck> {
         val n = PhaseEngine.currentPhase(profile, today).number
-        return listOf(
-            MovementCheck(
-                "Walk without the boot", n >= 3,
-                if (n >= 3) "Physio-guided weaning only" else "Not before ~week 8-10, physio-confirmed"
-            ),
-            MovementCheck(
-                "Pull foot up past neutral / calf stretch", n >= 4,
-                if (n >= 4) "Gentle and physio-guided only" else "Not before week 12 - tendon over-lengthening risk"
-            ),
-            MovementCheck(
-                "Drive a car", n >= 4,
-                "Generally only out of the boot, off strong painkillers, and able to emergency-brake - confirm with clinic and insurer"
-            ),
-            MovementCheck(
-                "Standing heel raises", n >= 4,
-                if (n >= 4) "Progress as prescribed" else "Phase 4 work - too early now"
-            ),
-            MovementCheck(
-                "Run / jump", n >= 5,
-                if (n >= 5) "Graded programme once physio clears it" else "Phase 5 work after strength benchmarks"
-            ),
-            MovementCheck(
-                "Play padel", n >= 5,
-                if (n >= 5) "Drills first; competitive play typically 9-12 months with sign-off"
-                else "The end goal - but not yet"
-            )
-        )
+        return ProtocolRegistry.forProfile(profile).movementChecks.map { spec ->
+            val allowed = n >= spec.unlockPhase
+            MovementCheck(spec.movement, allowed,
+                if (allowed) spec.noteWhenUnlocked else spec.noteWhenLocked)
+        }
     }
 }

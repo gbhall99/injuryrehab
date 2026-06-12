@@ -3,7 +3,7 @@ package com.recoverwell.app
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
-import com.recoverwell.core.protocol.ProtocolContent
+import com.recoverwell.core.protocol.ProtocolRegistry
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -30,7 +30,7 @@ class ExerciseDetailSmokeTest {
         activity.store.saveProfile(
             activity.store.profile().copy(onboardingComplete = true, disclaimerAcknowledged = true)
         )
-        for (phase in ProtocolContent.phases) {
+        for (phase in ProtocolRegistry.default.phases) {
             val spec = phase.exercises.first()
             activity.show(MainActivity.Tab.EXERCISES)
             activity.pushOverlay {

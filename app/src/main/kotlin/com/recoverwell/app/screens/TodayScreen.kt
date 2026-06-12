@@ -15,7 +15,7 @@ import com.recoverwell.core.logic.Capability
 import com.recoverwell.core.logic.PhaseEngine
 import com.recoverwell.core.logic.ScheduleEngine
 import com.recoverwell.core.model.EventStatus
-import com.recoverwell.core.protocol.ProtocolContent
+import com.recoverwell.core.protocol.ProtocolRegistry
 import com.recoverwell.draw.RingScene
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -202,7 +202,8 @@ object TodayScreen {
                     .show()
             }
             ScheduleEngine.ItemKind.EXERCISE -> {
-                val spec = ProtocolContent.phases.flatMap { it.exercises }.find { it.id == item.refId }
+                val spec = ProtocolRegistry.forProfile(a.store.profile())
+                    .phases.flatMap { it.exercises }.find { it.id == item.refId }
                 if (spec != null) {
                     a.pushOverlay { ExercisesScreen.exerciseDetail(a, spec, item.slotKey) }
                 } else {
@@ -245,7 +246,7 @@ object TodayScreen {
     }
 
     fun phaseDetail(a: MainActivity, phaseNumber: Int): View {
-        val phase = ProtocolContent.phase(phaseNumber)
+        val phase = ProtocolRegistry.forProfile(a.store.profile()).phase(phaseNumber)
         val col = Ui.column(a)
         col.addView(Ui.backRow(a, "Phase ${phase.number}") { a.popOverlay() })
         col.addView(Ui.headline(a, phase.title))

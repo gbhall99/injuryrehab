@@ -1,7 +1,8 @@
 package com.recoverwell.core
 
 import com.recoverwell.core.logic.PhaseEngine
-import com.recoverwell.core.protocol.ProtocolContent
+import com.recoverwell.core.protocol.Defaults
+import com.recoverwell.core.protocol.ProtocolRegistry
 import org.junit.Assert.*
 import org.junit.Test
 import java.time.LocalDate
@@ -9,7 +10,7 @@ import java.time.LocalDate
 class PhaseEngineTest {
 
     private val injury = LocalDate.of(2026, 6, 2)
-    private val profile = ProtocolContent.defaultProfile()
+    private val profile = Defaults.profile()
 
     @Test
     fun phase1AtInjury() {
@@ -74,7 +75,7 @@ class PhaseEngineTest {
 
     @Test
     fun phaseWindowsAreContiguousFromZero() {
-        val phases = ProtocolContent.phases.sortedBy { it.number }
+        val phases = ProtocolRegistry.default.phases.sortedBy { it.number }
         assertEquals(0, phases.first().startWeek)
         for (i in 0 until phases.size - 1) {
             assertEquals(

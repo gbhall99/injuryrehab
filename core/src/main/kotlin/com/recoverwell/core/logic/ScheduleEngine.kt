@@ -1,7 +1,7 @@
 package com.recoverwell.core.logic
 
 import com.recoverwell.core.model.*
-import com.recoverwell.core.protocol.ProtocolContent
+import com.recoverwell.core.protocol.ProtocolRegistry
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -75,22 +75,24 @@ object ScheduleEngine {
         return n
     }
 
-    /** Wedge-change items due on [date] according to the editable wedge plan. */
-    fun wedgeChangesOn(profile: Profile, date: LocalDate): List<ChecklistItem> =
-        profile.wedgePlan.removalSchedule(profile.injuryDate)
+    /** Device-reduction items due on [date] per the editable plan (boot wedges etc.). */
+    fun wedgeChangesOn(profile: Profile, date: LocalDate): List<ChecklistItem> {
+        val device = ProtocolRegistry.forProfile(profile).supportDevice ?: return emptyList()
+        return profile.wedgePlan.removalSchedule(profile.injuryDate)
             .filter { it.first == date }
             .map { (d, after) ->
                 ChecklistItem(
                     kind = ItemKind.WEDGE_CHANGE,
                     refId = "wedge_$after",
                     slotKey = d.toString(),
-                    title = "Wedge change due: remove 1 wedge (${after} left)",
-                    subtitle = ProtocolContent.PLACEHOLDER_NOTE +
-                        " Only change wedges if your clinic has agreed this step.",
+                    title = "${device.name} change due: ${device.reductionVerb} (${after} ${device.unitNamePlural} left)",
+                    subtitle = ProtocolRegistry.forProfile(profile).placeholderNote +
+                        " Only adjust the ${device.name.lowercase()} if your clinic has agreed this step.",
                     time = LocalTime.of(9, 0),
                     status = null
                 )
             }
+    }
 
     fun dailyChecklist(
         profile: Profile,

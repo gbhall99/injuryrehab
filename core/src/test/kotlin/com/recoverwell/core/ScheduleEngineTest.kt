@@ -4,7 +4,8 @@ import com.recoverwell.core.logic.ScheduleEngine
 import com.recoverwell.core.model.EventLog
 import com.recoverwell.core.model.EventStatus
 import com.recoverwell.core.model.EventType
-import com.recoverwell.core.protocol.ProtocolContent
+import com.recoverwell.core.protocol.Defaults
+import com.recoverwell.core.protocol.ProtocolRegistry
 import org.junit.Assert.*
 import org.junit.Test
 import java.time.LocalDate
@@ -14,9 +15,9 @@ import java.time.LocalTime
 class ScheduleEngineTest {
 
     private val injury = LocalDate.of(2026, 6, 2)
-    private val profile = ProtocolContent.defaultProfile()
-    private val meds = ProtocolContent.defaultMedications()
-    private val tasks = ProtocolContent.defaultTasks()
+    private val profile = Defaults.profile()
+    private val meds = Defaults.medications()
+    private val tasks = Defaults.tasks()
 
     @Test
     fun checklistHasTwoMedicationSlots() {
@@ -56,12 +57,12 @@ class ScheduleEngineTest {
         val firstRemoval = injury.plusDays(14)
         val items = ScheduleEngine.wedgeChangesOn(profile, firstRemoval)
         assertEquals(1, items.size)
-        assertTrue(items[0].title.contains("4 left"))
+        assertTrue(items[0].title, items[0].title.contains("4 wedges left"))
         assertTrue(ScheduleEngine.wedgeChangesOn(profile, firstRemoval.plusDays(1)).isEmpty())
         // Last removal leaves 0 wedges, 4 weeks after the first.
         val last = ScheduleEngine.wedgeChangesOn(profile, firstRemoval.plusWeeks(4))
         assertEquals(1, last.size)
-        assertTrue(last[0].title.contains("0 left"))
+        assertTrue(last[0].title.contains("0 wedges left"))
     }
 
     @Test
@@ -70,7 +71,7 @@ class ScheduleEngineTest {
             "p1_slr" to com.recoverwell.core.model.ExerciseOverride("p1_slr", sets = 5, reps = 8, holdSeconds = null, sessionsPerDay = 1, enabled = true),
             "p1_toe_scrunch" to com.recoverwell.core.model.ExerciseOverride("p1_toe_scrunch", null, null, null, null, enabled = false)
         )
-        val merged = ScheduleEngine.mergedExercises(ProtocolContent.phase(1).exercises, overrides)
+        val merged = ScheduleEngine.mergedExercises(ProtocolRegistry.default.phase(1).exercises, overrides)
         assertNull(merged.find { it.id == "p1_toe_scrunch" })
         val slr = merged.first { it.id == "p1_slr" }
         assertEquals(5, slr.sets)

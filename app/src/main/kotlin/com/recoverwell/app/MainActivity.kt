@@ -20,7 +20,7 @@ import com.recoverwell.app.ui.Forms
 import com.recoverwell.app.ui.Ui
 import com.recoverwell.core.export.BackupCodec
 import com.recoverwell.core.export.CsvExporter
-import com.recoverwell.core.protocol.ProtocolContent
+import com.recoverwell.core.protocol.RehabFramework
 
 class MainActivity : Activity() {
 
@@ -89,7 +89,7 @@ class MainActivity : Activity() {
         val disclaimer = Ui.caption(this, "Supports - never replaces - your physio and consultant")
         disclaimer.gravity = Gravity.CENTER
         disclaimer.setPadding(Ui.dp(this, 12), Ui.dp(this, 6), Ui.dp(this, 12), Ui.dp(this, 6))
-        disclaimer.setOnClickListener { Forms.info(this, "Medical disclaimer", ProtocolContent.DISCLAIMER) }
+        disclaimer.setOnClickListener { Forms.info(this, "Medical disclaimer", RehabFramework.DISCLAIMER) }
         root.addView(disclaimer)
 
         tabBar = Ui.row(this).apply {

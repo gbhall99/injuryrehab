@@ -7,7 +7,7 @@ import com.recoverwell.core.export.AppState
 import com.recoverwell.core.export.BackupCodec
 import com.recoverwell.core.json.Json
 import com.recoverwell.core.model.*
-import com.recoverwell.core.protocol.ProtocolContent
+import com.recoverwell.core.protocol.Defaults
 import java.time.LocalDate
 
 /**
@@ -61,7 +61,7 @@ class Store private constructor(context: Context) :
 
     fun profile(): Profile =
         getKv("profile")?.let { BackupCodec.profileFrom(Json.parse(it)) }
-            ?: ProtocolContent.defaultProfile()
+            ?: Defaults.profile()
 
     fun saveProfile(p: Profile) = putKv("profile", Json.write(BackupCodec.profileJson(p)))
 
@@ -69,7 +69,7 @@ class Store private constructor(context: Context) :
 
     fun medications(): List<Medication> =
         getKv("medications")?.let { Json.parse(it).asArr().map(BackupCodec::medFrom) }
-            ?: ProtocolContent.defaultMedications()
+            ?: Defaults.medications()
 
     fun saveMedications(meds: List<Medication>) =
         putKv("medications", Json.write(Json.arr(meds.map(BackupCodec::medJson))))
@@ -78,7 +78,7 @@ class Store private constructor(context: Context) :
 
     fun tasks(): List<RehabTask> =
         getKv("tasks")?.let { Json.parse(it).asArr().map(BackupCodec::taskFrom) }
-            ?: ProtocolContent.defaultTasks()
+            ?: Defaults.tasks()
 
     fun saveTasks(tasks: List<RehabTask>) =
         putKv("tasks", Json.write(Json.arr(tasks.map(BackupCodec::taskJson))))

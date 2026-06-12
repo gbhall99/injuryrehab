@@ -8,6 +8,7 @@ import com.recoverwell.app.ui.SceneView
 import com.recoverwell.app.ui.Ui
 import com.recoverwell.core.logic.Capability
 import com.recoverwell.core.model.Side
+import com.recoverwell.core.protocol.ProtocolRegistry
 import com.recoverwell.draw.BodyScene
 import java.time.LocalDate
 
@@ -26,17 +27,25 @@ object TwinScreen {
         // ---- body model + capability side by side ----
         val heroCard = Ui.card(a)
         val heroRow = Ui.row(a)
-        val body = SceneView(a) { s ->
-            BodyScene.render(s, snap.phaseNumber, snap.wedges, profile.side == Side.RIGHT)
+        // visuals are registered per protocol; unknown ids simply show no scene
+        val scene: ((com.recoverwell.draw.Sketch) -> Unit)? =
+            when (ProtocolRegistry.forProfile(profile).bodySceneId) {
+                "lower_leg" -> { s -> BodyScene.render(s, snap.phaseNumber, snap.wedges, profile.side == Side.RIGHT) }
+                else -> null
+            }
+        if (scene != null) {
+            val body = SceneView(a, scene)
+            heroRow.addView(body, LinearLayout.LayoutParams(Ui.dp(a, 150), Ui.dp(a, 210)))
         }
-        heroRow.addView(body, LinearLayout.LayoutParams(Ui.dp(a, 150), Ui.dp(a, 210)))
         val facts = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
         facts.setPadding(Ui.dp(a, 14), 0, 0, 0)
         facts.addView(Ui.pillBadge(a, "Week ${snap.weeksSinceInjury} · Phase ${snap.phaseNumber}",
             Ui.ON_PRIMARY_CONTAINER, Ui.PRIMARY_CONTAINER))
         facts.addView(Ui.spacer(a, 8))
-        facts.addView(Ui.text(a, "${profile.side.name.lowercase().replaceFirstChar { it.uppercase() }} Achilles",
-            16f, Ui.TEXT, bold = true))
+        val protocol = ProtocolRegistry.forProfile(profile)
+        val sideLabel = if (protocol.sided)
+            profile.side.name.lowercase().replaceFirstChar { it.uppercase() } + " · " else ""
+        facts.addView(Ui.text(a, sideLabel + protocol.injuryName, 16f, Ui.TEXT, bold = true))
         facts.addView(Ui.caption(a, snap.tendonState))
         facts.addView(Ui.spacer(a, 8))
         facts.addView(Ui.text(a, snap.bootStatus, 13.5f, Ui.TEXT))

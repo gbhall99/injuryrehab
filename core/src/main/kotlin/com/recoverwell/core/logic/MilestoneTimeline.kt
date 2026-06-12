@@ -2,7 +2,7 @@ package com.recoverwell.core.logic
 
 import com.recoverwell.core.model.Milestone
 import com.recoverwell.core.model.Profile
-import com.recoverwell.core.protocol.ProtocolContent
+import com.recoverwell.core.protocol.ProtocolRegistry
 import java.time.LocalDate
 
 /** Milestone timeline anchored to the injury date vs typical conservative-protocol expectations. */
@@ -18,7 +18,7 @@ object MilestoneTimeline {
     )
 
     fun build(profile: Profile, today: LocalDate): List<Entry> =
-        ProtocolContent.milestones.map { m ->
+        ProtocolRegistry.forProfile(profile).milestones.map { m ->
             val expected = profile.injuryDate.plusWeeks(m.week.toLong())
             val status = when {
                 expected.isBefore(today.minusDays(6)) -> Status.REACHED

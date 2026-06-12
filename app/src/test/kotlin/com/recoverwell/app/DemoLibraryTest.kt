@@ -1,7 +1,7 @@
 package com.recoverwell.app
 
 import com.recoverwell.draw.DemoLibrary
-import com.recoverwell.core.protocol.ProtocolContent
+import com.recoverwell.core.protocol.ProtocolRegistry
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -15,7 +15,7 @@ class DemoLibraryTest {
     @Test
     fun everyExerciseHasItsOwnDemo() {
         val demoIds = DemoLibrary.demos.keys
-        for (phase in ProtocolContent.phases) {
+        for (protocol in ProtocolRegistry.all) for (phase in protocol.phases) {
             for (ex in phase.exercises) {
                 assertTrue(
                     "Exercise ${ex.id} references missing demo '${ex.demoId}'",

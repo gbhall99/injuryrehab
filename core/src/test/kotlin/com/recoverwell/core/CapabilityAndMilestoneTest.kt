@@ -4,7 +4,8 @@ import com.recoverwell.core.logic.Capability
 import com.recoverwell.core.logic.MilestoneTimeline
 import com.recoverwell.core.model.DailyLog
 import com.recoverwell.core.model.Swelling
-import com.recoverwell.core.protocol.ProtocolContent
+import com.recoverwell.core.protocol.Defaults
+import com.recoverwell.core.protocol.ProtocolRegistry
 import org.junit.Assert.*
 import org.junit.Test
 import java.time.LocalDate
@@ -12,7 +13,7 @@ import java.time.LocalDate
 class CapabilityAndMilestoneTest {
 
     private val injury = LocalDate.of(2026, 6, 2)
-    private val profile = ProtocolContent.defaultProfile()
+    private val profile = Defaults.profile()
 
     @Test
     fun snapshotReflectsPhase1() {
@@ -42,7 +43,7 @@ class CapabilityAndMilestoneTest {
     fun bootNotWornWarnsInProtectionPhase() {
         val log = DailyLog.empty(injury.plusDays(5)).copy(bootWornAsPlanned = false)
         val warnings = Capability.warnings(profile, listOf(log), injury.plusDays(5))
-        assertTrue(warnings.any { it.title.contains("Boot not worn") })
+        assertTrue(warnings.any { it.title.contains("not worn as planned") })
     }
 
     @Test
@@ -65,7 +66,7 @@ class CapabilityAndMilestoneTest {
     @Test
     fun milestoneTimelineAnchorsToInjuryDate() {
         val entries = MilestoneTimeline.build(profile, injury.plusWeeks(3))
-        assertEquals(ProtocolContent.milestones.size, entries.size)
+        assertEquals(ProtocolRegistry.default.milestones.size, entries.size)
         val bootNeutral = entries.first { it.milestone.week == 8 }
         assertEquals(injury.plusWeeks(8), bootNeutral.expectedDate)
         assertEquals(MilestoneTimeline.Status.UPCOMING, bootNeutral.status)

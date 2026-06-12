@@ -3,7 +3,8 @@ package com.recoverwell.app.screens
 import android.view.View
 import com.recoverwell.app.MainActivity
 import com.recoverwell.app.ui.Ui
-import com.recoverwell.core.protocol.ProtocolContent
+import com.recoverwell.core.protocol.ProtocolRegistry
+import com.recoverwell.core.protocol.RehabFramework
 
 /**
  * Red-flag guidance: DVT, PE, re-rupture, anticoagulant bleeding, boot/skin.
@@ -20,7 +21,7 @@ object RedFlagsScreen {
                 "this - take these signs seriously even if they seem mild."))
         col.addView(Ui.spacer(a, 8))
 
-        for (rf in ProtocolContent.redFlags) {
+        for (rf in ProtocolRegistry.forProfile(a.store.profile()).redFlags) {
             val urgent = rf.id == "pe"
             val card = Ui.card(a, if (urgent) Ui.DANGER_BG else Ui.CARD)
             val head = Ui.row(a)
@@ -47,7 +48,7 @@ object RedFlagsScreen {
         }
 
         col.addView(Ui.spacer(a, 8))
-        col.addView(Ui.caption(a, ProtocolContent.DISCLAIMER))
+        col.addView(Ui.caption(a, RehabFramework.DISCLAIMER))
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
     }

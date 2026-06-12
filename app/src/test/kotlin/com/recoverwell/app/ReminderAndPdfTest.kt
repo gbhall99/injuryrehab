@@ -78,9 +78,10 @@ class PdfReportTest {
         )
         val lines = com.recoverwell.app.export.PdfReport.composeLines(activity.store)
         val text = lines.joinToString("\n") { it.second }
-        assertTrue(text.contains("Achilles Rehab Report"))
+        assertTrue(text.contains("Recovery Report"))
+        assertTrue(text.contains("Achilles tendon rupture"))
         assertTrue(text.contains("2026-06-02"))
-        assertTrue(text.contains("conservative / non-surgical"))
+        assertTrue(text.contains("Conservative (non-surgical)"))
         assertTrue(text.contains("Anticoagulant 2.5 mg at 08:00, 20:00"))
         assertTrue(text.contains("Week 8"))   // milestone table present
         assertTrue(text.contains("Pain: 1 entries, latest 3/10"))

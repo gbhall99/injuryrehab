@@ -22,7 +22,7 @@ data class AppState(
  */
 object BackupCodec {
 
-    const val VERSION = 1
+    const val VERSION = 2
 
     fun encode(state: AppState): String = Json.write(
         Json.obj(
@@ -55,6 +55,7 @@ object BackupCodec {
     // -- profile --------------------------------------------------------
 
     fun profileJson(p: Profile): JsonValue = Json.obj(
+        "protocolId" to Json.of(p.protocolId),
         "name" to Json.of(p.name),
         "injuryDate" to Json.of(p.injuryDate.toString()),
         "side" to Json.of(p.side.name),
@@ -84,6 +85,9 @@ object BackupCodec {
     )
 
     fun profileFrom(j: JsonValue): Profile = Profile(
+        // v1 backups predate multi-protocol support: they are Achilles ones
+        protocolId = j.opt("protocolId")?.asString()
+            ?: com.recoverwell.core.protocol.ProtocolRegistry.default.id,
         name = j.opt("name")?.asString() ?: "",
         injuryDate = LocalDate.parse(j.get("injuryDate").asString()),
         side = Side.valueOf(j.get("side").asString()),

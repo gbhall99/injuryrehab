@@ -12,6 +12,7 @@ import com.recoverwell.core.logic.MilestoneTimeline
 import com.recoverwell.core.logic.TrendMath
 import com.recoverwell.core.model.Swelling
 import com.recoverwell.core.model.WeightBearing
+import com.recoverwell.core.protocol.ProtocolRegistry
 import com.recoverwell.draw.ChartScene
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -69,14 +70,18 @@ object TrackerScreen {
         form.addView(Forms.label(a, "Energy"))
         form.addView(Forms.choiceRow(a, (1..5).toList(), { "$it" }, log.energy) { log = log.copy(energy = it) })
 
-        form.addView(Forms.label(a, "Boot worn as planned today?"))
-        form.addView(Forms.choiceRow(a, listOf(true, false), { if (it) "Yes" else "No" }, log.bootWornAsPlanned) {
-            log = log.copy(bootWornAsPlanned = it)
-        })
-
-        form.addView(Forms.stepper(a, "Wedges in boot", log.wedges ?: a.store.profile().currentWedges, 0, 8) {
-            log = log.copy(wedges = it)
-        })
+        val device = ProtocolRegistry.forProfile(a.store.profile()).supportDevice
+        if (device != null) {
+            form.addView(Forms.label(a, "${device.name} worn as planned?"))
+            form.addView(Forms.choiceRow(a, listOf(true, false), { if (it) "Yes" else "No" }, log.bootWornAsPlanned) {
+                log = log.copy(bootWornAsPlanned = it)
+            })
+            form.addView(Forms.stepper(a,
+                "${device.unitNamePlural.replaceFirstChar { it.uppercase() }} in ${device.name.lowercase()}",
+                log.wedges ?: a.store.profile().currentWedges, 0, 8) {
+                log = log.copy(wedges = it)
+            })
+        }
 
         form.addView(Forms.label(a, "Weight-bearing"))
         form.addView(Forms.choiceRow(
@@ -144,7 +149,7 @@ object TrackerScreen {
 
         // ---- milestone timeline ----
         col.addView(Ui.section(a, "Milestones"))
-        col.addView(Ui.pillBadge(a, "Typical protocol - confirm with your physio", Ui.WARN, Ui.WARN_BG))
+        col.addView(Ui.pillBadge(a, ProtocolRegistry.forProfile(a.store.profile()).placeholderNote, Ui.WARN, Ui.WARN_BG))
         col.addView(Ui.spacer(a, 8))
         val profile = a.store.profile()
         val timeline = Ui.card(a)

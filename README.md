@@ -205,6 +205,30 @@ Debian-packaged Android tools `aapt`, `zipalign`, `apksigner`,
 Install on the target phone via `adb install` or any file transfer
 (sideload); Android 8.0 or newer.
 
+## The injury framework
+
+The app is a general rehab framework: a recovery is described entirely by an
+`InjuryProtocol` value in `core/protocol/` - phases (with entry criteria,
+goals, precautions, do/don't lists, tissue-state and device-usage notes),
+exercises with demonstrations, milestones, red flags, movement checks, the
+support device and its vocabulary ("walking boot" / "wedges" here; a brace
+with angle stops would plug in the same way), the digital-twin visual, and
+onboarding prefills. Engines and screens read everything through
+`ProtocolRegistry`, keyed by the `protocolId` stored on the profile, and the
+versioned backup format carries the id (v1 backups migrate onto the Achilles
+protocol).
+
+**Adding a new injury or variant** is therefore:
+1. Write one data file (e.g. `AclReconstruction.kt`) building an
+   `InjuryProtocol` - cite its clinical source like the Achilles one does.
+2. Add any new demonstration keyframes to `draw/Demo.kt` (the figure rig is
+   shared) and, if needed, a body visual + an id mapping in `TwinScreen`.
+3. List it in `ProtocolRegistry.all`.
+The registry-wide quality tests (phase continuity, exercise completeness,
+demo coverage, red-flag presence) run against every entry automatically.
+This build deliberately ships exactly one protocol: the user's own
+conservative Achilles pathway.
+
 ## Personal data pre-fill (all editable in-app)
 
 | Field | Pre-filled value |

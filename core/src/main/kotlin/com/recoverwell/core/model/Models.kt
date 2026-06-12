@@ -64,6 +64,8 @@ data class WedgePlan(
 }
 
 data class Profile(
+    /** Which InjuryProtocol in the registry this recovery follows. */
+    val protocolId: String,
     val name: String,
     val injuryDate: LocalDate,
     val side: Side,
@@ -144,6 +146,10 @@ data class PhaseSpec(
     val number: Int,
     val title: String,
     val subtitle: String,
+    /** One line on what the healing tissue is doing in this phase. */
+    val tissueState: String,
+    /** Support-device state this phase; "{n}" = current unit count; null = no device. */
+    val deviceUsage: String?,
     /** Default start, in completed weeks since injury (phase 1 = 0). */
     val startWeek: Int,
     /** Default end week (exclusive); null for the final open-ended phase. */
