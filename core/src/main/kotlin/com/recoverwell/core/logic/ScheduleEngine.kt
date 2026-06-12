@@ -52,6 +52,29 @@ object ScheduleEngine {
     fun slotKey(time: LocalTime): String =
         String.format(java.util.Locale.ROOT, "%02d:%02d", time.hour, time.minute)
 
+    /**
+     * Consecutive days on which EVERY active medication dose was taken,
+     * ending today (if today is already complete) or yesterday. Judged
+     * against the current schedule - good enough for a motivation streak.
+     */
+    fun medicationStreak(meds: List<Medication>, events: List<EventLog>, today: LocalDate): Int {
+        val slots = meds.filter { it.active }
+            .flatMap { m -> m.times.map { m.id to slotKey(it) } }
+        if (slots.isEmpty()) return 0
+        val taken = events.filter { it.type == EventType.MEDICATION && it.status == EventStatus.TAKEN }
+            .groupBy { it.date }
+        fun complete(d: LocalDate) = slots.all { (id, slot) ->
+            taken[d]?.any { it.refId == id && it.slotKey == slot } == true
+        }
+        var day = if (complete(today)) today else today.minusDays(1)
+        var n = 0
+        while (complete(day)) {
+            n++
+            day = day.minusDays(1)
+        }
+        return n
+    }
+
     /** Wedge-change items due on [date] according to the editable wedge plan. */
     fun wedgeChangesOn(profile: Profile, date: LocalDate): List<ChecklistItem> =
         profile.wedgePlan.removalSchedule(profile.injuryDate)

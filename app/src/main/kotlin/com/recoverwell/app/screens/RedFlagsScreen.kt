@@ -31,7 +31,7 @@ object RedFlagsScreen {
             head.addView(Ui.weight(ht, 1f))
             card.addView(head)
             card.addView(Ui.spacer(a, 8))
-            card.addView(Ui.pillBadge(a, rf.urgency, 0xFFFFFFFF.toInt(), Ui.DANGER))
+            card.addView(Ui.pillBadge(a, rf.urgency, Ui.ON_DANGER, Ui.DANGER))
             card.addView(Ui.spacer(a, 8))
             for (s in rf.symptoms) {
                 val r = Ui.row(a)

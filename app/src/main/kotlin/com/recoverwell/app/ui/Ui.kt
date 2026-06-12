@@ -25,25 +25,29 @@ import com.recoverwell.draw.Palette
  */
 object Ui {
 
-    // palette bridged from the shared draw module so scenes and chrome match
-    const val BG = Palette.SURFACE
-    const val CARD = Palette.SURFACE_CARD
-    const val SURFACE_HIGH = Palette.SURFACE_HIGH
-    const val PRIMARY = Palette.PRIMARY
-    const val PRIMARY_CONTAINER = Palette.PRIMARY_CONTAINER
-    const val ON_PRIMARY_CONTAINER = Palette.ON_PRIMARY_CONTAINER
-    const val TEXT = Palette.ON_SURFACE
-    const val TEXT_DIM = Palette.ON_SURFACE_VARIANT
-    const val OUTLINE = Palette.OUTLINE
-    const val DANGER = Palette.ERROR
-    const val DANGER_BG = Palette.ERROR_CONTAINER
-    const val ON_DANGER_BG = Palette.ON_ERROR_CONTAINER
-    const val WARN = Palette.WARN
-    const val WARN_BG = Palette.WARN_CONTAINER
-    const val INFO_BG = Palette.INFO_CONTAINER
-    const val ON_INFO_BG = Palette.ON_INFO_CONTAINER
-    const val DONE = 0xFF2F6B4F.toInt()
-    const val DONE_BG = 0xFFE2F1E7.toInt()
+    // palette bridged from the shared draw module so scenes and chrome match;
+    // read-through getters keep everything theme-aware
+    val BG get() = Palette.SURFACE
+    val CARD get() = Palette.SURFACE_CARD
+    val SURFACE_HIGH get() = Palette.SURFACE_HIGH
+    val PRIMARY get() = Palette.PRIMARY
+    val PRIMARY_CONTAINER get() = Palette.PRIMARY_CONTAINER
+    val ON_PRIMARY_CONTAINER get() = Palette.ON_PRIMARY_CONTAINER
+    val TEXT get() = Palette.ON_SURFACE
+    val TEXT_DIM get() = Palette.ON_SURFACE_VARIANT
+    val OUTLINE get() = Palette.OUTLINE
+    val DANGER get() = Palette.ERROR
+    val ON_DANGER get() = Palette.ON_ERROR
+    val DANGER_BG get() = Palette.ERROR_CONTAINER
+    val ON_DANGER_BG get() = Palette.ON_ERROR_CONTAINER
+    val WARN get() = Palette.WARN
+    val WARN_BG get() = Palette.WARN_CONTAINER
+    val INFO_BG get() = Palette.INFO_CONTAINER
+    val ON_INFO_BG get() = Palette.ON_INFO_CONTAINER
+    val DONE get() = Palette.DONE
+    val DONE_BG get() = Palette.DONE_BG
+    val HERO_BG get() = Palette.HERO_BG
+    val ON_HERO get() = Palette.ON_HERO
 
     const val MIN_TOUCH_DP = 48
     const val RADIUS = 18f
@@ -236,7 +240,7 @@ object Ui {
         }
 
     fun button(context: Context, label: String, onClick: () -> Unit): TextView =
-        baseButton(context, label, 0xFFFFFFFF.toInt(),
+        baseButton(context, label, Palette.ON_PRIMARY,
             ripple(context, rounded(PRIMARY, 25f), 0x33FFFFFF)).apply {
             setOnClickListener { onClick() }
         }
@@ -253,7 +257,7 @@ object Ui {
         }
 
     fun dangerButton(context: Context, label: String, onClick: () -> Unit): TextView =
-        baseButton(context, label, 0xFFFFFFFF.toInt(),
+        baseButton(context, label, ON_DANGER,
             ripple(context, rounded(DANGER, 25f), 0x33FFFFFF)).apply {
             setOnClickListener { onClick() }
         }
@@ -320,7 +324,10 @@ object Ui {
             isClickable = true
             isFocusable = true
             contentDescription = (if (done) "Done: " else "To do: ") + titleText
-            setOnClickListener { onToggle() }
+            setOnClickListener {
+                it.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
+                onToggle()
+            }
             val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             lp.setMargins(0, dp(context, 4), 0, dp(context, 4))
             layoutParams = lp
@@ -328,7 +335,7 @@ object Ui {
         val ring = FrameLayout(context).apply {
             val d = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                if (done) setColor(DONE) else { setColor(CARD); setStroke(dp(context, 2), 0xFFB9C4BB.toInt()) }
+                if (done) setColor(DONE) else { setColor(CARD); setStroke(dp(context, 2), Palette.withAlpha(TEXT_DIM, 0x66)) }
             }
             background = d
             layoutParams = LinearLayout.LayoutParams(dp(context, 26), dp(context, 26))

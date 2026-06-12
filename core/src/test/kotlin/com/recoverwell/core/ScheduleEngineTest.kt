@@ -92,6 +92,29 @@ class ScheduleEngineTest {
     }
 
     @Test
+    fun medicationStreakCountsFullDaysOnly() {
+        val today = injury.plusDays(10)
+        fun taken(d: LocalDate, slot: String) =
+            EventLog("e$d$slot", d, EventType.MEDICATION, "med_anticoagulant", slot, EventStatus.TAKEN, 500)
+
+        // three full days, then today only half-complete -> streak 3 (ends yesterday)
+        val events = listOf(
+            taken(today.minusDays(3), "08:00"), taken(today.minusDays(3), "20:00"),
+            taken(today.minusDays(2), "08:00"), taken(today.minusDays(2), "20:00"),
+            taken(today.minusDays(1), "08:00"), taken(today.minusDays(1), "20:00"),
+            taken(today, "08:00")
+        )
+        assertEquals(3, ScheduleEngine.medicationStreak(meds, events, today))
+        // completing today extends it to 4
+        assertEquals(4, ScheduleEngine.medicationStreak(meds, events + taken(today, "20:00"), today))
+        // a MISSED day in the middle breaks the chain
+        val broken = events.filter { it.date != today.minusDays(2) }
+        assertEquals(1, ScheduleEngine.medicationStreak(meds, broken, today))
+        // no active meds -> no streak
+        assertEquals(0, ScheduleEngine.medicationStreak(emptyList(), events, today))
+    }
+
+    @Test
     fun remindersIncludeDatedWedgeChanges() {
         val now = LocalDateTime.of(injury.plusDays(13), LocalTime.of(12, 0))
         val reminders = ScheduleEngine.upcomingReminders(profile, meds, tasks, now)

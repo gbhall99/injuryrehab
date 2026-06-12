@@ -51,6 +51,12 @@ class Store private constructor(context: Context) :
             if (it.moveToFirst()) it.getString(0) else null
         }
 
+    // -- app settings (theme etc.) ------------------------------------------
+
+    fun setting(key: String, default: String): String = getKv("setting_$key") ?: default
+
+    fun saveSetting(key: String, value: String) = putKv("setting_$key", value)
+
     // -- profile ----------------------------------------------------------
 
     fun profile(): Profile =

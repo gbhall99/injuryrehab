@@ -107,34 +107,51 @@ class PathSpec {
     }
 }
 
-/** Shared palette: single source of truth for app chrome and drawn scenes. */
+/**
+ * Shared palette: single source of truth for app chrome and drawn scenes,
+ * theme-switchable. Every consumer reads tokens at render time, so flipping
+ * [dark] re-skins the entire app and all drawn scenes.
+ */
 object Palette {
-    const val PRIMARY = 0xFF2F6B4F.toInt()
-    const val ON_PRIMARY = 0xFFFFFFFF.toInt()
-    const val PRIMARY_CONTAINER = 0xFFD6EBDD.toInt()
-    const val ON_PRIMARY_CONTAINER = 0xFF123524.toInt()
-    const val PRIMARY_DIM = 0xFF4E8B6C.toInt()
+    var dark: Boolean = false
 
-    const val SURFACE = 0xFFF7FAF7.toInt()
-    const val SURFACE_CARD = 0xFFFFFFFF.toInt()
-    const val SURFACE_HIGH = 0xFFEDF3EE.toInt()
-    const val ON_SURFACE = 0xFF191C1A.toInt()
-    const val ON_SURFACE_VARIANT = 0xFF5F6660.toInt()
-    const val OUTLINE = 0xFFE3E9E3.toInt()
+    private fun c(light: Int, darkValue: Int) = if (dark) darkValue else light
 
-    const val ERROR = 0xFFB3261E.toInt()
-    const val ERROR_CONTAINER = 0xFFFCE8E6.toInt()
-    const val ON_ERROR_CONTAINER = 0xFF5F1410.toInt()
-    const val WARN = 0xFF95660C.toInt()
-    const val WARN_CONTAINER = 0xFFFBF0DA.toInt()
-    const val INFO_CONTAINER = 0xFFE4EEF9.toInt()
-    const val ON_INFO_CONTAINER = 0xFF1D3A57.toInt()
+    val PRIMARY get() = c(0xFF2F6B4F.toInt(), 0xFF8FCBA8.toInt())
+    val ON_PRIMARY get() = c(0xFFFFFFFF.toInt(), 0xFF10301F.toInt())
+    val PRIMARY_CONTAINER get() = c(0xFFD6EBDD.toInt(), 0xFF2C4A39.toInt())
+    val ON_PRIMARY_CONTAINER get() = c(0xFF123524.toInt(), 0xFFC9E8D4.toInt())
+    val PRIMARY_DIM get() = c(0xFF4E8B6C.toInt(), 0xFF6FA486.toInt())
 
-    const val SKIN = 0xFFEAC9A8.toInt()
-    const val SKIN_DEEP = 0xFFD9B591.toInt()
-    const val BOOT_DARK = 0xFF3A4750.toInt()
-    const val BOOT_MID = 0xFF55636D.toInt()
-    const val WEDGE = 0xFFEF8E2E.toInt()
+    val SURFACE get() = c(0xFFF7FAF7.toInt(), 0xFF111412.toInt())
+    val SURFACE_CARD get() = c(0xFFFFFFFF.toInt(), 0xFF1B201C.toInt())
+    val SURFACE_HIGH get() = c(0xFFEDF3EE.toInt(), 0xFF262C27.toInt())
+    val ON_SURFACE get() = c(0xFF191C1A.toInt(), 0xFFE1E5E0.toInt())
+    val ON_SURFACE_VARIANT get() = c(0xFF5F6660.toInt(), 0xFFA3ACA4.toInt())
+    val OUTLINE get() = c(0xFFE3E9E3.toInt(), 0xFF343B35.toInt())
+
+    val ERROR get() = c(0xFFB3261E.toInt(), 0xFFF2B8B5.toInt())
+    val ON_ERROR get() = c(0xFFFFFFFF.toInt(), 0xFF5C1410.toInt())
+    val ERROR_CONTAINER get() = c(0xFFFCE8E6.toInt(), 0xFF4A211E.toInt())
+    val ON_ERROR_CONTAINER get() = c(0xFF5F1410.toInt(), 0xFFF9DEDC.toInt())
+    val WARN get() = c(0xFF95660C.toInt(), 0xFFE7C078.toInt())
+    val WARN_CONTAINER get() = c(0xFFFBF0DA.toInt(), 0xFF3E3322.toInt())
+    val INFO_CONTAINER get() = c(0xFFE4EEF9.toInt(), 0xFF253647.toInt())
+    val ON_INFO_CONTAINER get() = c(0xFF1D3A57.toInt(), 0xFFCFE2F5.toInt())
+
+    val DONE get() = c(0xFF2F6B4F.toInt(), 0xFF8FCBA8.toInt())
+    val DONE_BG get() = c(0xFFE2F1E7.toInt(), 0xFF24402F.toInt())
+
+    /** Hero card keeps a deep green in both themes; text tokens adapt. */
+    val HERO_BG get() = c(0xFF2F6B4F.toInt(), 0xFF26473A.toInt())
+    val ON_HERO get() = c(0xFFFFFFFF.toInt(), 0xFFE8F2EC.toInt())
+
+    // scene materials: identical in both themes
+    val SKIN get() = 0xFFEAC9A8.toInt()
+    val SKIN_DEEP get() = 0xFFD9B591.toInt()
+    val BOOT_DARK get() = c(0xFF3A4750.toInt(), 0xFF8997A1.toInt())
+    val BOOT_MID get() = c(0xFF55636D.toInt(), 0xFFA8B5BE.toInt())
+    val WEDGE get() = 0xFFEF8E2E.toInt()
 
     fun withAlpha(color: Int, alpha: Int): Int = (color and 0x00FFFFFF) or (alpha shl 24)
 }

@@ -38,30 +38,56 @@ object TodayScreen {
         val dayProgress = if (items.isEmpty()) 0f else doneCount.toFloat() / items.size
 
         // ---- hero card -------------------------------------------------
-        val hero = Ui.card(a, Ui.PRIMARY)
+        val hero = Ui.card(a, Ui.HERO_BG)
         hero.setPadding(Ui.dp(a, 20), Ui.dp(a, 18), Ui.dp(a, 20), Ui.dp(a, 18))
         val heroRow = Ui.row(a)
         val heroTexts = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
+        val onHero = Ui.ON_HERO
+        val onHeroDim = com.recoverwell.draw.Palette.withAlpha(onHero, 0xCC)
         heroTexts.addView(Ui.text(a, today.format(DateTimeFormatter.ofPattern("EEEE d MMMM")),
-            13f, 0xCCFFFFFF.toInt(), bold = true))
-        heroTexts.addView(Ui.text(a, "Week $week", 30f, 0xFFFFFFFF.toInt(), bold = true))
-        heroTexts.addView(Ui.text(a, "Phase ${phase.number} · ${phase.title}", 14f, 0xE6FFFFFF.toInt()))
+            13f, onHeroDim, bold = true))
+        heroTexts.addView(Ui.text(a, "Week $week", 30f, onHero, bold = true))
+        heroTexts.addView(Ui.text(a, "Phase ${phase.number} · ${phase.title}", 14f,
+            com.recoverwell.draw.Palette.withAlpha(onHero, 0xE6)))
         heroTexts.addView(Ui.spacer(a, 6))
-        heroTexts.addView(Ui.text(a, "$doneCount of ${items.size} done today", 13f, 0xCCFFFFFF.toInt()))
+        heroTexts.addView(Ui.text(a, "$doneCount of ${items.size} done today", 13f, onHeroDim))
+        val streak = ScheduleEngine.medicationStreak(a.store.medications(), a.store.allEvents(), today)
+        if (streak >= 2) {
+            heroTexts.addView(Ui.spacer(a, 6))
+            val streakRow = Ui.row(a)
+            streakRow.addView(Ui.icon(a, "ic_flag", 14, onHero))
+            val st = Ui.text(a, "$streak-day medication streak", 12.5f, onHero, bold = true)
+            st.setPadding(Ui.dp(a, 6), 0, 0, 0)
+            streakRow.addView(st)
+            streakRow.background = Ui.rounded(com.recoverwell.draw.Palette.withAlpha(onHero, 0x28), 14f)
+            streakRow.setPadding(Ui.dp(a, 10), Ui.dp(a, 5), Ui.dp(a, 12), Ui.dp(a, 5))
+            heroTexts.addView(streakRow, android.widget.LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        }
         heroRow.addView(Ui.weight(heroTexts, 1f))
 
         val ringBox = FrameLayout(a)
-        val ring = SceneView(a) { s -> RingScene.render(s, dayProgress, Ui.dpF(a, 9f)) }
+        var sweep = 0f
+        val ring = SceneView(a) { s ->
+            RingScene.render(s, sweep, Ui.dpF(a, 9f),
+                trackColor = com.recoverwell.draw.Palette.withAlpha(onHero, 0x59), color = onHero)
+        }
+        android.animation.ValueAnimator.ofFloat(0f, dayProgress).apply {
+            duration = 700
+            interpolator = android.view.animation.DecelerateInterpolator()
+            addUpdateListener { sweep = it.animatedValue as Float; ring.invalidate() }
+            start()
+        }
         ringBox.addView(ring, FrameLayout.LayoutParams(Ui.dp(a, 92), Ui.dp(a, 92)))
-        val pct = Ui.text(a, "${(dayProgress * 100).toInt()}%", 19f, 0xFFFFFFFF.toInt(), bold = true)
+        val pct = Ui.text(a, "${(dayProgress * 100).toInt()}%", 19f, onHero, bold = true)
         val pctLp = FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         pctLp.gravity = Gravity.CENTER
         ringBox.addView(pct, pctLp)
         heroRow.addView(ringBox)
         hero.addView(heroRow)
         hero.addView(Ui.spacer(a, 10))
-        val phaseBtn = Ui.text(a, "Phase guide", 13.5f, 0xFFFFFFFF.toInt(), bold = true).apply {
-            background = Ui.ripple(a, Ui.rounded(0x28FFFFFF, 22f), 0x40FFFFFF)
+        val phaseBtn = Ui.text(a, "Phase guide", 13.5f, onHero, bold = true).apply {
+            background = Ui.ripple(a, Ui.rounded(com.recoverwell.draw.Palette.withAlpha(onHero, 0x28), 22f), 0x40FFFFFF)
             setPadding(Ui.dp(a, 16), Ui.dp(a, 9), Ui.dp(a, 16), Ui.dp(a, 9))
             contentDescription = "Phase guide"
             setOnClickListener { a.pushOverlay { phaseDetail(a, phase.number) } }

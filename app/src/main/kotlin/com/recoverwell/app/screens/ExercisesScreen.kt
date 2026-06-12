@@ -165,6 +165,9 @@ object ExercisesScreen {
         col.addView(precCard)
 
         if (spec.phase == currentPhase) {
+            col.addView(Ui.fullWidth(Ui.button(a, "Start guided session") {
+                a.pushOverlay { guidedSession(a, spec) }
+            }, a))
             col.addView(Ui.section(a, "Today's sessions"))
             val events = a.store.eventsOn(today)
             for (session in 1..effective.sessionsPerDay) {
@@ -199,6 +202,109 @@ object ExercisesScreen {
 
     private fun DemoLibraryCaption(demoId: String): String =
         com.recoverwell.draw.DemoLibrary.demos[demoId]?.caption ?: ""
+
+    /**
+     * Guided session: counts reps set by set, runs hold countdowns, and logs
+     * the session as done at the end. One giant tap target throughout.
+     */
+    private fun guidedSession(a: MainActivity, spec: ExerciseSpec): View {
+        val effective = ScheduleEngine.mergedExercises(listOf(spec), a.store.exerciseOverrides())
+            .firstOrNull() ?: spec
+        val root = Ui.column(a)
+        root.addView(Ui.backRow(a, spec.name) { a.popOverlay() })
+
+        val demo = ExerciseDemoView(a)
+        demo.demoId = spec.demoId
+        val demoCard = Ui.frame(a)
+        demoCard.background = Ui.rounded(Ui.SURFACE_HIGH)
+        demoCard.clipToOutline = true
+        demoCard.addView(demo, ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(a, 170))
+        root.addView(demoCard, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+
+        val stage = Ui.card(a)
+        stage.gravity = android.view.Gravity.CENTER_HORIZONTAL
+        root.addView(stage)
+        val cue = Ui.caption(a, spec.cues.first())
+        cue.gravity = android.view.Gravity.CENTER
+        root.addView(Ui.fullWidth(cue, a, 4))
+
+        var set = 1
+        var rep = 0
+        var timer: android.os.CountDownTimer? = null
+
+        fun finish() {
+            // log into the first session slot not yet done today
+            val events = a.store.eventsOn(LocalDate.now())
+            val slot = (1..effective.sessionsPerDay).map { "session$it" }.firstOrNull { sl ->
+                events.lastOrNull { it.refId == spec.id && it.slotKey == sl }?.status != EventStatus.DONE
+            } ?: "session1"
+            Reminders.recordEvent(a, ScheduleEngine.ItemKind.EXERCISE, spec.id, slot, EventStatus.DONE)
+            a.popOverlay()
+            a.refresh()
+        }
+
+        lateinit var render: () -> Unit
+        fun repDone() {
+            rep += 1
+            if (rep >= effective.reps) {
+                rep = 0
+                set += 1
+            }
+            render()
+        }
+
+        render = {
+            timer?.cancel()
+            stage.removeAllViews()
+            if (set > effective.sets) {
+                stage.addView(Ui.headline(a, "Session complete"))
+                stage.addView(Ui.spacer(a, 4))
+                stage.addView(Ui.caption(a, "${effective.sets} sets of ${effective.reps} - nicely done"))
+                stage.addView(Ui.fullWidth(Ui.button(a, "Finish & log session") { finish() }, a))
+            } else {
+                stage.addView(Ui.pillBadge(a, "Set $set of ${effective.sets}",
+                    Ui.ON_PRIMARY_CONTAINER, Ui.PRIMARY_CONTAINER))
+                stage.addView(Ui.spacer(a, 8))
+                val big = Ui.text(a, "${rep + 1}", 56f, Ui.PRIMARY, bold = true)
+                big.gravity = android.view.Gravity.CENTER
+                stage.addView(big)
+                stage.addView(Ui.caption(a, "of ${effective.reps} reps"))
+                stage.addView(Ui.spacer(a, 10))
+                if (effective.holdSeconds in 1..299) {
+                    var holding = false
+                    val btn = Ui.button(a, "Start ${effective.holdSeconds}s hold") {}
+                    btn.setOnClickListener {
+                        if (holding) return@setOnClickListener
+                        holding = true
+                        it.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
+                        timer = object : android.os.CountDownTimer(effective.holdSeconds * 1000L, 250L) {
+                            override fun onTick(ms: Long) {
+                                btn.text = "Hold... ${(ms / 1000) + 1}"
+                            }
+                            override fun onFinish() {
+                                btn.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                                repDone()
+                            }
+                        }.start()
+                    }
+                    stage.addView(Ui.fullWidth(btn, a))
+                } else {
+                    stage.addView(Ui.fullWidth(Ui.button(a, "Rep done") {
+                        stage.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
+                        repDone()
+                    }, a))
+                }
+                if (rep == 0 && set > 1) {
+                    stage.addView(Ui.spacer(a, 4))
+                    stage.addView(Ui.caption(a, "Take a short rest before this set"))
+                }
+                stage.addView(Ui.fullWidth(Ui.textButton(a, "End early & log anyway") { finish() }, a, 2))
+            }
+        }
+        render()
+        return Ui.scroll(a, root)
+    }
 
     private fun editOverride(a: MainActivity, spec: ExerciseSpec): View {
         val existing = a.store.exerciseOverrides()[spec.id]

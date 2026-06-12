@@ -101,11 +101,14 @@ fun main(args: Array<String>) {
     }
     println("wrote ${Icons.all.size} vector drawables to ${resDir.relativeTo(root)}")
 
-    renderTodayMock(out)
+    renderTodayMock(out, "screen_today")
+    Palette.dark = true
+    renderTodayMock(out, "screen_today_dark")
+    Palette.dark = false
 }
 
 /** Faithful tone-preview of the redesigned Today screen (Roboto on device). */
-fun renderTodayMock(out: java.io.File) {
+fun renderTodayMock(out: java.io.File, name: String) {
     val w = 412; val h = 880
     val img = BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB)
     val s = Java2DSketch(img)
@@ -119,20 +122,20 @@ fun renderTodayMock(out: java.io.File) {
 
     // hero card
     val heroT = 70f; val heroB = heroT + 158f
-    s.roundRect(20f, heroT, W - 20f, heroB, 27f, Palette.PRIMARY)
-    s.text("THURSDAY 12 JUNE", 40f, heroT + 34f, 11.5f, 0xCCFFFFFF.toInt(), medium = true)
-    s.text("Week 1", 40f, heroT + 66f, 29f, 0xFFFFFFFF.toInt(), medium = true)
-    s.text("Phase 1 · Immobilisation & protection", 40f, heroT + 88f, 13f, 0xE6FFFFFF.toInt())
-    s.text("9 of 21 done today", 40f, heroT + 108f, 12.5f, 0xCCFFFFFF.toInt())
+    s.roundRect(20f, heroT, W - 20f, heroB, 27f, Palette.HERO_BG)
+    s.text("THURSDAY 12 JUNE", 40f, heroT + 34f, 11.5f, Palette.withAlpha(Palette.ON_HERO, 0xCC), medium = true)
+    s.text("Week 1", 40f, heroT + 66f, 29f, Palette.ON_HERO, medium = true)
+    s.text("Phase 1 · Immobilisation & protection", 40f, heroT + 88f, 13f, Palette.withAlpha(Palette.ON_HERO, 0xE6))
+    s.text("9 of 21 done today", 40f, heroT + 108f, 12.5f, Palette.withAlpha(Palette.ON_HERO, 0xCC))
     // ring
     run {
         val cx = W - 70f; val cy = heroT + 64f; val r = 36f
-        s.arc(cx, cy, r, -90f, 360f, Palette.withAlpha(0xFFFFFFFF.toInt(), 0x59), 8f)
-        s.arc(cx, cy, r, -90f, 154f, 0xFFFFFFFF.toInt(), 8f)
-        s.text("43%", cx, cy + 6f, 16f, 0xFFFFFFFF.toInt(), medium = true, centered = true)
+        s.arc(cx, cy, r, -90f, 360f, Palette.withAlpha(Palette.ON_HERO, 0x59), 8f)
+        s.arc(cx, cy, r, -90f, 154f, Palette.ON_HERO, 8f)
+        s.text("43%", cx, cy + 6f, 16f, Palette.ON_HERO, medium = true, centered = true)
     }
-    s.roundRect(40f, heroB - 38f, 40f + 118f, heroB - 10f, 14f, Palette.withAlpha(0xFFFFFFFF.toInt(), 0x28))
-    s.text("Phase guide", 40f + 59f, heroB - 19f, 12.5f, 0xFFFFFFFF.toInt(), medium = true, centered = true)
+    s.roundRect(40f, heroB - 38f, 40f + 118f, heroB - 10f, 14f, Palette.withAlpha(Palette.ON_HERO, 0x28))
+    s.text("Phase guide", 40f + 59f, heroB - 19f, 12.5f, Palette.ON_HERO, medium = true, centered = true)
 
     // section + med row
     var y = heroB + 44f
@@ -140,13 +143,13 @@ fun renderTodayMock(out: java.io.File) {
     y += 12f
     fun checkItem(title: String, sub: String, time: String?, done: Boolean) {
         val t = y; val b = y + 64f
-        s.roundRect(20f, t, W - 20f, b, 24f, if (done) 0xFFE2F1E7.toInt() else Palette.SURFACE_CARD)
+        s.roundRect(20f, t, W - 20f, b, 24f, if (done) Palette.DONE_BG else Palette.SURFACE_CARD)
         val cy = (t + b) / 2f
         if (done) {
-            s.circle(48f, cy, 13f, Palette.PRIMARY)
-            Icons.draw(s, Icons.check, 40f, cy - 8f, 16f, 0xFFFFFFFF.toInt())
+            s.circle(48f, cy, 13f, Palette.DONE)
+            Icons.draw(s, Icons.check, 40f, cy - 8f, 16f, Palette.ON_PRIMARY)
         } else {
-            s.circleStroke(48f, cy, 13f, 0xFFB9C4BB.toInt(), 2.4f)
+            s.circleStroke(48f, cy, 13f, Palette.withAlpha(Palette.ON_SURFACE_VARIANT, 0x66), 2.4f)
         }
         s.text(title, 72f, cy - 2f, 14.5f, if (done) Palette.ON_SURFACE_VARIANT else Palette.ON_SURFACE, medium = true)
         if (sub.isNotEmpty()) s.text(sub, 72f, cy + 16f, 12f, Palette.ON_SURFACE_VARIANT)
@@ -182,6 +185,6 @@ fun renderTodayMock(out: java.io.File) {
             if (active) Palette.ON_PRIMARY_CONTAINER else Palette.ON_SURFACE_VARIANT)
         s.text(label, cx, navT + 60f, 11f, if (active) Palette.ON_SURFACE else Palette.ON_SURFACE_VARIANT, medium = active, centered = true)
     }
-    javax.imageio.ImageIO.write(img, "png", java.io.File(out, "screen_today.png"))
-    println("rendered screen_today.png")
+    javax.imageio.ImageIO.write(img, "png", java.io.File(out, "$name.png"))
+    println("rendered $name.png")
 }

@@ -27,6 +27,18 @@ object MoreScreen {
         col.addView(Ui.listRow(a, "ic_bell", "Daily care reminders",
             "Elevation, boot checks, circulation checks") { a.pushOverlay { tasksEditor(a) } })
 
+        col.addView(Ui.section(a, "Appearance"))
+        val themeCard = Ui.card(a)
+        val current = a.store.setting("appearance", "system")
+        themeCard.addView(Forms.choiceRow(
+            a, listOf("system", "light", "dark"),
+            { it.replaceFirstChar { c -> c.uppercase() } }, current
+        ) { choice ->
+            a.store.saveSetting("appearance", choice)
+            a.recreate()
+        })
+        col.addView(themeCard)
+
         col.addView(Ui.section(a, "Safety & info"))
         col.addView(Ui.listRow(a, "ic_alert", "Red flags",
             "DVT, re-rupture, bleeding - know them cold",

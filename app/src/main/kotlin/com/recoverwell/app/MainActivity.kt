@@ -48,10 +48,21 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         store = Store.get(this)
 
+        // resolve theme before any view is built: tokens are read at build time
+        val appearance = store.setting("appearance", "system")
+        val systemDark = (resources.configuration.uiMode and
+            android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+        com.recoverwell.draw.Palette.dark = when (appearance) {
+            "dark" -> true
+            "light" -> false
+            else -> systemDark
+        }
+
         window.statusBarColor = Ui.BG
         window.navigationBarColor = Ui.CARD
-        window.decorView.systemUiVisibility =
-            View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        window.decorView.systemUiVisibility = if (com.recoverwell.draw.Palette.dark) 0
+        else View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -141,22 +152,22 @@ class MainActivity : Activity() {
     fun show(tab: Tab) {
         currentTab = tab
         overlays.clear()
-        render()
+        render(animated = true)
     }
 
-    fun refresh() = render()
+    fun refresh() = render(animated = false)
 
     fun pushOverlay(factory: () -> View) {
         overlays.add(factory)
-        render()
+        render(animated = true)
     }
 
     fun popOverlay() {
         if (overlays.isNotEmpty()) overlays.removeAt(overlays.size - 1)
-        render()
+        render(animated = true)
     }
 
-    private fun render() {
+    private fun render(animated: Boolean) {
         rebuildTabBar()
         appBarTitle.text = if (overlays.isNotEmpty()) "RecoverWell" else currentTab.label
         content.removeAllViews()
@@ -168,6 +179,15 @@ class MainActivity : Activity() {
             Tab.MORE -> MoreScreen.build(this)
         }
         content.addView(view, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        if (animated) {
+            // gentle fade-and-rise on navigation; refreshes stay still
+            view.alpha = 0f
+            view.translationY = Ui.dpF(this, 12f)
+            view.animate().alpha(1f).translationY(0f)
+                .setDuration(220L)
+                .setInterpolator(android.view.animation.DecelerateInterpolator())
+                .start()
+        }
     }
 
     @Deprecated("Deprecated in Java")

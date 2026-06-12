@@ -94,3 +94,17 @@ copy), signed APK builds, vector resources accepted by aapt, dex within
 limits. Known v1.1 gaps vs the very best store apps, accepted consciously:
 no dark theme, no screen-transition animations, demonstrations are stylised
 pictograms rather than filmed video (a deliberate offline/ownership choice).
+
+## Continued iteration (v1.2) - "do not stop until 4.7+ is feasible"
+
+| Round | Change | Proof / verification |
+|---|---|---|
+| 9 | Demo figures rebuilt: neck + head, tapered torso, two arms with elbows; PNG review caught the figure floating above the ground (hip anchored 2.35 leg-lengths up vs 2.12 reachable) and missing wall-support contact - both fixed; player-style cycle progress bar on demos | demo_* proofs re-reviewed |
+| 10 | Motion & haptics: 220ms fade-and-rise on navigation (refreshes stay still), 700ms progress-ring sweep, haptic tick on checklist toggles and guided reps | finite animations verified safe under test schedulers |
+| 11 | Medication adherence streak (core logic + unit test covering full/partial/broken days), surfaced on the hero card from 2 days | ScheduleEngineTest |
+| 12 | Guided session mode: set-by-set rep counting, automatic hold countdowns with haptic completion, end-early escape, logs the session on finish | builds on tested recordEvent path |
+| 13 | Dark theme: whole palette converted to theme-switchable tokens read at render time - app chrome, charts, body model and demo figures all adapt; System/Light/Dark setting; status/nav bars follow | screen_today_dark.png proof reviewed |
+
+Verification: 50/50 tests green, signed v1.2 APK builds and verifies.
+Remaining conscious gap vs the very best store apps: demonstrations are
+stylised motion pictograms, not filmed video (offline/ownership tradeoff).

@@ -71,13 +71,23 @@ object DemoScene {
         return sin(r).toFloat() to cos(r).toFloat()
     }
 
-    // figure palette
-    private val FIGURE = Palette.withAlpha(0xFF24433A.toInt(), 0xE6)
-    private val FIGURE_BACK = Palette.withAlpha(0xFF24433A.toInt(), 0x52)
-    private val PROP = 0xFF9AA8A0.toInt()
-    private val PROP_SOFT = Palette.withAlpha(0xFF9AA8A0.toInt(), 0x80)
-    private val BAND = 0xFFE07A65.toInt()
-    private val SHADOW = Palette.withAlpha(0xFF1A1C1A.toInt(), 0x14)
+    // figure palette, theme-aware (read at render time)
+    private val figureBase get() = if (Palette.dark) 0xFFBFE3CC.toInt() else 0xFF24433A.toInt()
+    private val FIGURE get() = Palette.withAlpha(figureBase, 0xE6)
+    private val FIGURE_BACK get() = Palette.withAlpha(figureBase, 0x52)
+    private val ARM_FRONT get() = Palette.withAlpha(figureBase, 0xC2)
+    private val PROP get() = if (Palette.dark) 0xFF77837B.toInt() else 0xFF9AA8A0.toInt()
+    private val PROP_SOFT get() = Palette.withAlpha(PROP, 0x80)
+    private val BAND get() = 0xFFE07A65.toInt()
+    private val SHADOW get() = Palette.withAlpha(if (Palette.dark) 0xFF000000.toInt() else 0xFF1A1C1A.toInt(), 0x1C)
+
+    /** 0..1 position within the demo's loop, for player-style progress bars. */
+    fun cycleFraction(demoId: String, elapsed: Long): Float {
+        val demo = DemoLibrary.demos[demoId] ?: return 0f
+        val total = demo.frames.sumOf { it.second }
+        if (total <= 0) return 0f
+        return (elapsed % total).toFloat() / total
+    }
 
     fun render(s: Sketch, demoId: String, elapsed: Long) {
         val demo = DemoLibrary.demos[demoId] ?: DemoLibrary.demos.getValue("ankle_pump")
@@ -97,8 +107,9 @@ object DemoScene {
             s.translate(s.width * 0.10f, L * 0.35f)
         }
 
+        // hip sits legs-plus-ankle-height above the ground so feet touch down
         val hipX = s.width * 0.42f + p.hipX * L
-        val hipY = groundY - 2.35f * L + p.hipY * L
+        val hipY = groundY - 2.12f * L + p.hipY * L
 
         // soft contact shadow (skip when lying: rotation would misplace it)
         if (!p.lying) {
@@ -110,12 +121,17 @@ object DemoScene {
             s.fill(sh, SHADOW)
         }
 
-        // torso + head
+        // torso: pelvis -> chest (tapered) -> neck -> head
         val (tx, ty) = dir(p.torso)
-        val shX = hipX + tx * L * 1.12f
-        val shY = hipY - ty * L * 1.12f
-        s.stroke(PathSpec.line(hipX, hipY, shX, shY), FIGURE, limbW * 1.18f)
-        s.circle(shX + tx * L * 0.40f, shY - ty * L * 0.40f, L * 0.21f, FIGURE)
+        val chestX = hipX + tx * L * 0.90f
+        val chestY = hipY - ty * L * 0.90f
+        val neckX = hipX + tx * L * 1.14f
+        val neckY = hipY - ty * L * 1.14f
+        s.stroke(PathSpec.line(hipX, hipY, chestX, chestY), FIGURE, limbW * 1.32f)
+        s.stroke(PathSpec.line(chestX, chestY, neckX, neckY), FIGURE, limbW * 0.95f)
+        s.circle(neckX + tx * L * 0.30f, neckY - ty * L * 0.30f, L * 0.185f, FIGURE)
+        val shX = chestX
+        val shY = chestY
 
         // props behind figure
         if (Prop.WALL in demo.props) {
@@ -147,14 +163,31 @@ object DemoScene {
             }
         }
 
-        // arm (+ racquet / crutches attach to it)
-        val (ax, ay) = dir(p.arm)
-        val handX = shX + ax * L * 0.92f
-        val handY = shY + ay * L * 0.92f
-        s.stroke(PathSpec.line(shX, shY, handX, handY), FIGURE_BACK, limbW * 0.8f)
+        // arms: two segments with a relaxed elbow; back arm dimmed
+        val armW = limbW * 0.60f
+        fun drawArm(angle: Float, color: Int, w: Float): Pair<Float, Float> {
+            val (uax, uay) = dir(angle)
+            val elbowX = shX + uax * L * 0.50f
+            val elbowY = shY + uay * L * 0.50f
+            val (fax, fay) = dir(angle - 26f)
+            val hx = elbowX + fax * L * 0.45f
+            val hy = elbowY + fay * L * 0.45f
+            s.stroke(PathSpec.line(shX, shY, elbowX, elbowY), color, w)
+            s.stroke(PathSpec.line(elbowX, elbowY, hx, hy), color, w * 0.86f)
+            return hx to hy
+        }
+        drawArm(p.arm - 18f, FIGURE_BACK, armW * 0.92f)
+        val hand = drawArm(p.arm, ARM_FRONT, armW)
+        val handX = hand.first
+        val handY = hand.second
+        if (Prop.WALL in demo.props) {
+            // fingertips resting on the wall - balance support cue
+            s.stroke(PathSpec.line(handX, handY, s.width * 0.80f, handY), FIGURE_BACK, armW * 0.7f)
+        }
         if (Prop.RACQUET in demo.props) {
-            val rx = handX + ax * L * 0.45f
-            val ry = handY + ay * L * 0.45f
+            val (ax, ay) = dir(p.arm - 26f)
+            val rx = handX + ax * L * 0.42f
+            val ry = handY + ay * L * 0.42f
             s.stroke(PathSpec.line(handX, handY, rx, ry), PROP, 5f)
             s.circleStroke(rx + ax * L * 0.24f, ry + ay * L * 0.24f, L * 0.26f, PROP, 5f)
         }

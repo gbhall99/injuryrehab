@@ -187,6 +187,19 @@ class ExerciseDemoView(context: Context) : View(context) {
 
     override fun onDraw(canvas: Canvas) {
         DemoScene.render(AndroidSketch(canvas), demoId, elapsed)
+        // player-style cycle progress along the bottom edge
+        run {
+            val inset = Ui.dpF(context, 14f)
+            val y = height - Ui.dpF(context, 8f)
+            overlay.strokeCap = Paint.Cap.ROUND
+            overlay.strokeWidth = Ui.dpF(context, 3f)
+            overlay.color = Palette.withAlpha(Palette.ON_SURFACE_VARIANT, 0x33)
+            canvas.drawLine(inset, y, width - inset, y, overlay)
+            overlay.color = Palette.PRIMARY
+            val f = DemoScene.cycleFraction(demoId, elapsed)
+            canvas.drawLine(inset, y, inset + (width - 2 * inset) * f, y, overlay)
+            overlay.strokeWidth = 0f
+        }
         if (!playing) {
             // dim + centred play glyph
             overlay.color = 0x59FFFFFF
