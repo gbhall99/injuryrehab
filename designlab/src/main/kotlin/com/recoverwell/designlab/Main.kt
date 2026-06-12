@@ -14,6 +14,7 @@ import javax.imageio.ImageIO
 fun main(args: Array<String>) {
     val root = File(args.firstOrNull() ?: ".")
     val out = File(root, "designlab/out").apply { mkdirs() }
+    MaterialIcons.resDir = File(root, "app/src/main/res/drawable")
 
     fun png(name: String, w: Int, h: Int, bg: Int = Palette.SURFACE, draw: (Sketch) -> Unit) {
         val img = BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB)
@@ -24,17 +25,18 @@ fun main(args: Array<String>) {
         println("rendered $name.png")
     }
 
-    // ---- icon contact sheet -------------------------------------------------
+    // ---- icon contact sheet: the shipped official Material Symbols ----------
     run {
+        val names = MaterialIcons.names()
         val cell = 96
         val cols = 7
-        val rows = (Icons.all.size + cols - 1) / cols
+        val rows = (names.size + cols - 1) / cols
         png("icons", cols * cell, rows * (cell + 26), Palette.SURFACE_CARD) { s ->
-            Icons.all.forEachIndexed { i, icon ->
+            names.forEachIndexed { i, name ->
                 val cx = (i % cols) * cell
                 val cy = (i / cols) * (cell + 26)
-                Icons.draw(s, icon, cx + 24f, cy + 24f, 48f, Palette.ON_SURFACE)
-                s.text(icon.name.removePrefix("ic_"), cx + cell / 2f, cy + cell + 8f, 12f,
+                MaterialIcons.draw(s as Java2DSketch, name, cx + 24f, cy + 24f, 48f, Palette.ON_SURFACE)
+                s.text(name.removePrefix("ic_"), cx + cell / 2f, cy + cell + 8f, 12f,
                     Palette.ON_SURFACE_VARIANT, centered = true)
             }
         }
@@ -93,14 +95,6 @@ fun main(args: Array<String>) {
         }
     }
 
-    // ---- regenerate app vector drawables -------------------------------------
-    val resDir = File(root, "app/src/main/res/drawable")
-    resDir.mkdirs()
-    for (icon in Icons.all) {
-        File(resDir, "${icon.name}.xml").writeText(Icons.vectorXml(icon))
-    }
-    println("wrote ${Icons.all.size} vector drawables to ${resDir.relativeTo(root)}")
-
     renderTodayMock(out, "screen_today")
     Palette.dark = true
     renderTodayMock(out, "screen_today_dark")
@@ -118,7 +112,7 @@ fun renderTodayMock(out: java.io.File, name: String) {
     // app bar
     s.text("Today", 20f, 46f, 27f, Palette.ON_SURFACE, medium = true)
     s.circle(W - 34f, 38f, 21f, Palette.ERROR_CONTAINER)
-    Icons.draw(s, Icons.alert, W - 45f, 27f, 22f, Palette.ERROR)
+    MaterialIcons.draw(s, "ic_alert", W - 45f, 27f, 22f, Palette.ERROR)
 
     // hero card
     val heroT = 70f; val heroB = heroT + 158f
@@ -147,7 +141,7 @@ fun renderTodayMock(out: java.io.File, name: String) {
         val cy = (t + b) / 2f
         if (done) {
             s.circle(48f, cy, 13f, Palette.DONE)
-            Icons.draw(s, Icons.check, 40f, cy - 8f, 16f, Palette.ON_PRIMARY)
+            MaterialIcons.draw(s, "ic_check", 40f, cy - 8f, 16f, Palette.ON_PRIMARY)
         } else {
             s.circleStroke(48f, cy, 13f, Palette.withAlpha(Palette.ON_SURFACE_VARIANT, 0x66), 2.4f)
         }
@@ -175,13 +169,13 @@ fun renderTodayMock(out: java.io.File, name: String) {
     // bottom nav
     val navT = h - 84f
     s.roundRect(0f, navT, W, h.toFloat(), 0f, Palette.SURFACE_CARD)
-    val tabs = listOf("Today" to Icons.today, "Exercises" to Icons.exercises,
-        "Progress" to Icons.progress, "My leg" to Icons.leg, "Settings" to Icons.more)
+    val tabs = listOf("Today" to "ic_today", "Exercises" to "ic_exercises",
+        "Progress" to "ic_progress", "My leg" to "ic_leg", "Settings" to "ic_more")
     tabs.forEachIndexed { i, (label, icon) ->
         val cx = W * (i + 0.5f) / 5f
         val active = i == 0
         if (active) s.roundRect(cx - 28f, navT + 10f, cx + 28f, navT + 40f, 16f, Palette.PRIMARY_CONTAINER)
-        Icons.draw(s, icon, cx - 11f, navT + 14f, 22f,
+        MaterialIcons.draw(s, icon, cx - 11f, navT + 14f, 22f,
             if (active) Palette.ON_PRIMARY_CONTAINER else Palette.ON_SURFACE_VARIANT)
         s.text(label, cx, navT + 60f, 11f, if (active) Palette.ON_SURFACE else Palette.ON_SURFACE_VARIANT, medium = active, centered = true)
     }

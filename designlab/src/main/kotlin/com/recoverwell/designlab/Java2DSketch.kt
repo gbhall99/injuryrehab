@@ -43,6 +43,12 @@ class Java2DSketch(val image: BufferedImage) : Sketch {
     }
 
     override fun save() { stack.push(g.transform) }
+
+    /** designlab-only hook: fill an arbitrary Java2D shape (parsed icon glyphs). */
+    fun fillPath2D(shape: java.awt.Shape, color: Int) {
+        g.color = color(color)
+        g.fill(shape)
+    }
     override fun restore() { if (stack.isNotEmpty()) g.transform = stack.pop() }
     override fun translate(dx: Float, dy: Float) { g.translate(dx.toDouble(), dy.toDouble()) }
     override fun rotate(degrees: Float, px: Float, py: Float) {

@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- "pause" from Google Material Symbols (outlined), Apache License 2.0
+     https://github.com/google/material-design-icons -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-    <path
-        android:pathData="M8.60,5.80L9.20,5.80C9.86,5.80 10.40,6.34 10.40,7L10.40,17C10.40,17.66 9.86,18.20 9.20,18.20L8.60,18.20C7.94,18.20 7.40,17.66 7.40,17L7.40,7C7.40,6.34 7.94,5.80 8.60,5.80Z"
-        android:fillColor="#FF000000" />
-    <path
-        android:pathData="M14.80,5.80L15.40,5.80C16.06,5.80 16.60,6.34 16.60,7L16.60,17C16.60,17.66 16.06,18.20 15.40,18.20L14.80,18.20C14.14,18.20 13.60,17.66 13.60,17L13.60,7C13.60,6.34 14.14,5.80 14.80,5.80Z"
-        android:fillColor="#FF000000" />
+    android:viewportWidth="960"
+    android:viewportHeight="960">
+  <path
+      android:fillColor="@android:color/white"
+      android:pathData="M520,760L520,200L760,200L760,760L520,760ZM200,760L200,200L440,200L440,760L200,760ZM600,680L680,680L680,280L600,280L600,680ZM280,680L360,680L360,280L280,280L280,680ZM280,280L280,280L280,680L280,680L280,280ZM600,280L600,280L600,680L600,680L600,280Z"/>
 </vector>

@@ -1,21 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- "add" from Google Material Symbols (outlined), Apache License 2.0
+     https://github.com/google/material-design-icons -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-    <path
-        android:pathData="M12,5.20L12,18.80"
-        android:strokeColor="#FF000000"
-        android:strokeWidth="1.9"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:fillColor="#00000000" />
-    <path
-        android:pathData="M5.20,12L18.80,12"
-        android:strokeColor="#FF000000"
-        android:strokeWidth="1.9"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:fillColor="#00000000" />
+    android:viewportWidth="960"
+    android:viewportHeight="960">
+  <path
+      android:fillColor="@android:color/white"
+      android:pathData="M440,520L200,520L200,440L440,440L440,200L520,200L520,440L760,440L760,520L520,520L520,760L440,760L440,520Z"/>
 </vector>

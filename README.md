@@ -100,13 +100,20 @@ clinical features.
   so the same visuals render on Android, in design tooling, and on a future
   iOS/web port.
 - **`designlab/`** — JVM design tool: renders every drawn surface to PNG for
-  visual review (`gradle :designlab:render`) and generates the app's vector
-  drawable icons from the single source of truth in `draw/`. The UI was
-  iterated against these proofs.
+  visual review (`gradle :designlab:render`), including the exact icon set
+  the app ships. The UI was iterated against these proofs.
 - **`app/`** — Android shell: programmatic Views over a token-based design
-  system (tonal surfaces, ripples, elevation, 48dp+ targets, vector icons -
-  no emoji), SQLite store, AlarmManager reminders, notifications, SAF
-  export/import, PDF report.
+  system (tonal surfaces, ripples, elevation, 48dp+ targets), SQLite store,
+  AlarmManager reminders, notifications, SAF export/import, PDF report.
+
+**Iconography:** all 28 icons (and the launcher glyph) are the official
+**Google Material Symbols** — the established Android icon set — shipped
+verbatim as their published vector drawables (Apache License 2.0,
+<https://github.com/google/material-design-icons>; attribution headers in
+each `res/drawable/ic_*.xml`). Nothing hand-drawn: `podiatry` for the leg
+tab, `footprint` for boot checks, `ecg_heart` for circulation, etc. Charts,
+the digital-twin leg and the exercise demonstration figures are functional
+data visualisations rendered from the `draw/` module.
 
 **Path to iOS/web:** all business rules live in `core/`, which is plain
 Kotlin with no Android types — it compiles unchanged as the common module of

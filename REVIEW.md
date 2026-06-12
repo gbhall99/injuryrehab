@@ -108,3 +108,5 @@ pictograms rather than filmed video (a deliberate offline/ownership choice).
 Verification: 50/50 tests green, signed v1.2 APK builds and verifies.
 Remaining conscious gap vs the very best store apps: demonstrations are
 stylised motion pictograms, not filmed video (offline/ownership tradeoff).
+
+| 14 | "Use existing, well-established graphics" | Hand-authored icon set deleted. All 28 app icons + launcher + notification glyph replaced with official Google Material Symbols (Apache 2.0), fetched verbatim from google/material-design-icons and committed with attribution headers; designlab now parses and previews the exact shipped files, so proofs cannot drift from production. podiatry/footprint/ecg_heart give clinically apt established glyphs | icons.png + screen proofs re-reviewed; 50/50 tests; signed APK |
