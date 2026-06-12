@@ -88,14 +88,25 @@ clinical features.
 
 ## Engineering decisions
 
-### Stack: Kotlin + Android platform APIs, two-module clean split
+### Stack: Kotlin + Android platform APIs, four-module clean split
 
 - **`core/`** — pure Kotlin (zero Android imports): protocol content, phase
   gating, checklist/reminder scheduling, wedge planning, digital-twin logic,
   trend math, CSV export, versioned JSON backup codec (hand-rolled, zero
   dependencies). 39 unit tests.
-- **`app/`** — Android shell: programmatic Views, SQLite store, AlarmManager
-  reminders, notifications, Canvas rendering, SAF export/import, PDF report.
+- **`draw/`** — pure Kotlin rendering layer: a small `Sketch` 2D abstraction
+  plus everything the app draws (icon set, charts, the digital-twin leg, the
+  exercise demonstration engine and its keyframes, palette). Platform-free,
+  so the same visuals render on Android, in design tooling, and on a future
+  iOS/web port.
+- **`designlab/`** — JVM design tool: renders every drawn surface to PNG for
+  visual review (`gradle :designlab:render`) and generates the app's vector
+  drawable icons from the single source of truth in `draw/`. The UI was
+  iterated against these proofs.
+- **`app/`** — Android shell: programmatic Views over a token-based design
+  system (tonal surfaces, ripples, elevation, 48dp+ targets, vector icons -
+  no emoji), SQLite store, AlarmManager reminders, notifications, SAF
+  export/import, PDF report.
 
 **Path to iOS/web:** all business rules live in `core/`, which is plain
 Kotlin with no Android types — it compiles unchanged as the common module of
@@ -201,6 +212,8 @@ Install on the target phone via `adb install` or any file transfer
 ## Repository layout
 
 ```
-core/   pure-Kotlin domain: model/ protocol/ logic/ export/ json/  + tests
-app/    Android shell: data/ notify/ screens/ ui/ export/          + smoke tests
+core/      pure-Kotlin domain: model/ protocol/ logic/ export/ json/   + tests
+draw/      pure-Kotlin rendering: Sketch, icons, scenes, demo engine
+designlab/ JVM proof renderer + vector-resource generator
+app/       Android shell: data/ notify/ screens/ ui/ export/           + smoke tests
 ```

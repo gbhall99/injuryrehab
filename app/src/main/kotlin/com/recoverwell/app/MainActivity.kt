@@ -2,11 +2,14 @@ package com.recoverwell.app
 
 import android.app.Activity
 import android.content.Intent
+import android.content.res.ColorStateList
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Toast
 import com.recoverwell.app.data.Store
@@ -21,17 +24,18 @@ import com.recoverwell.core.protocol.ProtocolContent
 
 class MainActivity : Activity() {
 
-    enum class Tab(val label: String, val icon: String) {
-        TODAY("Today", "☀"),
-        EXERCISES("Exercises", "💪"),
-        TRACKER("Tracker", "📈"),
-        TWIN("My Leg", "🦵"),
-        MORE("More", "⚙")
+    enum class Tab(val label: String, val iconName: String) {
+        TODAY("Today", "ic_today"),
+        EXERCISES("Exercises", "ic_exercises"),
+        TRACKER("Progress", "ic_progress"),
+        TWIN("My leg", "ic_leg"),
+        MORE("Settings", "ic_more")
     }
 
     lateinit var store: Store
     private lateinit var content: FrameLayout
     private lateinit var tabBar: LinearLayout
+    private lateinit var appBarTitle: android.widget.TextView
     var currentTab = Tab.TODAY
     private val overlays = ArrayList<() -> View>()
 
@@ -44,41 +48,42 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         store = Store.get(this)
 
+        window.statusBarColor = Ui.BG
+        window.navigationBarColor = Ui.CARD
+        window.decorView.systemUiVisibility =
+            View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Ui.BG)
         }
 
-        // header: app name + always-visible red flags button
-        val header = Ui.row(this).apply {
-            setBackgroundColor(Ui.PRIMARY)
-            setPadding(Ui.dp(this@MainActivity, 16), Ui.dp(this@MainActivity, 10), Ui.dp(this@MainActivity, 10), Ui.dp(this@MainActivity, 10))
+        // app bar: large title + always-one-tap red flags
+        val appBar = Ui.row(this).apply {
+            setPadding(Ui.dp(this@MainActivity, 20), Ui.dp(this@MainActivity, 14),
+                Ui.dp(this@MainActivity, 12), Ui.dp(this@MainActivity, 6))
         }
-        header.addView(Ui.weight(Ui.text(this, "RecoverWell", 21f, 0xFFFFFFFF.toInt(), bold = true), 1f))
-        val redFlagBtn = Ui.button(this, "⚠ Red flags", bg = Ui.DANGER) { pushOverlay { RedFlagsScreen.build(this) } }
-        redFlagBtn.textSize = 15f
-        header.addView(redFlagBtn)
-        root.addView(header)
+        appBarTitle = Ui.display(this, Tab.TODAY.label)
+        appBar.addView(Ui.weight(appBarTitle, 1f))
+        appBar.addView(Ui.iconButton(this, "ic_alert", Ui.DANGER, Ui.DANGER_BG, desc = "Red flags - urgent symptoms") {
+            pushOverlay { RedFlagsScreen.build(this) }
+        })
+        root.addView(appBar)
 
         content = FrameLayout(this)
         root.addView(content, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
 
-        // persistent disclaimer strip
-        val disclaimer = Ui.text(
-            this,
-            "Supports - never replaces - your physio & consultant. Tap for details.",
-            13f, Ui.TEXT_DIM
-        ).apply {
-            gravity = Gravity.CENTER
-            setBackgroundColor(0xFFEFF3EF.toInt())
-            setPadding(Ui.dp(this@MainActivity, 8), Ui.dp(this@MainActivity, 6), Ui.dp(this@MainActivity, 8), Ui.dp(this@MainActivity, 6))
-            setOnClickListener { Forms.info(this@MainActivity, "Medical disclaimer", ProtocolContent.DISCLAIMER) }
-        }
+        // persistent disclaimer: quiet but always present and tappable
+        val disclaimer = Ui.caption(this, "Supports - never replaces - your physio and consultant")
+        disclaimer.gravity = Gravity.CENTER
+        disclaimer.setPadding(Ui.dp(this, 12), Ui.dp(this, 6), Ui.dp(this, 12), Ui.dp(this, 6))
+        disclaimer.setOnClickListener { Forms.info(this, "Medical disclaimer", ProtocolContent.DISCLAIMER) }
         root.addView(disclaimer)
 
         tabBar = Ui.row(this).apply {
             setBackgroundColor(Ui.CARD)
-            setPadding(0, Ui.dp(this@MainActivity, 2), 0, Ui.dp(this@MainActivity, 2))
+            elevation = Ui.dpF(this@MainActivity, 8f)
+            setPadding(Ui.dp(this@MainActivity, 4), Ui.dp(this@MainActivity, 6), Ui.dp(this@MainActivity, 4), Ui.dp(this@MainActivity, 8))
         }
         root.addView(tabBar)
         rebuildTabBar()
@@ -98,15 +103,38 @@ class MainActivity : Activity() {
         tabBar.removeAllViews()
         for (tab in Tab.values()) {
             val active = tab == currentTab && overlays.isEmpty()
-            val btn = Ui.button(
-                this, "${tab.icon}\n${tab.label}",
-                bg = Ui.CARD, fg = if (active) Ui.PRIMARY else Ui.TEXT_DIM
-            ) { show(tab) }
-            btn.textSize = 12f
-            btn.background = null
-            btn.minHeight = Ui.dp(this, Ui.MIN_TOUCH_DP + 6)
-            btn.contentDescription = tab.label + if (active) ", selected" else ""
-            tabBar.addView(btn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            val item = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_HORIZONTAL
+                isClickable = true
+                isFocusable = true
+                contentDescription = tab.label + if (active) ", selected" else ""
+                background = Ui.ripple(this@MainActivity, Ui.rounded(0x00000000, 20f))
+                minimumHeight = Ui.dp(this@MainActivity, Ui.MIN_TOUCH_DP + 8)
+                setPadding(0, Ui.dp(this@MainActivity, 4), 0, 0)
+                setOnClickListener { show(tab) }
+            }
+            // icon inside a pill that lights up when active
+            val pill = FrameLayout(this).apply {
+                background = GradientDrawable().apply {
+                    cornerRadius = Ui.dpF(this@MainActivity, 16f)
+                    setColor(if (active) Ui.PRIMARY_CONTAINER else 0x00000000)
+                }
+                layoutParams = LinearLayout.LayoutParams(Ui.dp(this@MainActivity, 56), Ui.dp(this@MainActivity, 30))
+            }
+            val iv = ImageView(this).apply {
+                setImageResource(Ui.drawableId(this@MainActivity, tab.iconName))
+                imageTintList = ColorStateList.valueOf(if (active) Ui.ON_PRIMARY_CONTAINER else Ui.TEXT_DIM)
+            }
+            val ivLp = FrameLayout.LayoutParams(Ui.dp(this, 22), Ui.dp(this, 22))
+            ivLp.gravity = Gravity.CENTER
+            pill.addView(iv, ivLp)
+            item.addView(pill)
+            val label = Ui.text(this, tab.label, 11.5f,
+                if (active) Ui.TEXT else Ui.TEXT_DIM, bold = active)
+            label.setPadding(0, Ui.dp(this, 3), 0, 0)
+            item.addView(label)
+            tabBar.addView(item, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         }
     }
 
@@ -130,6 +158,7 @@ class MainActivity : Activity() {
 
     private fun render() {
         rebuildTabBar()
+        appBarTitle.text = if (overlays.isNotEmpty()) "RecoverWell" else currentTab.label
         content.removeAllViews()
         val view = if (overlays.isNotEmpty()) overlays.last()() else when (currentTab) {
             Tab.TODAY -> TodayScreen.build(this)

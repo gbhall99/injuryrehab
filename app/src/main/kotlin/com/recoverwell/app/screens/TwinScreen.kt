@@ -4,9 +4,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import com.recoverwell.app.MainActivity
-import com.recoverwell.app.ui.BodyModelView
+import com.recoverwell.app.ui.SceneView
 import com.recoverwell.app.ui.Ui
 import com.recoverwell.core.logic.Capability
+import com.recoverwell.core.model.Side
+import com.recoverwell.draw.BodyScene
 import java.time.LocalDate
 
 /**
@@ -21,73 +23,97 @@ object TwinScreen {
         val snap = Capability.snapshot(profile, today)
         val col = Ui.column(a)
 
-        col.addView(Ui.title(a, "My leg right now"))
+        // ---- body model + capability side by side ----
+        val heroCard = Ui.card(a)
+        val heroRow = Ui.row(a)
+        val body = SceneView(a) { s ->
+            BodyScene.render(s, snap.phaseNumber, snap.wedges, profile.side == Side.RIGHT)
+        }
+        heroRow.addView(body, LinearLayout.LayoutParams(Ui.dp(a, 150), Ui.dp(a, 210)))
+        val facts = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
+        facts.setPadding(Ui.dp(a, 14), 0, 0, 0)
+        facts.addView(Ui.pillBadge(a, "Week ${snap.weeksSinceInjury} · Phase ${snap.phaseNumber}",
+            Ui.ON_PRIMARY_CONTAINER, Ui.PRIMARY_CONTAINER))
+        facts.addView(Ui.spacer(a, 8))
+        facts.addView(Ui.text(a, "${profile.side.name.lowercase().replaceFirstChar { it.uppercase() }} Achilles",
+            16f, Ui.TEXT, bold = true))
+        facts.addView(Ui.caption(a, snap.tendonState))
+        facts.addView(Ui.spacer(a, 8))
+        facts.addView(Ui.text(a, snap.bootStatus, 13.5f, Ui.TEXT))
+        facts.addView(Ui.spacer(a, 4))
+        facts.addView(Ui.text(a, snap.weightBearing, 13.5f, Ui.TEXT))
+        heroRow.addView(Ui.weight(facts, 1f))
+        heroCard.addView(heroRow)
+        col.addView(heroCard)
 
-        val body = BodyModelView(a)
-        body.snapshot = snap
-        body.side = profile.side
-        body.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(a, 280))
-        body.background = Ui.roundedBg(Ui.CARD, strokeColor = Ui.BORDER)
-        col.addView(body)
-
-        // capability panel
-        col.addView(Ui.section(a, "Current capability"))
-        val cap = Ui.card(a)
-        cap.addView(Ui.text(a, "Week ${snap.weeksSinceInjury} · Phase ${snap.phaseNumber}: ${snap.phaseTitle}", 17f, Ui.TEXT, bold = true))
-        cap.addView(Ui.text(a, "🥾  ${snap.bootStatus}", 15f))
-        cap.addView(Ui.text(a, "🦶  ${snap.weightBearing}", 15f))
-        cap.addView(Ui.text(a, "🩹  ${snap.tendonState}", 15f))
-        col.addView(cap)
-
-        // warnings
+        // ---- warnings ----
         val recent = a.store.allLogs().filter { !it.date.isBefore(today.minusDays(7)) }
         val warnings = Capability.warnings(profile, recent, today)
         if (warnings.isNotEmpty()) {
             col.addView(Ui.section(a, "Watch-outs"))
             for (w in warnings) {
                 val (bg, fg) = when (w.severity) {
-                    Capability.Severity.URGENT -> Ui.DANGER_BG to Ui.DANGER
+                    Capability.Severity.URGENT -> Ui.DANGER_BG to Ui.ON_DANGER_BG
                     Capability.Severity.WARNING -> Ui.WARN_BG to Ui.WARN
-                    Capability.Severity.INFO -> Ui.INFO_BG to Ui.TEXT
+                    Capability.Severity.INFO -> Ui.INFO_BG to Ui.ON_INFO_BG
                 }
                 val card = Ui.card(a, bg)
-                card.addView(Ui.text(a, w.title, 16f, fg, bold = true))
-                card.addView(Ui.text(a, w.detail, 14f))
+                card.addView(Ui.text(a, w.title, 15f, fg, bold = true))
+                card.addView(Ui.spacer(a, 2))
+                card.addView(Ui.text(a, w.detail, 13.5f, fg))
                 col.addView(card)
             }
         }
 
-        // movement checks
-        col.addView(Ui.section(a, "Can I...?"))
+        // ---- movement checks ----
+        col.addView(Ui.section(a, "Can I..."))
         val checksCard = Ui.card(a)
-        for (c in Capability.movementChecks(profile, today)) {
+        Capability.movementChecks(profile, today).forEachIndexed { i, c ->
+            if (i > 0) checksCard.addView(Ui.spacer(a, 10))
             val row = Ui.row(a)
-            row.addView(Ui.text(a, if (c.allowed) "✓  " else "✗  ", 18f, if (c.allowed) Ui.DONE else Ui.DANGER, bold = true))
+            row.addView(Ui.icon(a, if (c.allowed) "ic_check" else "ic_close", 20,
+                if (c.allowed) Ui.DONE else Ui.DANGER))
             val texts = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
-            texts.addView(Ui.text(a, c.movement, 16f, Ui.TEXT, bold = true))
-            texts.addView(Ui.text(a, c.note, 13f, Ui.TEXT_DIM))
+            texts.setPadding(Ui.dp(a, 12), 0, 0, 0)
+            texts.addView(Ui.text(a, c.movement, 15f, Ui.TEXT, bold = true))
+            texts.addView(Ui.caption(a, c.note))
             row.addView(Ui.weight(texts, 1f))
-            row.setPadding(0, Ui.dp(a, 6), 0, Ui.dp(a, 6))
             checksCard.addView(row)
         }
         col.addView(checksCard)
 
-        // do / don't
+        // ---- do / don't ----
         col.addView(Ui.section(a, "OK in this phase"))
-        val doCard = Ui.card(a, 0xFFE8F5E9.toInt())
-        for (s in snap.allowed) doCard.addView(Ui.text(a, "✓  $s", 15f, Ui.DONE))
+        val doCard = Ui.card(a)
+        snap.allowed.forEachIndexed { i, s ->
+            if (i > 0) doCard.addView(Ui.spacer(a, 6))
+            val r = Ui.row(a)
+            r.addView(Ui.icon(a, "ic_check", 17, Ui.DONE))
+            val t = Ui.text(a, s, 14f)
+            t.setPadding(Ui.dp(a, 10), 0, 0, 0)
+            r.addView(Ui.weight(t, 1f))
+            doCard.addView(r)
+        }
         col.addView(doCard)
 
-        col.addView(Ui.section(a, "Not yet - off-plan risk"))
-        val dontCard = Ui.card(a, Ui.DANGER_BG)
-        for (s in snap.notAllowed) dontCard.addView(Ui.text(a, "✗  $s", 15f, Ui.DANGER))
+        col.addView(Ui.section(a, "Not yet"))
+        val dontCard = Ui.card(a)
+        snap.notAllowed.forEachIndexed { i, s ->
+            if (i > 0) dontCard.addView(Ui.spacer(a, 6))
+            val r = Ui.row(a)
+            r.addView(Ui.icon(a, "ic_close", 17, Ui.DANGER))
+            val t = Ui.text(a, s, 14f)
+            t.setPadding(Ui.dp(a, 10), 0, 0, 0)
+            r.addView(Ui.weight(t, 1f))
+            dontCard.addView(r)
+        }
         col.addView(dontCard)
 
-        col.addView(Ui.fullWidth(Ui.dangerButton(a, "⚠ DVT & re-rupture red flags") {
+        col.addView(Ui.fullWidth(Ui.dangerButton(a, "DVT & re-rupture red flags") {
             a.pushOverlay { RedFlagsScreen.build(a) }
         }, a))
 
-        col.addView(Ui.spacer(a, 20))
+        col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
     }
 }

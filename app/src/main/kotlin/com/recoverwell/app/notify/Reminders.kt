@@ -122,7 +122,8 @@ object Reminders {
         }
 
         val builder = Notification.Builder(context, channel)
-            .setSmallIcon(android.R.drawable.ic_popup_reminder)
+            .setSmallIcon(context.resources.getIdentifier("ic_bell", "drawable", context.packageName))
+            .setColor(0xFF2F6B4F.toInt())
             .setContentTitle(title)
             .setContentText(message)
             .setStyle(Notification.BigTextStyle().bigText(message))

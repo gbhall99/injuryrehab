@@ -14,4 +14,6 @@ dependencyResolutionManagement {
 rootProject.name = "recoverwell"
 
 include(":core")
+include(":draw")
+include(":designlab")
 include(":app")

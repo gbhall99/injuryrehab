@@ -1,6 +1,6 @@
 package com.recoverwell.app
 
-import com.recoverwell.app.ui.DemoLibrary
+import com.recoverwell.draw.DemoLibrary
 import com.recoverwell.core.protocol.ProtocolContent
 import org.junit.Assert.*
 import org.junit.Test

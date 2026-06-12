@@ -21,6 +21,16 @@ object ExercisesScreen {
 
     private var viewedPhase: Int? = null
 
+    /** Icon per exercise family, keyed on the demo id. */
+    fun iconFor(demoId: String): String = when (demoId) {
+        "toe_scrunch", "towel_scrunch", "ankle_pump", "ankle_inv_ev" -> "ic_leg"
+        "boot_walk", "gait_walk", "jog" -> "ic_progress"
+        "bike" -> "ic_clock"
+        "padel_drill", "agility", "hop" -> "ic_flag"
+        "seated_core", "band_pf" -> "ic_pulse"
+        else -> "ic_exercises"
+    }
+
     fun build(a: MainActivity): View {
         val today = LocalDate.now()
         val profile = a.store.profile()
@@ -28,15 +38,11 @@ object ExercisesScreen {
         val shown = viewedPhase ?: current
 
         val col = Ui.column(a)
-        col.addView(Ui.title(a, "Exercise library"))
-        col.addView(Ui.text(
-            a, "Phases unlock by date AND physio confirmation. You can read ahead, " +
-                "but locked phases stay view-only.", 14f, Ui.TEXT_DIM
-        ))
-
-        col.addView(Ui.spacer(a, 8))
+        col.addView(Ui.caption(a, "Phases unlock by date and physio confirmation. " +
+            "Locked phases are view-only."))
+        col.addView(Ui.spacer(a, 10))
         col.addView(Forms.choiceRow(a, ProtocolContent.phases.map { it.number }, { n ->
-            if (n <= current) "P$n" else "🔒$n"
+            if (n <= current) "Phase $n" else "$n"
         }, shown) { n ->
             viewedPhase = n
             a.refresh()
@@ -44,43 +50,40 @@ object ExercisesScreen {
 
         val phase = ProtocolContent.phase(shown)
         val locked = shown > current
-        col.addView(Ui.spacer(a, 6))
-        col.addView(Ui.text(a, "Phase ${phase.number}: ${phase.title}", 19f, Ui.TEXT, bold = true))
-        col.addView(Ui.text(a, phase.subtitle, 14f, Ui.TEXT_DIM))
+        col.addView(Ui.spacer(a, 12))
+        col.addView(Ui.headline(a, phase.title))
+        col.addView(Ui.caption(a, phase.subtitle))
         if (locked) {
+            col.addView(Ui.spacer(a, 6))
             val warn = Ui.card(a, Ui.WARN_BG)
-            warn.addView(Ui.text(
-                a, "Not unlocked yet - these exercises are for a later stage. " +
-                    "Doing them early risks re-rupture. Your physio confirms each progression.",
-                15f, Ui.WARN, bold = true
-            ))
+            val r = Ui.row(a)
+            r.addView(Ui.icon(a, "ic_alert", 20, Ui.WARN))
+            val t = Ui.text(a, "Not unlocked yet - starting these early risks re-rupture. " +
+                "Your physio confirms each step.", 14f, Ui.WARN, bold = true)
+            t.setPadding(Ui.dp(a, 10), 0, 0, 0)
+            r.addView(Ui.weight(t, 1f))
+            warn.addView(r)
             col.addView(warn)
         }
+        col.addView(Ui.spacer(a, 8))
 
         val overrides = a.store.exerciseOverrides()
         for (spec in phase.exercises) {
             val o = overrides[spec.id]
             val effective = ScheduleEngine.mergedExercises(listOf(spec), overrides).firstOrNull()
-            val card = Ui.card(a)
-            card.isClickable = true
-            card.setOnClickListener { a.pushOverlay { exerciseDetail(a, spec, null) } }
-            card.contentDescription = "Open ${spec.name} demonstration"
-            val titleRow = Ui.row(a)
-            titleRow.addView(Ui.weight(Ui.text(a, spec.name, 17f, Ui.TEXT, bold = true), 1f))
-            if (o?.enabled == false) titleRow.addView(Ui.badge(a, "off", Ui.BORDER, Ui.TEXT_DIM))
-            card.addView(titleRow)
-            if (effective != null) {
-                card.addView(Ui.text(
-                    a,
-                    ScheduleEngine.exercisePrescription(effective) +
-                        " · ${effective.sessionsPerDay}×/day", 14f, Ui.TEXT_DIM
-                ))
-            }
-            card.addView(Ui.text(a, "▶ demonstration & cues", 14f, Ui.PRIMARY, bold = true))
-            col.addView(card)
+            val meta = if (effective != null)
+                ScheduleEngine.exercisePrescription(effective) + " · ${effective.sessionsPerDay}×/day"
+            else "off"
+            val row = Ui.listRow(
+                a, iconFor(spec.demoId), spec.name,
+                meta + if (o?.enabled == false) " · disabled" else "",
+                iconTint = if (locked) Ui.TEXT_DIM else Ui.PRIMARY,
+                iconBg = if (locked) Ui.SURFACE_HIGH else Ui.PRIMARY_CONTAINER
+            ) { a.pushOverlay { exerciseDetail(a, spec, null) } }
+            col.addView(row)
         }
 
-        col.addView(Ui.spacer(a, 20))
+        col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
     }
 
@@ -92,60 +95,90 @@ object ExercisesScreen {
         val currentPhase = PhaseEngine.currentPhase(a.store.profile(), today).number
 
         val col = Ui.column(a)
-        col.addView(Ui.secondaryButton(a, "← Back") { a.popOverlay() })
-        col.addView(Ui.title(a, spec.name))
-        col.addView(Ui.text(a, "Phase ${spec.phase} exercise", 14f, Ui.TEXT_DIM))
+        col.addView(Ui.backRow(a, spec.name) { a.popOverlay() })
 
+        val demoCard = Ui.frame(a)
+        demoCard.background = Ui.rounded(Ui.SURFACE_HIGH)
+        demoCard.clipToOutline = true
         val demo = ExerciseDemoView(a)
         demo.demoId = spec.demoId
-        demo.layoutParams = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(a, 240)
-        )
-        demo.background = Ui.roundedBg(0xFFF0F4F0.toInt(), strokeColor = Ui.BORDER)
-        col.addView(demo)
-        col.addView(Ui.text(a, "Tap the animation to pause/play. Works fully offline.", 13f, Ui.TEXT_DIM))
+        demoCard.addView(demo, ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(a, 230))
+        col.addView(demoCard, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        val capRow = Ui.row(a)
+        capRow.setPadding(Ui.dp(a, 4), Ui.dp(a, 8), 0, 0)
+        capRow.addView(Ui.icon(a, "ic_info", 16, Ui.TEXT_DIM))
+        val cap = Ui.caption(a, DemoLibraryCaption(spec.demoId))
+        cap.setPadding(Ui.dp(a, 8), 0, 0, 0)
+        capRow.addView(Ui.weight(cap, 1f))
+        col.addView(capRow)
 
+        // prescription as stat tiles
         col.addView(Ui.section(a, "Prescription"))
-        val presCard = Ui.card(a)
-        presCard.addView(Ui.text(
-            a, ScheduleEngine.exercisePrescription(effective) + " · ${effective.sessionsPerDay} session(s) per day",
-            17f, Ui.TEXT, bold = true
-        ))
-        presCard.addView(Ui.fullWidth(Ui.secondaryButton(a, "Edit sets / reps / hold / frequency") {
+        val stats = Ui.row(a)
+        fun tile(v: String, l: String) {
+            val t = Ui.statTile(a, v, l)
+            val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            lp.setMargins(Ui.dp(a, 2), 0, Ui.dp(a, 2), 0)
+            t.layoutParams = lp
+            stats.addView(t)
+        }
+        tile("${effective.sets}", if (effective.sets == 1) "set" else "sets")
+        tile("${effective.reps}", "reps")
+        if (effective.holdSeconds > 0) {
+            tile(if (effective.holdSeconds >= 60) "${effective.holdSeconds / 60}m" else "${effective.holdSeconds}s", "hold")
+        }
+        tile("${effective.sessionsPerDay}×", "per day")
+        col.addView(stats)
+        col.addView(Ui.fullWidth(Ui.textButton(a, "Adjust prescription") {
             a.pushOverlay { editOverride(a, spec) }
-        }, a))
-        col.addView(presCard)
+        }, a, 4))
 
         col.addView(Ui.section(a, "How to do it"))
         val cueCard = Ui.card(a)
-        spec.cues.forEachIndexed { i, cue -> cueCard.addView(Ui.text(a, "${i + 1}.  $cue", 16f)) }
+        spec.cues.forEachIndexed { i, cue ->
+            if (i > 0) cueCard.addView(Ui.spacer(a, 8))
+            val r = Ui.row(a)
+            val n = Ui.text(a, "${i + 1}", 13f, Ui.ON_PRIMARY_CONTAINER, bold = true)
+            n.background = Ui.rounded(Ui.PRIMARY_CONTAINER, 13f)
+            n.setPadding(Ui.dp(a, 9), Ui.dp(a, 2), Ui.dp(a, 9), Ui.dp(a, 2))
+            r.addView(n)
+            val c = Ui.text(a, cue, 14.5f)
+            c.setPadding(Ui.dp(a, 10), 0, 0, 0)
+            r.addView(Ui.weight(c, 1f))
+            cueCard.addView(r)
+        }
         col.addView(cueCard)
 
         col.addView(Ui.section(a, "Why this matters"))
         val whyCard = Ui.card(a)
-        whyCard.addView(Ui.text(a, spec.whyItMatters, 15f))
+        whyCard.addView(Ui.text(a, spec.whyItMatters, 14.5f))
         col.addView(whyCard)
 
         val precCard = Ui.card(a, Ui.WARN_BG)
-        precCard.addView(Ui.text(a, "⚠ ${spec.precaution}", 15f, Ui.WARN, bold = true))
+        val pr = Ui.row(a)
+        pr.addView(Ui.icon(a, "ic_alert", 18, Ui.WARN))
+        val pt = Ui.text(a, spec.precaution, 14f, Ui.WARN, bold = true)
+        pt.setPadding(Ui.dp(a, 10), 0, 0, 0)
+        pr.addView(Ui.weight(pt, 1f))
+        precCard.addView(pr)
         col.addView(precCard)
 
         if (spec.phase == currentPhase) {
-            col.addView(Ui.section(a, "Log today's sessions"))
+            col.addView(Ui.section(a, "Today's sessions"))
             val events = a.store.eventsOn(today)
             for (session in 1..effective.sessionsPerDay) {
                 val slot = "session$session"
                 val done = events.lastOrNull {
                     it.refId == spec.id && it.slotKey == slot
                 }?.status == EventStatus.DONE
-                val label = if (done) "✓ Session $session done (tap to undo)" else "Mark session $session done"
                 col.addView(Ui.fullWidth(
-                    if (done) Ui.secondaryButton(a, label) {
+                    if (done) Ui.tonalButton(a, "Session $session done · undo") {
                         Forms.confirm(a, "Undo", "Mark session $session as not done?") {
                             Reminders.recordEvent(a, ScheduleEngine.ItemKind.EXERCISE, spec.id, slot, EventStatus.SKIPPED)
                             a.refresh()
                         }
-                    } else Ui.button(a, label) {
+                    } else Ui.button(a, "Mark session $session done") {
                         Reminders.recordEvent(a, ScheduleEngine.ItemKind.EXERCISE, spec.id, slot, EventStatus.DONE)
                         a.popOverlay()
                     }, a
@@ -154,15 +187,18 @@ object ExercisesScreen {
         } else if (spec.phase > currentPhase) {
             val warn = Ui.card(a, Ui.WARN_BG)
             warn.addView(Ui.text(
-                a, "This is a phase ${spec.phase} exercise - not unlocked yet. " +
-                    "Doing it early risks re-rupture.", 15f, Ui.WARN, bold = true
+                a, "Phase ${spec.phase} exercise - not unlocked yet. Doing it early risks re-rupture.",
+                14f, Ui.WARN, bold = true
             ))
             col.addView(warn)
         }
 
-        col.addView(Ui.spacer(a, 20))
+        col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
     }
+
+    private fun DemoLibraryCaption(demoId: String): String =
+        com.recoverwell.draw.DemoLibrary.demos[demoId]?.caption ?: ""
 
     private fun editOverride(a: MainActivity, spec: ExerciseSpec): View {
         val existing = a.store.exerciseOverrides()[spec.id]
@@ -174,13 +210,13 @@ object ExercisesScreen {
         var enabled = existing?.enabled ?: true
 
         val col = Ui.column(a)
-        col.addView(Ui.secondaryButton(a, "← Back") { a.popOverlay() })
-        col.addView(Ui.title(a, "Edit: ${spec.name}"))
-        col.addView(Ui.text(
+        col.addView(Ui.backRow(a, "Adjust") { a.popOverlay() })
+        col.addView(Ui.title(a, spec.name))
+        col.addView(Ui.spacer(a, 4))
+        col.addView(Ui.caption(
             a, "Protocol default: ${ScheduleEngine.exercisePrescription(spec)} · " +
-                "${spec.sessionsPerDay}×/day. Change only as your physio advises.",
-            14f, Ui.WARN
-        ))
+                "${spec.sessionsPerDay}×/day. Change only as your physio advises."))
+        col.addView(Ui.spacer(a, 8))
         val card = Ui.card(a)
         card.addView(Forms.stepper(a, "Sets", sets, 1, 10) { sets = it })
         card.addView(Forms.stepper(a, "Reps", reps, 1, 50) { reps = it })
@@ -189,22 +225,21 @@ object ExercisesScreen {
         card.addView(Forms.stepper(a, "Sessions per day", perDay, 1, 8) { perDay = it })
         col.addView(card)
 
-        val enableRow = Forms.choiceRow(a, listOf(true, false), { if (it) "Enabled" else "Disabled" }, enabled) {
-            enabled = it
-        }
         col.addView(Ui.section(a, "Include in daily plan"))
-        col.addView(enableRow)
+        col.addView(Forms.choiceRow(a, listOf(true, false), { if (it) "Enabled" else "Disabled" }, enabled) {
+            enabled = it
+        })
 
         col.addView(Ui.spacer(a, 12))
         col.addView(Ui.fullWidth(Ui.button(a, "Save changes") {
             a.store.saveExerciseOverride(ExerciseOverride(spec.id, sets, reps, hold, perDay, enabled))
             a.popOverlay()
         }, a))
-        col.addView(Ui.fullWidth(Ui.secondaryButton(a, "Reset to protocol default") {
+        col.addView(Ui.fullWidth(Ui.textButton(a, "Reset to protocol default") {
             a.store.saveExerciseOverride(ExerciseOverride(spec.id, null, null, null, null, true))
             a.popOverlay()
-        }, a))
-        col.addView(Ui.spacer(a, 20))
+        }, a, 4))
+        col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
     }
 }

@@ -27,6 +27,7 @@ dependencies {
     // the device supplies the actual framework at runtime.
     compileOnly("org.robolectric:android-all:14-robolectric-10818077")
     implementation(project(":core"))
+    implementation(project(":draw"))
 
     // JVM-side integration tests: Robolectric boots the real Activity,
     // receivers and SQLite store without needing an emulator.

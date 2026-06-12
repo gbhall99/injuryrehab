@@ -5,15 +5,16 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.Toast
 import com.recoverwell.app.MainActivity
-import com.recoverwell.app.ui.ChartView
 import com.recoverwell.app.ui.Forms
+import com.recoverwell.app.ui.SceneView
 import com.recoverwell.app.ui.Ui
 import com.recoverwell.core.logic.MilestoneTimeline
 import com.recoverwell.core.logic.TrendMath
 import com.recoverwell.core.model.Swelling
 import com.recoverwell.core.model.WeightBearing
-import com.recoverwell.core.protocol.ProtocolContent
+import com.recoverwell.draw.ChartScene
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 /** Daily log entry, trend charts, milestone timeline and export. */
 object TrackerScreen {
@@ -23,14 +24,13 @@ object TrackerScreen {
     fun build(a: MainActivity): View {
         val today = LocalDate.now()
         val col = Ui.column(a)
-        col.addView(Ui.title(a, "Recovery tracker"))
 
         // ---- today's log form ----
-        col.addView(Ui.section(a, "Today's log · $today"))
+        col.addView(Ui.section(a, "Today's log"))
         var log = a.store.dailyLog(today)
         val form = Ui.card(a)
 
-        form.addView(Forms.label(a, "Pain right now (0 none - 10 worst)"))
+        form.addView(Forms.label(a, "Pain right now · 0 none, 10 worst"))
         form.addView(Forms.scaleSlider(a, 10, log.pain) { log = log.copy(pain = it) })
 
         form.addView(Forms.label(a, "Swelling"))
@@ -38,10 +38,10 @@ object TrackerScreen {
             log = log.copy(swelling = it)
         })
 
-        form.addView(Forms.label(a, "Mood (1-5)"))
+        form.addView(Forms.label(a, "Mood"))
         form.addView(Forms.choiceRow(a, (1..5).toList(), { "$it" }, log.mood) { log = log.copy(mood = it) })
 
-        form.addView(Forms.label(a, "Energy (1-5)"))
+        form.addView(Forms.label(a, "Energy"))
         form.addView(Forms.choiceRow(a, (1..5).toList(), { "$it" }, log.energy) { log = log.copy(energy = it) })
 
         form.addView(Forms.label(a, "Boot worn as planned today?"))
@@ -53,17 +53,17 @@ object TrackerScreen {
             log = log.copy(wedges = it)
         })
 
-        form.addView(Forms.label(a, "Weight-bearing status"))
+        form.addView(Forms.label(a, "Weight-bearing"))
         form.addView(Forms.choiceRow(
             a, WeightBearing.values().toList(), { it.shortLabel }, log.weightBearing
         ) { log = log.copy(weightBearing = it) })
 
-        form.addView(Forms.label(a, "Range of movement (only if your physio measured it)"))
-        val romEdit = Forms.editText(a, log.romNote ?: "", "e.g. plantarflexion 30°, dorsiflexion -10°")
+        form.addView(Forms.label(a, "Range of movement · only if your physio measured it"))
+        val romEdit = Forms.editText(a, log.romNote ?: "", "e.g. plantarflexion 30°")
         form.addView(romEdit)
 
         form.addView(Forms.label(a, "Notes"))
-        val notesEdit = Forms.editText(a, log.notes ?: "", "Anything worth remembering about today", multiline = true)
+        val notesEdit = Forms.editText(a, log.notes ?: "", "Anything worth remembering", multiline = true)
         form.addView(notesEdit)
 
         form.addView(Ui.fullWidth(Ui.button(a, "Save today's log") {
@@ -72,7 +72,6 @@ object TrackerScreen {
                 romNote = romEdit.text.toString().ifBlank { null },
                 notes = notesEdit.text.toString().ifBlank { null }
             ))
-            // keep the profile wedge count in sync when logged
             if (wedges != null && wedges != a.store.profile().currentWedges) {
                 a.store.saveProfile(a.store.profile().copy(currentWedges = wedges))
             }
@@ -88,55 +87,94 @@ object TrackerScreen {
             chartMetric = it
             a.refresh()
         })
-        val chart = ChartView(a)
-        chart.series = when (chartMetric) {
+        col.addView(Ui.spacer(a, 8))
+        val series = when (chartMetric) {
             "Swelling" -> TrendMath.swelling(logs)
             "Mood" -> TrendMath.mood(logs)
             "Energy" -> TrendMath.energy(logs)
             else -> TrendMath.pain(logs)
         }
-        chart.layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(a, 220))
-        chart.background = Ui.roundedBg(Ui.CARD, strokeColor = Ui.BORDER)
-        col.addView(chart)
-        col.addView(Ui.text(a, "Solid line: daily entries · dashed: 7-entry average", 13f, Ui.TEXT_DIM))
+        val fmt = DateTimeFormatter.ofPattern("d MMM")
+        val first = series.points.firstOrNull()?.date
+        val pts = series.points.map { (it.date.toEpochDay() - (first?.toEpochDay() ?: 0)).toFloat() to it.value.toFloat() }
+        val avg = TrendMath.movingAverage(series.points, 7)
+            .map { (it.date.toEpochDay() - (first?.toEpochDay() ?: 0)).toFloat() to it.value.toFloat() }
+        val chartCard = Ui.frame(a)
+        chartCard.background = Ui.rounded(Ui.CARD)
+        Ui.elevate(chartCard, a)
+        chartCard.clipToOutline = true
+        val chart = SceneView(a) { s ->
+            ChartScene.render(s, ChartScene.Data(
+                pts, avg, series.min.toFloat(), series.max.toFloat(),
+                first?.format(fmt) ?: "", series.points.lastOrNull()?.date?.format(fmt) ?: "",
+                "No entries yet - save today's log above"
+            ))
+        }
+        chartCard.addView(chart, ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(a, 210))
+        col.addView(chartCard, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        col.addView(Ui.spacer(a, 6))
+        col.addView(Ui.caption(a, "Solid line: daily entries · dashed: 7-entry average"))
 
         // ---- milestone timeline ----
-        col.addView(Ui.section(a, "Milestones vs typical conservative protocol"))
-        col.addView(Ui.text(a, ProtocolContent.PLACEHOLDER_NOTE, 13f, Ui.WARN))
+        col.addView(Ui.section(a, "Milestones"))
+        col.addView(Ui.pillBadge(a, "Typical protocol - confirm with your physio", Ui.WARN, Ui.WARN_BG))
+        col.addView(Ui.spacer(a, 8))
         val profile = a.store.profile()
-        for (e in MilestoneTimeline.build(profile, today)) {
-            val (mark, color) = when (e.status) {
-                MilestoneTimeline.Status.REACHED -> "✓" to Ui.DONE
-                MilestoneTimeline.Status.DUE_NOW -> "➤" to Ui.WARN
-                MilestoneTimeline.Status.UPCOMING -> "○" to Ui.TEXT_DIM
-            }
-            val card = Ui.card(a, if (e.status == MilestoneTimeline.Status.DUE_NOW) Ui.INFO_BG else Ui.CARD)
+        val timeline = Ui.card(a)
+        val entries = MilestoneTimeline.build(profile, today)
+        entries.forEachIndexed { i, e ->
             val row = Ui.row(a)
-            row.addView(Ui.text(a, "$mark  ", 20f, color, bold = true))
+            row.gravity = android.view.Gravity.TOP
+            // timeline gutter: dot + connector
+            val gutter = LinearLayout(a).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = android.view.Gravity.CENTER_HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(Ui.dp(a, 28), ViewGroup.LayoutParams.MATCH_PARENT)
+            }
+            val dot = View(a).apply {
+                val (size, color) = when (e.status) {
+                    MilestoneTimeline.Status.REACHED -> 12 to Ui.PRIMARY
+                    MilestoneTimeline.Status.DUE_NOW -> 16 to Ui.WARN
+                    MilestoneTimeline.Status.UPCOMING -> 12 to Ui.OUTLINE
+                }
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    shape = android.graphics.drawable.GradientDrawable.OVAL
+                    setColor(color)
+                }
+                layoutParams = LinearLayout.LayoutParams(Ui.dp(a, size), Ui.dp(a, size)).apply {
+                    topMargin = Ui.dp(a, 4)
+                }
+            }
+            gutter.addView(dot)
+            if (i < entries.size - 1) {
+                gutter.addView(View(a).apply {
+                    setBackgroundColor(Ui.OUTLINE)
+                    layoutParams = LinearLayout.LayoutParams(Ui.dp(a, 2), Ui.dp(a, 40))
+                })
+            }
+            row.addView(gutter)
             val texts = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
-            texts.addView(Ui.text(a, "Week ${e.milestone.week}: ${e.milestone.title}", 16f, Ui.TEXT, bold = true))
-            texts.addView(Ui.text(a, "${e.expectedDate} · ${e.milestone.detail}", 14f, Ui.TEXT_DIM))
+            texts.setPadding(Ui.dp(a, 8), 0, 0, Ui.dp(a, 10))
+            val titleColor = if (e.status == MilestoneTimeline.Status.UPCOMING) Ui.TEXT_DIM else Ui.TEXT
+            texts.addView(Ui.text(a, "Week ${e.milestone.week} · ${e.milestone.title}", 15f, titleColor, bold = true))
+            texts.addView(Ui.caption(a, "${e.expectedDate.format(fmt)} · ${e.milestone.detail}"))
             row.addView(Ui.weight(texts, 1f))
-            card.addView(row)
-            col.addView(card)
+            timeline.addView(row)
         }
+        col.addView(timeline)
 
         // ---- export ----
         col.addView(Ui.section(a, "Export & backup"))
-        val exportCard = Ui.card(a)
-        exportCard.addView(Ui.text(
-            a, "Everything stays on this phone unless you export it. Files are " +
-                "saved wherever you choose - share them with your physio if useful.",
-            14f, Ui.TEXT_DIM
-        ))
-        exportCard.addView(Ui.fullWidth(Ui.button(a, "Export PDF report") { a.exportPdf() }, a))
-        exportCard.addView(Ui.fullWidth(Ui.secondaryButton(a, "Export daily logs (CSV)") { a.exportLogsCsv() }, a))
-        exportCard.addView(Ui.fullWidth(Ui.secondaryButton(a, "Export medication & task log (CSV)") { a.exportEventsCsv() }, a))
-        exportCard.addView(Ui.fullWidth(Ui.secondaryButton(a, "Full backup (JSON)") { a.exportBackup() }, a))
-        exportCard.addView(Ui.fullWidth(Ui.secondaryButton(a, "Restore from backup") { a.importBackup() }, a))
-        col.addView(exportCard)
+        col.addView(Ui.caption(a, "Everything stays on this phone unless you export it."))
+        col.addView(Ui.spacer(a, 6))
+        col.addView(Ui.listRow(a, "ic_export", "PDF report", "Share progress with your physio") { a.exportPdf() })
+        col.addView(Ui.listRow(a, "ic_export", "Daily logs · CSV", "Spreadsheet-friendly") { a.exportLogsCsv() })
+        col.addView(Ui.listRow(a, "ic_export", "Medication & task log · CSV", "Adherence history") { a.exportEventsCsv() })
+        col.addView(Ui.listRow(a, "ic_export", "Full backup · JSON", "Everything, restorable") { a.exportBackup() })
+        col.addView(Ui.listRow(a, "ic_restore", "Restore from backup", "Replaces all current data") { a.importBackup() })
 
-        col.addView(Ui.spacer(a, 20))
+        col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
     }
 }

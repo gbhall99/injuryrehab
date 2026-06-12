@@ -63,3 +63,34 @@ native render call and the live notification firing are exercised on-device
 rather than in JVM tests (platform APIs without Robolectric 3.8 shadows);
 the build environment has no emulator, so "runs" is evidenced by signed-APK
 verification plus Robolectric booting the real Activity end-to-end.
+
+---
+
+# Design overhaul review (v1.1)
+
+User verdict on v1.0: 3/10 - "UI is weak, emojis are tacky, text full,
+graphics shocking." Target reset: visual quality that could plausibly hold a
+4.7+ store rating, benchmarked against top-rated rehab apps (Exakt, Kaia:
+calm minimal surfaces, structured daily plan with progress, clean exercise
+visuals).
+
+Method: all drawing moved into a platform-free `draw/` module rendered by
+both Android and a Java2D `designlab` tool, so every visual was reviewed as
+an actual PNG and iterated - not guessed at.
+
+| Round | Surface | Verdict -> action |
+|---|---|---|
+| 1 | Icon set (28 line icons, single source for res XML + previews) | PNG contact sheet reviewed - consistent 2px stroke geometry, shipped |
+| 2 | Trend chart | Gradient area + dashed average + emphasised last point - shipped |
+| 3 | Body model v1 | FAIL: equinus rotation tipped the whole boot; wedges on the sole edge; rupture marker too high |
+| 4 | Body model v2 | Upright boot on rocker sole, heel riding the internal wedge stack, marker in lower third - shipped |
+| 5 | Body model v3 | Barefoot phases: foot flat on ground, proper heel - shipped |
+| 6 | Demo figures (25) | Pictograms read well; boot straps spiked on angled shanks -> single perpendicular band |
+| 7 | App chrome + all screens | Rebuilt on design tokens: tonal cards + elevation (no borders), ripples everywhere, pill buttons, segmented chips, icon bottom-nav with active pill, hero card with progress ring, milestone timeline with dots/connectors, stat-tile prescriptions, numbered cue list. Every emoji removed; copy tightened |
+| 8 | Full-screen Today mock | Rendered via the same palette/icons - reads like a contemporary health app; shipped |
+
+Verification after overhaul: 49/49 tests green (assertions updated for new
+copy), signed APK builds, vector resources accepted by aapt, dex within
+limits. Known v1.1 gaps vs the very best store apps, accepted consciously:
+no dark theme, no screen-transition animations, demonstrations are stylised
+pictograms rather than filmed video (a deliberate offline/ownership choice).
