@@ -46,6 +46,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        CrashGuard.install(applicationContext)
         store = Store.get(this)
 
         // resolve theme before any view is built: tokens are read at build time
@@ -99,9 +100,35 @@ class MainActivity : Activity() {
         root.addView(tabBar)
         rebuildTabBar()
 
+        // edge-to-edge (enforced from targetSdk 35): keep content clear of bars
+        root.setOnApplyWindowInsetsListener { v, insets ->
+            val top: Int
+            val bottom: Int
+            if (android.os.Build.VERSION.SDK_INT >= 30) {
+                val bars = insets.getInsets(android.view.WindowInsets.Type.systemBars())
+                top = bars.top; bottom = bars.bottom
+            } else {
+                @Suppress("DEPRECATION")
+                top = insets.systemWindowInsetTop
+                @Suppress("DEPRECATION")
+                bottom = insets.systemWindowInsetBottom
+            }
+            v.setPadding(0, top, 0, bottom)
+            insets
+        }
+
         setContentView(root)
 
+        // notifications need a runtime grant from Android 13
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission("android.permission.POST_NOTIFICATIONS") !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf("android.permission.POST_NOTIFICATIONS"), 7)
+        }
+
         Reminders.reschedule(this)
+        CrashGuard.offerReport(this)
 
         if (!store.profile().onboardingComplete) {
             pushOverlay { Onboarding.build(this) }
@@ -170,13 +197,19 @@ class MainActivity : Activity() {
     private fun render(animated: Boolean) {
         rebuildTabBar()
         appBarTitle.text = if (overlays.isNotEmpty()) "RecoverWell" else currentTab.label
+        for (i in 0 until content.childCount) content.getChildAt(i).animate().cancel()
         content.removeAllViews()
-        val view = if (overlays.isNotEmpty()) overlays.last()() else when (currentTab) {
-            Tab.TODAY -> TodayScreen.build(this)
-            Tab.EXERCISES -> ExercisesScreen.build(this)
-            Tab.TRACKER -> TrackerScreen.build(this)
-            Tab.TWIN -> TwinScreen.build(this)
-            Tab.MORE -> MoreScreen.build(this)
+        val view = try {
+            if (overlays.isNotEmpty()) overlays.last()() else when (currentTab) {
+                Tab.TODAY -> TodayScreen.build(this)
+                Tab.EXERCISES -> ExercisesScreen.build(this)
+                Tab.TRACKER -> TrackerScreen.build(this)
+                Tab.TWIN -> TwinScreen.build(this)
+                Tab.MORE -> MoreScreen.build(this)
+            }
+        } catch (t: Throwable) {
+            CrashGuard.record(this, t)
+            errorScreen(t)
         }
         content.addView(view, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         if (animated) {
@@ -188,6 +221,28 @@ class MainActivity : Activity() {
                 .setInterpolator(android.view.animation.DecelerateInterpolator())
                 .start()
         }
+    }
+
+    private fun errorScreen(t: Throwable): View {
+        val col = Ui.column(this)
+        col.addView(Ui.headline(this, "Something went wrong"))
+        col.addView(Ui.spacer(this, 4))
+        col.addView(Ui.body(this, "This screen hit a problem. Your data is safe. " +
+            "Copy the details below and share them so it can be fixed."))
+        col.addView(Ui.spacer(this, 8))
+        val traceCard = Ui.card(this)
+        val trace = Ui.caption(this, CrashGuard.describe(t))
+        trace.typeface = android.graphics.Typeface.MONOSPACE
+        trace.textSize = 11f
+        traceCard.addView(trace)
+        col.addView(traceCard)
+        col.addView(Ui.fullWidth(Ui.button(this, "Copy details") {
+            val cm = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            cm.setPrimaryClip(android.content.ClipData.newPlainText(
+                "RecoverWell error", CrashGuard.describe(t)))
+        }, this))
+        col.addView(Ui.fullWidth(Ui.tonalButton(this, "Back to Today") { show(Tab.TODAY) }, this))
+        return Ui.scroll(this, col)
     }
 
     @Deprecated("Deprecated in Java")

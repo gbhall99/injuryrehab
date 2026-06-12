@@ -57,11 +57,16 @@ object Reminders {
         for (slot in 0 until MAX_SCHEDULED) {
             am.cancel(firePendingIntent(context, slot, null))
         }
+        val exactAllowed = android.os.Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms()
         reminders.forEachIndexed { slot, r ->
             val at = r.at.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-            am.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP, at, firePendingIntent(context, slot, r)
-            )
+            val pi = firePendingIntent(context, slot, r)
+            if (exactAllowed) {
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
+            } else {
+                // exact-alarm permission revoked: fire within a 10-minute window
+                am.setWindow(AlarmManager.RTC_WAKEUP, at, 10 * 60_000L, pi)
+            }
         }
     }
 
