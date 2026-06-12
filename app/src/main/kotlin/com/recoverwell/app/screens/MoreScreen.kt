@@ -47,8 +47,10 @@ object MoreScreen {
             "What this app is based on") { a.pushOverlay { about(a) } })
 
         col.addView(Ui.section(a, "Data"))
+        val lastBackup = a.store.setting("last_backup", "")
         col.addView(Ui.caption(a, "All data lives only on this phone - no account, no network. " +
-            "Export regularly so you have a backup."))
+            if (lastBackup.isBlank()) "No backup yet - export one below."
+            else "Last full backup: $lastBackup."))
         col.addView(Ui.spacer(a, 6))
         col.addView(Ui.listRow(a, "ic_export", "Full backup · JSON", "Everything, restorable") { a.exportBackup() })
         col.addView(Ui.listRow(a, "ic_restore", "Restore from backup", "Replaces all current data") { a.importBackup() })

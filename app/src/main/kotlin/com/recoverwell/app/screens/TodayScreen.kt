@@ -118,6 +118,17 @@ object TodayScreen {
             col.addView(card)
         }
 
+        // ---- backup nudge (review-mined: data loss is the #1 trust killer) ----
+        if (a.store.setting("last_backup", "").isBlank() && a.store.allLogs().size >= 7) {
+            val card = Ui.card(a, Ui.INFO_BG)
+            card.addView(Ui.text(a, "Protect your progress", 15.5f, Ui.ON_INFO_BG, bold = true))
+            card.addView(Ui.spacer(a, 2))
+            card.addView(Ui.text(a, "You have a week of recovery data and no backup yet. " +
+                "One tap saves everything to a file you control.", 14f, Ui.ON_INFO_BG))
+            card.addView(Ui.fullWidth(Ui.tonalButton(a, "Back up now") { a.exportBackup() }, a))
+            col.addView(card)
+        }
+
         // ---- progression gate -------------------------------------------
         val gate = PhaseEngine.nextPhaseGate(profile, today)
         if (gate.nextPhase != null && gate.readyToConfirm) {

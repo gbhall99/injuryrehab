@@ -68,6 +68,7 @@ object Reminders {
                 am.setWindow(AlarmManager.RTC_WAKEUP, at, 10 * 60_000L, pi)
             }
         }
+        com.recoverwell.app.widget.TodayWidget.update(context)
     }
 
     private fun firePendingIntent(
@@ -141,8 +142,55 @@ object Reminders {
         } else {
             builder.addAction(action("Done", EventStatus.DONE))
         }
+        // review-mined essential: a snooze that actually works
+        run {
+            val intent = Intent(context, ActionReceiver::class.java).apply {
+                action = "com.recoverwell.SNOOZE_$notifId"
+                putExtra("kind", kind.name)
+                putExtra("refId", refId)
+                putExtra("slotKey", slotKey)
+                putExtra("title", title)
+                putExtra("message", message)
+                putExtra("status", "SNOOZE")
+                putExtra("notifId", notifId)
+            }
+            val pi = PendingIntent.getBroadcast(
+                context, notifId + 7, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            builder.addAction(Notification.Action.Builder(null, "Snooze 15m", pi).build())
+        }
 
         nm.notify(notifId, builder.build())
+    }
+
+    /** One-off re-delivery of a snoozed reminder, 15 minutes out. */
+    fun scheduleSnooze(
+        context: Context,
+        kind: ScheduleEngine.ItemKind,
+        refId: String,
+        slotKey: String,
+        title: String,
+        message: String,
+        notifId: Int
+    ) {
+        val intent = Intent(context, ReminderReceiver::class.java).apply {
+            action = "com.recoverwell.SNOOZED_$notifId"
+            putExtra("kind", kind.name)
+            putExtra("refId", refId)
+            putExtra("slotKey", slotKey)
+            putExtra("title", title)
+            putExtra("message", message)
+        }
+        val pi = PendingIntent.getBroadcast(
+            context, notifId + 13, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val at = System.currentTimeMillis() + 15 * 60_000L
+        val exactAllowed = android.os.Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms()
+        if (exactAllowed) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
+        else am.setWindow(AlarmManager.RTC_WAKEUP, at, 5 * 60_000L, pi)
     }
 
     fun recordEvent(
@@ -189,6 +237,20 @@ class ReminderReceiver : BroadcastReceiver() {
 class ActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val kind = intent.getStringExtra("kind")?.let { ScheduleEngine.ItemKind.valueOf(it) } ?: return
+        val notifId = intent.getIntExtra("notifId", 0)
+        if (intent.getStringExtra("status") == "SNOOZE") {
+            Reminders.scheduleSnooze(
+                context, kind,
+                intent.getStringExtra("refId") ?: return,
+                intent.getStringExtra("slotKey") ?: "",
+                intent.getStringExtra("title") ?: "RecoverWell reminder",
+                intent.getStringExtra("message") ?: "",
+                notifId
+            )
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            nm.cancel(notifId)
+            return
+        }
         val status = intent.getStringExtra("status")?.let { EventStatus.valueOf(it) } ?: return
         Reminders.recordEvent(
             context, kind,

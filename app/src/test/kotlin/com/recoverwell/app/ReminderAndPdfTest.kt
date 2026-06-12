@@ -39,7 +39,8 @@ class ReminderPipelineTest {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val notifications = Shadows.shadowOf(nm).allNotifications
         assertEquals(1, notifications.size)
-        assertEquals(2, notifications[0].actions.size) // Taken / Missed
+        assertEquals(3, notifications[0].actions.size) // Taken / Missed / Snooze 15m
+        assertEquals("Snooze 15m", notifications[0].actions[2].title.toString())
 
         // 3. the "Taken" action records a TAKEN event for today
         val act = Intent(context, com.recoverwell.app.notify.ActionReceiver::class.java).apply {

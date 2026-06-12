@@ -111,3 +111,41 @@ stylised motion pictograms, not filmed video (offline/ownership tradeoff).
 
 | 14 | "Use existing, well-established graphics" | Hand-authored icon set deleted. All 28 app icons + launcher + notification glyph replaced with official Google Material Symbols (Apache 2.0), fetched verbatim from google/material-design-icons and committed with attribution headers; designlab now parses and previews the exact shipped files, so proofs cannot drift from production. podiatry/footprint/ecg_heart give clinically apt established glyphs | icons.png + screen proofs re-reviewed; 50/50 tests; signed APK |
 | 15 | Device report: crash on onboarding "I understand"; "built for older Android" warning | Crash not reproducible on JVM (new OnboardingFlowTest clicks the full flow green), so: CrashGuard added - uncaught exceptions are saved and offered as a copyable report on next launch, and screen-build failures now render an in-app error view with the stack instead of killing the process; animators cancelled before view teardown. targetSdk raised 30 -> 35 (silences the compatibility warning) with the required platform work: POST_NOTIFICATIONS runtime request, SCHEDULE_EXACT_ALARM/USE_EXACT_ALARM with canScheduleExactAlarms() guard and 10-min windowed fallback, edge-to-edge system-bar insets | 51/51 tests; targetSdk 35 in badging; signed v1.4 |
+
+---
+
+# Review-mined quality loop (v1.5) - "what earns 4.7+ across 1000+ reviews"
+
+Sources mined: Play/App Store review bodies and review-analysis articles for
+Medisafe and MyTherapy (medication reminders, both with huge review bases)
+and Exakt Health (top-rated PT/rehab). Distilled drivers, then scored and
+fixed in priority order.
+
+**Negative drivers (each one is where 1-star reviews come from):**
+
+| # | Driver (evidence) | v1.4 | v1.5 action |
+|---|---|---|---|
+| N1 | Crashes / force-stop ("force stops whenever I try to acknowledge doses") | CrashGuard + 52 tests | maintained |
+| N2 | Notification failures: no snooze, broken "30 min later", full-screen takeovers, silent after updates | NO SNOOZE | Snooze 15m action on every reminder (one-off exact alarm re-delivery); standard notifications, never full-screen; channel sound via IMPORTANCE_HIGH |
+| N3 | Data loss / "kicked out, had to start over" | manual backup only | Backup nudge card after a week of unbacked data; last-backup date stamped and shown in Settings |
+| N4 | Paywall anger (Medisafe's 2-med free cap), ads, forced accounts | none, implicit | "Free, no adverts, no subscriptions" stated in About; no account by design |
+| N5 | Notification fatigue / inflexible schedules | per-time editing, pause | + snooze (N2) |
+| N6 | Onboarding burden ("entering every medication manually") | pre-filled, 2 steps | maintained |
+| N7 | Cannot edit/backfill past entries | TODAY ONLY | Any past day editable: prev/next day arrows + date picker (capped at today); boot-state sync only from today's log |
+| N8 | Battery drain | ≤32 batched alarms | maintained |
+
+**Positive drivers (what 5-star reviews actually praise):**
+
+| # | Driver (evidence) | Status |
+|---|---|---|
+| P1 | "Reminders with confirmation" | Taken/Missed/Done + Snooze on the notification (pipeline-tested) |
+| P2 | "Progress chart... true peace of mind" | hero ring, trend charts, streak, milestone timeline |
+| P3 | "Counts and timers... excellent descriptions mean I do the exercises properly" (Exakt 5-star) | guided sessions with rep counts + hold countdowns; numbered cues; demos |
+| P4 | "Structured approach with inbuilt progression... haven't been tempted to overdo" (Exakt 5-star) | two-key phase gating - the app's core design |
+| P5 | Clean simple interface | v1.1-1.3 design system |
+| P6 | Home-screen widget at a glance | NEW: Today widget (progress bar + next reminder), refreshed on every reschedule |
+| P7 | Offline / private / free | by design; now stated where users look |
+| P8 | Share record with clinician | PDF report |
+
+Verification: 52/52 tests green (pipeline test updated for the snooze
+action), signed v1.5 APK, widget receiver verified in the compiled manifest.

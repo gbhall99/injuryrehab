@@ -20,14 +20,39 @@ import java.time.format.DateTimeFormatter
 object TrackerScreen {
 
     private var chartMetric = "Pain"
+    private var selectedDate: LocalDate? = null
 
     fun build(a: MainActivity): View {
         val today = LocalDate.now()
+        val day = (selectedDate ?: today).coerceAtMost(today)
         val col = Ui.column(a)
 
-        // ---- today's log form ----
-        col.addView(Ui.section(a, "Today's log"))
-        var log = a.store.dailyLog(today)
+        // ---- daily log: any day is editable (review-mined: backfill matters) ----
+        col.addView(Ui.section(a, if (day == today) "Today's log" else "Log · earlier day"))
+        val nav = Ui.row(a)
+        nav.addView(Ui.iconButton(a, "ic_back", Ui.TEXT, Ui.SURFACE_HIGH, desc = "Previous day") {
+            selectedDate = day.minusDays(1); a.refresh()
+        })
+        val dayLabel = Ui.tonalButton(a, if (day == today) "Today" else day.toString()) {
+            android.app.DatePickerDialog(a, { _, y, m, d ->
+                selectedDate = LocalDate.of(y, m + 1, d).coerceAtMost(today)
+                a.refresh()
+            }, day.year, day.monthValue - 1, day.dayOfMonth).apply {
+                datePicker.maxDate = System.currentTimeMillis()
+            }.show()
+        }
+        val lp = android.widget.LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        lp.setMargins(Ui.dp(a, 8), 0, Ui.dp(a, 8), 0)
+        dayLabel.layoutParams = lp
+        nav.addView(dayLabel)
+        val nextBtn = Ui.iconButton(a, "ic_chevron", if (day == today) Ui.OUTLINE else Ui.TEXT,
+            Ui.SURFACE_HIGH, desc = "Next day") {
+            if (day < today) { selectedDate = day.plusDays(1); a.refresh() }
+        }
+        nav.addView(nextBtn)
+        col.addView(nav)
+        col.addView(Ui.spacer(a, 6))
+        var log = a.store.dailyLog(day)
         val form = Ui.card(a)
 
         form.addView(Forms.label(a, "Pain right now · 0 none, 10 worst"))
@@ -66,13 +91,14 @@ object TrackerScreen {
         val notesEdit = Forms.editText(a, log.notes ?: "", "Anything worth remembering", multiline = true)
         form.addView(notesEdit)
 
-        form.addView(Ui.fullWidth(Ui.button(a, "Save today's log") {
+        form.addView(Ui.fullWidth(Ui.button(a, if (day == today) "Save today's log" else "Save log for $day") {
             val wedges = log.wedges
             a.store.saveDailyLog(log.copy(
                 romNote = romEdit.text.toString().ifBlank { null },
                 notes = notesEdit.text.toString().ifBlank { null }
             ))
-            if (wedges != null && wedges != a.store.profile().currentWedges) {
+            // the boot state only follows logs about today
+            if (day == today && wedges != null && wedges != a.store.profile().currentWedges) {
                 a.store.saveProfile(a.store.profile().copy(currentWedges = wedges))
             }
             Toast.makeText(a, "Log saved", Toast.LENGTH_SHORT).show()

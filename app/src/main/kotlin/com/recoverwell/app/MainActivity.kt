@@ -316,8 +316,12 @@ class MainActivity : Activity() {
                 REQ_EXPORT -> {
                     val bytes = pendingExport ?: return
                     contentResolver.openOutputStream(uri)?.use { it.write(bytes) }
+                    if (pendingExportToast == "Backup exported") {
+                        store.saveSetting("last_backup", java.time.LocalDate.now().toString())
+                    }
                     Toast.makeText(this, pendingExportToast, Toast.LENGTH_LONG).show()
                     pendingExport = null
+                    refresh()
                 }
                 REQ_IMPORT -> {
                     val text = contentResolver.openInputStream(uri)?.use {
