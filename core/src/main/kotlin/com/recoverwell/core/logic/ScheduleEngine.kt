@@ -180,21 +180,41 @@ object ScheduleEngine {
         return "${ex.sets} set${if (ex.sets > 1) "s" else ""} × ${ex.reps}$hold"
     }
 
+    /** Stable id used for the once-daily "do your exercises" engagement nudge. */
+    const val EXERCISE_SESSION_REF = "session_reminder"
+
     /**
      * All reminders in (now, now+horizonDays]: medication times, task times,
-     * and dated wedge changes. The Android layer schedules the earliest ones.
+     * dated wedge changes and - when [exerciseReminderTime] is set - one daily
+     * exercise-session nudge per day that has exercises in the active phase.
+     * The Android layer schedules the earliest ones.
      */
     fun upcomingReminders(
         profile: Profile,
         meds: List<Medication>,
         tasks: List<RehabTask>,
         now: LocalDateTime,
-        horizonDays: Int = 3
+        horizonDays: Int = 3,
+        exerciseReminderTime: LocalTime? = null,
+        overrides: Map<String, ExerciseOverride> = emptyMap()
     ): List<Reminder> {
         val out = ArrayList<Reminder>()
         for (offset in 0..horizonDays) {
             val date = now.toLocalDate().plusDays(offset.toLong())
             val phase = PhaseEngine.currentPhase(profile, date)
+
+            if (exerciseReminderTime != null) {
+                val exercises = mergedExercises(phase.exercises, overrides)
+                val at = LocalDateTime.of(date, exerciseReminderTime)
+                if (exercises.isNotEmpty() && at.isAfter(now)) out.add(
+                    Reminder(
+                        at, ItemKind.EXERCISE, EXERCISE_SESSION_REF, EXERCISE_SESSION_REF,
+                        "Rehab exercises",
+                        "${exercises.size} exercise${if (exercises.size == 1) "" else "s"} in today's plan. " +
+                            "A few focused minutes keeps your recovery on track."
+                    )
+                )
+            }
 
             for (med in meds.filter { it.active }) {
                 for (t in med.times) {

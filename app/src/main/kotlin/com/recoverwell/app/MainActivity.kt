@@ -44,6 +44,7 @@ class MainActivity : Activity() {
     private var pendingExportToast = ""
     private val REQ_EXPORT = 41
     private val REQ_IMPORT = 42
+    private val REQ_AUTOBACKUP = 43
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -278,6 +279,74 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         Reminders.reschedule(this)
+        runAutoBackupIfDue()
+    }
+
+    // ------------------------------------------------------------------
+    // Automatic backup: a once-a-day silent overwrite to a user-chosen file.
+    // Uses a persisted SAF document grant - no account, no network, no extra
+    // permission. The user picks the destination once; we keep writing to it.
+    // ------------------------------------------------------------------
+
+    /** Let the user pick (create) the file that auto-backups overwrite. */
+    fun chooseAutoBackupFile() {
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/json"
+            putExtra(Intent.EXTRA_TITLE, "recoverwell-auto-backup.json")
+            addFlags(
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+            )
+        }
+        startActivityForResult(intent, REQ_AUTOBACKUP)
+    }
+
+    fun autoBackupEnabled(): Boolean =
+        store.setting("auto_backup_uri", "").isNotBlank()
+
+    fun disableAutoBackup() {
+        val uriStr = store.setting("auto_backup_uri", "")
+        if (uriStr.isNotBlank()) {
+            try {
+                contentResolver.releasePersistableUriPermission(
+                    android.net.Uri.parse(uriStr),
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+            } catch (e: Exception) { /* grant may already be gone */ }
+        }
+        store.saveSetting("auto_backup_uri", "")
+        store.saveSetting("auto_backup_name", "")
+        store.saveSetting("auto_backup_error", "")
+        refresh()
+    }
+
+    /** Overwrite the chosen file with the current snapshot. Returns true on success. */
+    fun writeAutoBackup(): Boolean {
+        val uriStr = store.setting("auto_backup_uri", "")
+        if (uriStr.isBlank()) return false
+        return try {
+            val bytes = BackupCodec.encode(store.snapshot()).toByteArray()
+            // "wt" truncates, so the file is replaced rather than appended to
+            contentResolver.openOutputStream(android.net.Uri.parse(uriStr), "wt")?.use {
+                it.write(bytes)
+            } ?: return false
+            val now = java.time.LocalDate.now().toString()
+            store.saveSetting("auto_backup_last", now)
+            store.saveSetting("last_backup", now)
+            store.saveSetting("auto_backup_error", "")
+            true
+        } catch (e: Exception) {
+            store.saveSetting("auto_backup_error", e.message ?: "Could not write the backup file")
+            false
+        }
+    }
+
+    private fun runAutoBackupIfDue() {
+        if (!autoBackupEnabled()) return
+        if (store.setting("auto_backup_last", "") == java.time.LocalDate.now().toString()) return
+        writeAutoBackup()
     }
 
     // ------------------------------------------------------------------
@@ -327,6 +396,18 @@ class MainActivity : Activity() {
         }
     }
 
+    /** Human-readable name for a picked document, for the settings summary. */
+    private fun displayNameOf(uri: android.net.Uri): String {
+        return try {
+            contentResolver.query(uri, null, null, null, null)?.use { c ->
+                val i = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                if (i >= 0 && c.moveToFirst()) c.getString(i) else null
+            } ?: uri.lastPathSegment ?: "Backup file"
+        } catch (e: Exception) {
+            uri.lastPathSegment ?: "Backup file"
+        }
+    }
+
     fun importBackup() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
@@ -350,6 +431,21 @@ class MainActivity : Activity() {
                     }
                     Toast.makeText(this, pendingExportToast, Toast.LENGTH_LONG).show()
                     pendingExport = null
+                    refresh()
+                }
+                REQ_AUTOBACKUP -> {
+                    contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    )
+                    store.saveSetting("auto_backup_uri", uri.toString())
+                    store.saveSetting("auto_backup_name", displayNameOf(uri))
+                    store.saveSetting("auto_backup_last", "")
+                    if (writeAutoBackup()) {
+                        Toast.makeText(this, "Automatic backup is on", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(this, "Couldn't write to that file - try another location", Toast.LENGTH_LONG).show()
+                    }
                     refresh()
                 }
                 REQ_IMPORT -> {

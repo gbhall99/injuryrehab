@@ -26,6 +26,14 @@ object Reminders {
     const val CHANNEL_TASKS = "tasks"
     private const val MAX_SCHEDULED = 32
 
+    /** Setting value "off" or "HH:mm" -> a time, or null when disabled. */
+    fun parseTime(value: String): LocalTime? =
+        if (value.isBlank() || value == "off") null
+        else runCatching {
+            val (h, m) = value.split(":").map { it.toInt() }
+            LocalTime.of(h, m)
+        }.getOrNull()
+
     fun ensureChannels(context: Context) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(
@@ -48,8 +56,11 @@ object Reminders {
     fun reschedule(context: Context) {
         ensureChannels(context)
         val store = Store.get(context)
+        val exerciseTime = parseTime(store.setting("exercise_reminder", "10:00"))
         val reminders = ScheduleEngine.upcomingReminders(
-            store.profile(), store.medications(), store.tasks(), LocalDateTime.now()
+            store.profile(), store.medications(), store.tasks(), LocalDateTime.now(),
+            exerciseReminderTime = exerciseTime,
+            overrides = store.exerciseOverrides()
         ).take(MAX_SCHEDULED)
 
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -191,6 +202,28 @@ object Reminders {
         val exactAllowed = android.os.Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms()
         if (exactAllowed) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
         else am.setWindow(AlarmManager.RTC_WAKEUP, at, 5 * 60_000L, pi)
+    }
+
+    /** Fires a reminder right now so the user can confirm notifications actually arrive. */
+    fun sendTestNotification(context: Context) {
+        ensureChannels(context)
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val openApp = PendingIntent.getActivity(
+            context, 99,
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val builder = Notification.Builder(context, CHANNEL_TASKS)
+            .setSmallIcon(context.resources.getIdentifier("ic_bell", "drawable", context.packageName))
+            .setColor(0xFF2F6B4F.toInt())
+            .setContentTitle("Reminders are working")
+            .setContentText("This is a test reminder from RecoverWell. If you can see it, your medication and rehab reminders will arrive too.")
+            .setStyle(Notification.BigTextStyle().bigText(
+                "This is a test reminder from RecoverWell. If you can see it, your medication and rehab reminders will arrive too."))
+            .setContentIntent(openApp)
+            .setAutoCancel(true)
+        nm.notify("test".hashCode(), builder.build())
     }
 
     fun recordEvent(

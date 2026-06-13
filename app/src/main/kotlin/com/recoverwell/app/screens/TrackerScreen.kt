@@ -111,9 +111,53 @@ object TrackerScreen {
         }, a))
         col.addView(form)
 
+        // ---- this week (weekly digest) ----
+        val logs = a.store.allLogs()
+        run {
+            val digest = com.recoverwell.core.logic.WeeklyDigest.generate(
+                a.store.profile(), logs, a.store.allEvents(),
+                a.store.medications(), a.store.tasks(), today
+            )
+            col.addView(Ui.section(a, "This week"))
+            val card = Ui.card(a)
+            fun line(icon: String, text: String, tint: Int = Ui.PRIMARY) {
+                val r = Ui.row(a)
+                r.gravity = android.view.Gravity.TOP
+                r.addView(Ui.icon(a, icon, 18, tint))
+                val t = Ui.text(a, text, 14.5f, Ui.TEXT)
+                t.setPadding(Ui.dp(a, 10), 0, 0, 0)
+                r.addView(Ui.weight(t, 1f))
+                card.addView(r)
+                card.addView(Ui.spacer(a, 6))
+            }
+            line("ic_pill", "Medication: ${digest.adherencePct}% of doses taken")
+            val painTint = when (digest.painTrend) {
+                com.recoverwell.core.logic.WeeklyDigest.Trend.DOWN -> Ui.DONE
+                com.recoverwell.core.logic.WeeklyDigest.Trend.UP -> Ui.WARN
+                else -> Ui.PRIMARY
+            }
+            line("ic_pulse", digest.painDetail, painTint)
+            line("ic_exercises", "${digest.exercisesDone} exercise session" +
+                "${if (digest.exercisesDone == 1) "" else "s"} completed")
+            if (digest.milestonesThisWeek.isNotEmpty()) {
+                line("ic_flag", "Reached: ${digest.milestonesThisWeek.joinToString(", ")}", Ui.DONE)
+            }
+            val focusCard = Ui.card(a, Ui.INFO_BG)
+            val fr = Ui.row(a)
+            fr.gravity = android.view.Gravity.TOP
+            fr.addView(Ui.icon(a, "ic_info", 18, Ui.ON_INFO_BG))
+            val ft = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
+            ft.setPadding(Ui.dp(a, 10), 0, 0, 0)
+            ft.addView(Ui.text(a, "Focus for the week ahead", 13f, Ui.ON_INFO_BG, bold = true))
+            ft.addView(Ui.text(a, digest.focus, 14.5f, Ui.ON_INFO_BG))
+            fr.addView(Ui.weight(ft, 1f))
+            focusCard.addView(fr)
+            card.addView(focusCard)
+            col.addView(card)
+        }
+
         // ---- trends ----
         col.addView(Ui.section(a, "Trends"))
-        val logs = a.store.allLogs()
         col.addView(Forms.choiceRow(a, listOf("Pain", "Swelling", "Mood", "Energy"), { it }, chartMetric) {
             chartMetric = it
             a.refresh()

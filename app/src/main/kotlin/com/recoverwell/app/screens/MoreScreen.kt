@@ -28,6 +28,12 @@ object MoreScreen {
             "Doses, times and reminders") { a.pushOverlay { medsEditor(a) } })
         col.addView(Ui.listRow(a, "ic_bell", "Daily care reminders",
             "Elevation, boot checks, circulation checks") { a.pushOverlay { tasksEditor(a) } })
+        val exTime = Reminders.parseTime(a.store.setting("exercise_reminder", "10:00"))
+        col.addView(Ui.listRow(a, "ic_exercises", "Exercise reminders",
+            if (exTime == null) "Off"
+            else "Daily nudge at %02d:%02d".format(exTime.hour, exTime.minute)) {
+            a.pushOverlay { exerciseReminderEditor(a) }
+        })
 
         col.addView(Ui.section(a, "Appearance"))
         val themeCard = Ui.card(a)
@@ -41,6 +47,18 @@ object MoreScreen {
         })
         col.addView(themeCard)
 
+        col.addView(Ui.section(a, "Notifications"))
+        val blocked = com.recoverwell.app.notify.ReminderHealth.deliveryBlocked(a)
+        val anyIssue = com.recoverwell.app.notify.ReminderHealth.hasIssue(a)
+        col.addView(Ui.listRow(a, "ic_bell", "Reminder reliability",
+            if (blocked) "Action needed - reminders may not arrive"
+            else if (anyIssue) "Mostly fine - one setting could be improved"
+            else "All clear - test it any time",
+            iconTint = if (blocked) Ui.DANGER else Ui.PRIMARY,
+            iconBg = if (blocked) Ui.DANGER_BG else Ui.PRIMARY_CONTAINER) {
+            a.pushOverlay { reminderHealth(a) }
+        })
+
         col.addView(Ui.section(a, "Safety & info"))
         col.addView(Ui.listRow(a, "ic_alert", "Red flags",
             "DVT, re-rupture, bleeding - know them cold",
@@ -51,9 +69,17 @@ object MoreScreen {
         col.addView(Ui.section(a, "Data"))
         val lastBackup = a.store.setting("last_backup", "")
         col.addView(Ui.caption(a, "All data lives only on this phone - no account, no network. " +
-            if (lastBackup.isBlank()) "No backup yet - export one below."
+            if (lastBackup.isBlank()) "No backup yet - turn on automatic backup or export one below."
             else "Last full backup: $lastBackup."))
         col.addView(Ui.spacer(a, 6))
+        val autoOn = a.autoBackupEnabled()
+        col.addView(Ui.listRow(a, "ic_restore", "Automatic backup",
+            if (autoOn) "On · saves once a day to ${a.store.setting("auto_backup_name", "your file")}"
+            else "Off · save a fresh copy daily, no action needed",
+            iconTint = if (autoOn) Ui.PRIMARY else Ui.TEXT_DIM,
+            iconBg = if (autoOn) Ui.PRIMARY_CONTAINER else Ui.SURFACE_HIGH) {
+            a.pushOverlay { autoBackupEditor(a) }
+        })
         col.addView(Ui.listRow(a, "ic_export", "Full backup · JSON", "Everything, restorable") { a.exportBackup() })
         col.addView(Ui.listRow(a, "ic_restore", "Restore from backup", "Replaces all current data") { a.importBackup() })
 
@@ -465,6 +491,147 @@ object MoreScreen {
             Reminders.reschedule(a)
             a.popOverlay()
         }, a))
+        col.addView(Ui.spacer(a, 24))
+        return Ui.scroll(a, col)
+    }
+
+    // ------------------------------------------------------------------
+
+    // ------------------------------------------------------------------
+
+    private fun exerciseReminderEditor(a: MainActivity): View {
+        val col = Ui.column(a)
+        col.addView(Ui.backRow(a, "Exercise reminders") { a.popOverlay() })
+        col.addView(Ui.caption(a, "A single gentle nudge each day to do your rehab exercises. " +
+            "Doing them little and often is what rebuilds the tendon - the reminder just helps the habit stick."))
+        col.addView(Ui.spacer(a, 4))
+
+        var time = Reminders.parseTime(a.store.setting("exercise_reminder", "10:00"))
+            ?: LocalTime.of(10, 0)
+        var enabled = Reminders.parseTime(a.store.setting("exercise_reminder", "10:00")) != null
+
+        val card = Ui.card(a)
+        card.addView(Forms.label(a, "Daily exercise reminder"))
+        val timeCard = Ui.card(a)
+        fun persist() {
+            a.store.saveSetting("exercise_reminder", if (enabled)
+                "%02d:%02d".format(time.hour, time.minute) else "off")
+            Reminders.reschedule(a)
+        }
+        fun rebuild() {
+            timeCard.removeAllViews()
+            if (enabled) {
+                timeCard.addView(Forms.timeButton(a, time) { t -> time = t; persist() })
+            } else {
+                timeCard.addView(Ui.caption(a, "Reminder is off. Turn it on to pick a time."))
+            }
+        }
+        card.addView(Forms.choiceRow(a, listOf(true, false), { if (it) "On" else "Off" }, enabled) {
+            enabled = it; persist(); rebuild()
+        })
+        rebuild()
+        card.addView(timeCard)
+        col.addView(card)
+
+        col.addView(Ui.caption(a, "The nudge appears only on days your current phase has exercises, " +
+            "and never replaces medication reminders."))
+        col.addView(Ui.spacer(a, 24))
+        return Ui.scroll(a, col)
+    }
+
+    // ------------------------------------------------------------------
+
+    private fun autoBackupEditor(a: MainActivity): View {
+        val col = Ui.column(a)
+        col.addView(Ui.backRow(a, "Automatic backup") { a.popOverlay() })
+        col.addView(Ui.caption(a, "Pick a file once - in Drive, Files, an SD card, anywhere your phone " +
+            "can save to - and RecoverWell quietly overwrites it with a fresh copy once a day. " +
+            "No account, no network from the app itself; the file is yours."))
+        col.addView(Ui.spacer(a, 4))
+
+        if (a.autoBackupEnabled()) {
+            val card = Ui.card(a)
+            card.addView(Ui.text(a, "On", 16f, Ui.DONE, bold = true))
+            card.addView(Ui.spacer(a, 2))
+            card.addView(Ui.text(a, "Saving to: ${a.store.setting("auto_backup_name", "your chosen file")}", 14f))
+            val last = a.store.setting("auto_backup_last", "")
+            card.addView(Ui.caption(a, if (last.isBlank()) "Not written yet." else "Last saved: $last."))
+            val err = a.store.setting("auto_backup_error", "")
+            if (err.isNotBlank()) {
+                card.addView(Ui.spacer(a, 4))
+                card.addView(Ui.text(a, "Last attempt failed: $err. The file may have been moved or " +
+                    "deleted - choose it again.", 13.5f, Ui.DANGER))
+            }
+            col.addView(card)
+
+            col.addView(Ui.fullWidth(Ui.button(a, "Back up now") {
+                if (a.writeAutoBackup()) Forms.info(a, "Done", "Your backup file is up to date.")
+                else Forms.info(a, "Couldn't save", "The file may have been moved or deleted. " +
+                    "Choose a new location below.")
+                a.refresh()
+            }, a))
+            col.addView(Ui.fullWidth(Ui.tonalButton(a, "Choose a different file") { a.chooseAutoBackupFile() }, a))
+            col.addView(Ui.fullWidth(Ui.textButton(a, "Turn off automatic backup", Ui.DANGER) {
+                Forms.confirm(a, "Turn off automatic backup?",
+                    "Your existing backup file is kept, but no new copies will be saved automatically.") {
+                    a.disableAutoBackup()
+                }
+            }, a))
+        } else {
+            val card = Ui.card(a, Ui.INFO_BG)
+            card.addView(Ui.text(a, "Losing your recovery log is the one thing you can't undo.", 14.5f, Ui.ON_INFO_BG))
+            col.addView(card)
+            col.addView(Ui.fullWidth(Ui.button(a, "Choose backup file") { a.chooseAutoBackupFile() }, a))
+            col.addView(Ui.caption(a, "Tip: saving into a cloud-synced folder (Google Drive, OneDrive) means " +
+                "your data also survives losing the phone."))
+        }
+        col.addView(Ui.spacer(a, 24))
+        return Ui.scroll(a, col)
+    }
+
+    // ------------------------------------------------------------------
+
+    private fun reminderHealth(a: MainActivity): View {
+        val col = Ui.column(a)
+        col.addView(Ui.backRow(a, "Reminder reliability") { a.popOverlay() })
+        col.addView(Ui.caption(a, "Missed reminders are almost always an Android setting, not the app. " +
+            "Here's the status of each, with a one-tap fix where there is one."))
+        col.addView(Ui.spacer(a, 4))
+
+        for (check in com.recoverwell.app.notify.ReminderHealth.checks(a)) {
+            val card = Ui.card(a, if (check.ok) Ui.DONE_BG else if (check.critical) Ui.DANGER_BG else Ui.WARN_BG)
+            val head = Ui.row(a)
+            head.addView(Ui.icon(a, if (check.ok) "ic_check" else "ic_alert", 20,
+                if (check.ok) Ui.DONE else if (check.critical) Ui.DANGER else Ui.WARN))
+            val t = Ui.text(a, check.label, 15.5f,
+                if (check.ok) Ui.DONE else if (check.critical) Ui.ON_DANGER_BG else Ui.WARN, bold = true)
+            t.setPadding(Ui.dp(a, 10), 0, 0, 0)
+            head.addView(Ui.weight(t, 1f))
+            head.addView(Ui.text(a, if (check.ok) "OK" else "Action", 13f,
+                if (check.ok) Ui.DONE else Ui.DANGER, bold = true))
+            card.addView(head)
+            card.addView(Ui.spacer(a, 4))
+            card.addView(Ui.text(a, check.detail, 14f, Ui.TEXT))
+            if (!check.ok && check.fixable) {
+                card.addView(Ui.fullWidth(Ui.tonalButton(a, "Fix this") {
+                    when (check.id) {
+                        "notifications" -> com.recoverwell.app.notify.ReminderHealth.openNotificationSettings(a)
+                        "exact" -> com.recoverwell.app.notify.ReminderHealth.requestExactAlarm(a)
+                        "battery" -> com.recoverwell.app.notify.ReminderHealth.requestIgnoreBattery(a)
+                    }
+                }, a))
+            }
+            col.addView(card)
+        }
+
+        col.addView(Ui.section(a, "Check it works"))
+        col.addView(Ui.fullWidth(Ui.button(a, "Send a test reminder now") {
+            Reminders.sendTestNotification(a)
+            Forms.info(a, "Test sent",
+                "Pull down your notification shade. If you don't see a RecoverWell test reminder, " +
+                    "fix the items above and try again.")
+        }, a))
+        col.addView(Ui.caption(a, "Tap above, then swipe down from the top of your screen to confirm it arrived."))
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
     }

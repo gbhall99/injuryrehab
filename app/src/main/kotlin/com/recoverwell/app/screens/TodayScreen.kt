@@ -129,6 +129,42 @@ object TodayScreen {
             col.addView(card)
         }
 
+        // ---- reminder delivery blocked (notifications/exact alarms off) ----
+        if (com.recoverwell.app.notify.ReminderHealth.deliveryBlocked(a)) {
+            val card = Ui.card(a, Ui.WARN_BG)
+            val r = Ui.row(a)
+            r.addView(Ui.icon(a, "ic_alert", 20, Ui.WARN))
+            val t = Ui.text(a, "Reminders may not reach you", 15.5f, Ui.WARN, bold = true)
+            t.setPadding(Ui.dp(a, 10), 0, 0, 0)
+            r.addView(Ui.weight(t, 1f))
+            card.addView(r)
+            card.addView(Ui.spacer(a, 2))
+            card.addView(Ui.text(a, "A phone setting is blocking notifications. For an anticoagulant " +
+                "schedule that matters - it takes a few seconds to fix.", 14f, Ui.TEXT))
+            card.addView(Ui.fullWidth(Ui.button(a, "Check reminder settings") {
+                a.show(MainActivity.Tab.MORE)
+            }, a))
+            col.addView(card)
+        }
+
+        // ---- weekly digest nudge (Mondays) ------------------------------
+        if (today.dayOfWeek == java.time.DayOfWeek.MONDAY && a.store.allLogs().size >= 5) {
+            val card = Ui.card(a, Ui.INFO_BG)
+            val r = Ui.row(a)
+            r.addView(Ui.icon(a, "ic_progress", 20, Ui.ON_INFO_BG))
+            val t = Ui.text(a, "Your week in review is ready", 15.5f, Ui.ON_INFO_BG, bold = true)
+            t.setPadding(Ui.dp(a, 10), 0, 0, 0)
+            r.addView(Ui.weight(t, 1f))
+            card.addView(r)
+            card.addView(Ui.spacer(a, 2))
+            card.addView(Ui.text(a, "See last week's adherence, pain trend and what to focus on next.",
+                14f, Ui.ON_INFO_BG))
+            card.addView(Ui.fullWidth(Ui.tonalButton(a, "Open this week") {
+                a.show(MainActivity.Tab.TRACKER)
+            }, a))
+            col.addView(card)
+        }
+
         // ---- progression gate -------------------------------------------
         val gate = PhaseEngine.nextPhaseGate(profile, today)
         if (gate.nextPhase != null && gate.readyToConfirm) {

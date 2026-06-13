@@ -42,6 +42,27 @@ progressive wedge reduction — built around a real recovery that started on
   bleeding and boot/skin red flags are one tap away from **every** screen via
   the persistent header button, written as symptoms + concrete actions
   (999 / 111 / clinic).
+- **On-device intelligence (no cloud, no network)** — *Insights* analyse your
+  own logs for pain/swelling trends and correlations (e.g. swelling lower on
+  elevation days); *Adaptive reminders* learn the time you actually take a dose
+  and offer to move the reminder to match; *Pace* projects whether you are
+  ahead of or behind the typical timeline from your physio-confirmed phases;
+  and *Ask my recovery* answers "Can I drive yet?", "What's next?" and red-flag
+  questions offline, deep-linking into the right screen.
+- **Engagement** — an optional once-a-day exercise nudge (only on days your
+  current phase has exercises), and a **weekly digest** on the Progress tab:
+  medication adherence, pain trend, exercise sessions completed, milestones
+  reached this week, and a single focus for the week ahead — with a Monday
+  "week in review" prompt on the home screen.
+- **Automatic backup** — pick a destination file once (Drive, Files, SD card —
+  anywhere SAF can reach) and the app silently overwrites it with a fresh
+  full-fidelity copy once a day. No account, no app network access; a persisted
+  document grant does the work. Manual export (PDF/CSV/JSON) remains.
+- **Reminder reliability** — a settings check that detects the real-world
+  reasons reminders fail (notifications blocked, exact-alarm permission
+  revoked, battery optimisation killing alarms), each with a one-tap route to
+  the right system screen and a "send a test reminder now" button. A home-screen
+  warning appears if delivery is actively blocked.
 
 ## Rehab protocol (conservative / non-surgical only)
 

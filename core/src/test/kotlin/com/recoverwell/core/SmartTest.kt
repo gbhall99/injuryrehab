@@ -6,6 +6,8 @@ import com.recoverwell.core.protocol.Defaults
 import org.junit.Assert.*
 import org.junit.Test
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
 
 /** Tests the on-device "smart" layer: insights, adaptive reminders, pace, ask. */
 class SmartTest {
@@ -111,6 +113,50 @@ class SmartTest {
         assertEquals(Ask.Action.OPEN_PHASE_GUIDE, next.action)
         val fallback = Ask.answer("xyzzy", profile, today)
         assertTrue(fallback.title.contains("help"))
+    }
+
+    @Test
+    fun weeklyDigestCountsAdherenceTrendAndExercises() {
+        val logs = (0..13).map { i -> log(today.minusDays(i.toLong()), pain = if (i <= 6) 2 else 5) }
+        val events = ArrayList<EventLog>()
+        // every dose taken for the last 7 days -> 100% adherence (1 med x 2 slots)
+        for (i in 0..6) {
+            val d = today.minusDays(i.toLong())
+            events.add(EventLog("m${i}a", d, EventType.MEDICATION, "med_anticoagulant", "08:00", EventStatus.TAKEN, 480))
+            events.add(EventLog("m${i}b", d, EventType.MEDICATION, "med_anticoagulant", "20:00", EventStatus.TAKEN, 1200))
+        }
+        // three genuine exercise sessions plus one engagement-nudge that must NOT count
+        for (i in 0..2) events.add(
+            EventLog("ex$i", today.minusDays(i.toLong()), EventType.EXERCISE, "ex_x", "session1", EventStatus.DONE, 600))
+        events.add(EventLog("nudge", today, EventType.EXERCISE,
+            ScheduleEngine.EXERCISE_SESSION_REF, ScheduleEngine.EXERCISE_SESSION_REF, EventStatus.DONE, 600))
+
+        val d = WeeklyDigest.generate(profile, logs, events, meds, tasks, today)
+        assertEquals(100, d.adherencePct)
+        assertEquals(3, d.exercisesDone)
+        assertEquals(WeeklyDigest.Trend.DOWN, d.painTrend)
+        assertTrue(d.focus.isNotBlank())
+    }
+
+    @Test
+    fun weeklyDigestHandlesNoData() {
+        val d = WeeklyDigest.generate(profile, emptyList(), emptyList(), meds, tasks, today)
+        assertEquals(0, d.adherencePct)
+        assertEquals(0, d.exercisesDone)
+        assertEquals(WeeklyDigest.Trend.NONE, d.painTrend)
+    }
+
+    @Test
+    fun exerciseReminderSchedulesADailyNudgeWhenEnabled() {
+        val now = LocalDateTime.of(today, LocalTime.of(6, 0))
+        val withNudge = ScheduleEngine.upcomingReminders(
+            profile, meds, tasks, now, exerciseReminderTime = LocalTime.of(10, 0))
+        assertTrue(withNudge.any {
+            it.kind == ScheduleEngine.ItemKind.EXERCISE && it.refId == ScheduleEngine.EXERCISE_SESSION_REF
+        })
+        // off by default (null) -> no exercise nudge
+        val without = ScheduleEngine.upcomingReminders(profile, meds, tasks, now)
+        assertFalse(without.any { it.refId == ScheduleEngine.EXERCISE_SESSION_REF })
     }
 
     @Test
