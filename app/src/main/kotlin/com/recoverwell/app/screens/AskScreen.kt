@@ -35,16 +35,8 @@ object AskScreen {
             a.refresh()
         }, a))
 
-        // suggested questions
-        col.addView(Ui.section(a, "Try"))
-        for (q in Ask.suggestions(profile)) {
-            col.addView(Ui.listRow(a, "ic_info", q, null, chevron = true) {
-                lastAnswer = Ask.answer(q, profile, today)
-                a.refresh()
-            })
-        }
-
-        // answer
+        // answer sits directly under the box so it's visible the instant you ask
+        // or tap a suggestion - no scrolling to find it
         lastAnswer?.let { ans ->
             col.addView(Ui.section(a, "Answer"))
             val card = Ui.card(a, Ui.INFO_BG)
@@ -62,6 +54,15 @@ object AskScreen {
                 Ask.Action.NONE -> {}
             }
             col.addView(card)
+        }
+
+        // suggested questions
+        col.addView(Ui.section(a, if (lastAnswer == null) "Try" else "Ask something else"))
+        for (q in Ask.suggestions(profile)) {
+            col.addView(Ui.listRow(a, "ic_info", q, null, chevron = true) {
+                lastAnswer = Ask.answer(q, profile, today)
+                a.refresh()
+            })
         }
 
         col.addView(Ui.spacer(a, 24))

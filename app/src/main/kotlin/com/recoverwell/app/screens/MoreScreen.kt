@@ -53,6 +53,18 @@ object MoreScreen {
         })
         col.addView(themeCard)
 
+        col.addView(Ui.section(a, "Exercise videos"))
+        val videoCard = Ui.card(a)
+        val inApp = a.store.setting("video_inapp", "true") != "false"
+        videoCard.addView(Forms.choiceRow(a, listOf(true, false),
+            { if (it) "Play in-app" else "Open YouTube" }, inApp) { choice ->
+            a.store.saveSetting("video_inapp", if (choice) "true" else "false")
+        })
+        videoCard.addView(Ui.spacer(a, 4))
+        videoCard.addView(Ui.caption(a, "In-app playback loads YouTube inside the app (the only thing " +
+            "that uses the network). \"Open YouTube\" hands off to the YouTube app instead."))
+        col.addView(videoCard)
+
         col.addView(Ui.section(a, "Notifications"))
         val blocked = com.recoverwell.app.notify.ReminderHealth.deliveryBlocked(a)
         val anyIssue = com.recoverwell.app.notify.ReminderHealth.hasIssue(a)
@@ -704,11 +716,13 @@ object MoreScreen {
         val priv = Ui.card(a)
         priv.addView(Ui.text(
             a,
-            "No account, no analytics, no network permission - the operating system " +
-                "enforces that the app cannot reach the internet. Your data leaves this " +
-                "phone only when you export it. Tapping \"Watch video demonstration\" hands " +
-                "off to YouTube or your browser (which have their own network); the app " +
-                "itself still sends nothing.",
+            "No account, no analytics. Every piece of your recovery data lives only on this " +
+                "phone and leaves it only when you export or back it up. The one exception is " +
+                "the exercise video player: when you tap \"Watch video demonstration\" it loads " +
+                "YouTube (in-app, or in the YouTube app - your choice in Settings). That is the " +
+                "only feature that uses the network, it only runs when you open a video, and it " +
+                "never uploads your data. Prefer zero network? Set videos to \"Open YouTube\" and " +
+                "the app itself stays silent.",
             14f
         ))
         col.addView(priv)

@@ -197,21 +197,25 @@ runtime smoke check. In a normal environment the same two modules drop into
 a standard AGP build without code changes (`core` is build-system agnostic;
 `app` is plain Kotlin + resources).
 
-### Demonstrations: real YouTube video, with an offline animation fallback
+### Demonstrations: real YouTube video, in-app, with an offline animation fallback
 
-Each exercise leads with a **"Watch video demonstration"** button that opens a
-YouTube search scoped to that exact movement plus the protocol's rehab context
-(e.g. *"Seated heel raises Achilles rupture rehab physiotherapy"*). It opens in
-the device's YouTube app or browser via a standard `ACTION_VIEW` web intent, so:
+Each exercise leads with a **"Watch video demonstration"** button that plays the
+YouTube search result for that exact movement plus the protocol's rehab context
+(e.g. *"Seated heel raises Achilles rupture rehab physiotherapy"*). By default it
+plays **inside the app** (a WebView running the YouTube IFrame player, cued to
+the search); a Settings toggle switches to handing off to the YouTube app
+(`ACTION_VIEW`) instead, and every player offers an "Open in YouTube" fallback.
 
 - the demonstrations are **real video from reputable physios**, not a stylised
-  figure, and the link can never rot into a dead hard-coded video id - a search
-  always returns live, relevant results;
-- the **app itself stays offline and permission-free** - it holds no `INTERNET`
-  permission and sends nothing; the hand-off to YouTube is user-initiated and
-  the system handles the network (stated in-app under About);
-- when offline, the bundled **procedural animation** (`ExerciseDemoView`,
-  rendered from the `draw/` module) remains as an at-a-glance quick reference,
+  figure, and a search can never rot into a dead hard-coded video id;
+- the video player is the **only** feature that uses the network. It holds the
+  `INTERNET` permission solely for this, only runs when you open a video, and
+  never uploads your data - all recovery data stays on-device (stated in-app
+  under About). Prefer zero network? Set videos to "Open YouTube" and the app
+  itself stays silent;
+- the bundled **procedural animation** (`ExerciseDemoView`, rendered from the
+  `draw/` module) remains as an offline at-a-glance quick reference - the figure
+  faces forward with the boot correctly oriented (locked by a `draw` unit test),
   paired with written cues, prescription and a precaution line.
 
 The search phrase is data: `InjuryProtocol.videoContext` plus an optional

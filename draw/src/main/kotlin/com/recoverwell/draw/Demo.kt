@@ -71,6 +71,14 @@ object DemoScene {
         return sin(r).toFloat() to cos(r).toFloat()
     }
 
+    /**
+     * Foot direction angle. The figure faces +x, so a neutral foot points
+     * FORWARD: the shank rotated +90deg. Plantarflexion (ankle+) rotates the
+     * toes down toward the shank line. Its x-component (sin) must stay positive
+     * for realistic poses - the foot must never point behind the figure.
+     */
+    fun footAngleOf(shankAngle: Float, ankle: Float): Float = shankAngle + 90f - ankle
+
     // figure palette, theme-aware (read at render time)
     private val figureBase get() = if (Palette.dark) 0xFFBFE3CC.toInt() else 0xFF24433A.toInt()
     private val FIGURE get() = Palette.withAlpha(figureBase, 0xE6)
@@ -225,12 +233,13 @@ object DemoScene {
         val (sxd, syd) = dir(shankAngle)
         val ankleX = kneeX + sxd * L
         val ankleY = kneeY + syd * L
-        val footAngle = shankAngle - 90f + ankle
+        val footAngle = footAngleOf(shankAngle, ankle)
         val (fxd, fyd) = dir(footAngle)
         val footLen = L * 0.42f
         val midX = ankleX + fxd * footLen
         val midY = ankleY + fyd * footLen
-        val toesAngle = footAngle + toes
+        // toe curl bends the toes down/under (towards the sole)
+        val toesAngle = footAngle - toes
         val (toxd, toyd) = dir(toesAngle)
         val toeX = midX + toxd * L * 0.18f
         val toeY = midY + toyd * L * 0.18f

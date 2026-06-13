@@ -96,9 +96,10 @@ object ExercisesScreen {
         val col = Ui.column(a)
         col.addView(Ui.backRow(a, spec.name) { a.popOverlay() })
 
-        val videoUrl = com.recoverwell.core.protocol.ExerciseVideo.youtubeSearchUrl(
-            spec, ProtocolRegistry.forProfile(a.store.profile()).videoContext
-        )
+        val videoContext = ProtocolRegistry.forProfile(a.store.profile()).videoContext
+        val videoUrl = com.recoverwell.core.protocol.ExerciseVideo.youtubeSearchUrl(spec, videoContext)
+        val videoQuery = com.recoverwell.core.protocol.ExerciseVideo.query(spec, videoContext)
+        val playInApp = a.store.setting("video_inapp", "true") != "false"
 
         // animated quick reference (offline); a play overlay opens a real video
         val demoCard = Ui.frame(a)
@@ -124,15 +125,20 @@ object ExercisesScreen {
         watchRow.minimumHeight = Ui.dp(a, 50)
         watchRow.setPadding(Ui.dp(a, 18), Ui.dp(a, 8), Ui.dp(a, 18), Ui.dp(a, 8))
         watchRow.isClickable = true
-        watchRow.contentDescription = "Watch a video demonstration on YouTube"
-        watchRow.setOnClickListener { a.openUrl(videoUrl) }
+        watchRow.contentDescription = "Watch a video demonstration"
+        watchRow.setOnClickListener {
+            if (playInApp) a.pushOverlay { VideoScreen.build(a, videoQuery, spec.name, videoUrl) }
+            else a.openUrl(videoUrl)
+        }
         watchRow.addView(Ui.icon(a, "ic_play", 20, com.recoverwell.draw.Palette.ON_PRIMARY))
         val wlabel = Ui.text(a, "Watch video demonstration", 15.5f, com.recoverwell.draw.Palette.ON_PRIMARY, bold = true)
         wlabel.setPadding(Ui.dp(a, 10), 0, 0, 0)
         watchRow.addView(Ui.weight(wlabel, 1f))
-        watchRow.addView(Ui.text(a, "YouTube", 12f, com.recoverwell.draw.Palette.withAlpha(com.recoverwell.draw.Palette.ON_PRIMARY, 0xCC)))
+        watchRow.addView(Ui.text(a, if (playInApp) "In-app" else "YouTube",
+            12f, com.recoverwell.draw.Palette.withAlpha(com.recoverwell.draw.Palette.ON_PRIMARY, 0xCC)))
         col.addView(Ui.fullWidth(watchRow, a, 10))
-        col.addView(Ui.caption(a, "Opens YouTube · the animation above works offline"))
+        col.addView(Ui.caption(a, if (playInApp) "Plays inside the app · the animation above works offline"
+            else "Opens YouTube · the animation above works offline"))
 
         // prescription as stat tiles
         col.addView(Ui.section(a, "Prescription"))
