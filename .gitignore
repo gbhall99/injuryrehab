@@ -3,3 +3,5 @@ build/
 */build/
 local.properties
 designlab/out/
+# built/delivered APK artifacts live under build/ or are copied out for delivery
+*.apk
