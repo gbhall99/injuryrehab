@@ -35,4 +35,37 @@ class ExerciseVideoTest {
         assertEquals("my custom phrase Achilles rupture rehab physiotherapy",
             ExerciseVideo.query(spec, protocol.videoContext))
     }
+
+    @Test
+    fun parsesVideoIdFromEveryCommonLinkForm() {
+        val id = "dQw4w9WgXcQ"
+        assertEquals(id, ExerciseVideo.parseVideoId("https://www.youtube.com/watch?v=$id"))
+        assertEquals(id, ExerciseVideo.parseVideoId("https://m.youtube.com/watch?v=$id&t=30s"))
+        assertEquals(id, ExerciseVideo.parseVideoId("https://youtu.be/$id"))
+        assertEquals(id, ExerciseVideo.parseVideoId("https://www.youtube.com/embed/$id"))
+        assertEquals(id, ExerciseVideo.parseVideoId("https://youtube.com/shorts/$id"))
+        assertEquals(id, ExerciseVideo.parseVideoId("  $id  ")) // bare id, trimmed
+    }
+
+    @Test
+    fun rejectsNonYoutubeText() {
+        assertNull(ExerciseVideo.parseVideoId(""))
+        assertNull(ExerciseVideo.parseVideoId("not a link"))
+        assertNull(ExerciseVideo.parseVideoId("https://example.com/watch?v=abc"))
+    }
+
+    @Test
+    fun pinnedIdBeatsCuratedDefault() {
+        // user's pin always wins; with no pin and no curated entry, returns null -> search
+        assertEquals("PINNED12345", ExerciseVideo.resolveVideoId("p1_toe_scrunch", "PINNED12345"))
+        assertNull(ExerciseVideo.resolveVideoId("p1_toe_scrunch", null))
+    }
+
+    @Test
+    fun pinnedVideoSurvivesBackupRoundTrip() {
+        val o = com.recoverwell.core.model.ExerciseOverride("p4_double_raise", 3, 12, 5, 2, true, "abcDEF12345")
+        val decoded = com.recoverwell.core.export.BackupCodec.overrideFrom(
+            com.recoverwell.core.export.BackupCodec.overrideJson(o))
+        assertEquals("abcDEF12345", decoded.videoId)
+    }
 }

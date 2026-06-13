@@ -199,12 +199,23 @@ a standard AGP build without code changes (`core` is build-system agnostic;
 
 ### Demonstrations: real YouTube video, in-app, with an offline animation fallback
 
-Each exercise leads with a **"Watch video demonstration"** button that plays the
-YouTube search result for that exact movement plus the protocol's rehab context
-(e.g. *"Seated heel raises Achilles rupture rehab physiotherapy"*). By default it
-plays **inside the app** (a WebView running the YouTube IFrame player, cued to
-the search); a Settings toggle switches to handing off to the YouTube app
-(`ACTION_VIEW`) instead, and every player offers an "Open in YouTube" fallback.
+Each exercise leads with a **"Watch video demonstration"** button backed by a
+**self-healing resolution chain**, so a demonstration is always available:
+
+1. a **user-pinned** YouTube video for that exercise (paste any link; the id is
+   stored and kept in your backup) — the way to make any exercise *always* play
+   the exact clip you trust;
+2. a **curated** default id for the movement (verified; empty until confirmed);
+3. a scoped **YouTube search** (e.g. *"Seated heel raises Achilles rupture rehab
+   physiotherapy"*) — a search can never rot into a dead hard-coded id.
+
+When there is a specific id, the in-app player embeds it via the reliable
+`youtube-nocookie.com/embed` IFrame and, on any embed/playback error (or if the
+API fails to load), **falls back to the search in the same WebView** — then to
+the external YouTube app, then to the offline animation. (The earlier
+`listType:'search'` embed was dropped: YouTube deprecated it in 2020, which is
+why it played unreliably.) A Settings toggle switches the whole thing to hand
+off to the YouTube app instead.
 
 - the demonstrations are **real video from reputable physios**, not a stylised
   figure, and a search can never rot into a dead hard-coded video id;

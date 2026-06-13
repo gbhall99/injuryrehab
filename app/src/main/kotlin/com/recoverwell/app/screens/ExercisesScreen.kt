@@ -98,8 +98,9 @@ object ExercisesScreen {
 
         val videoContext = ProtocolRegistry.forProfile(a.store.profile()).videoContext
         val videoUrl = com.recoverwell.core.protocol.ExerciseVideo.youtubeSearchUrl(spec, videoContext)
-        val videoQuery = com.recoverwell.core.protocol.ExerciseVideo.query(spec, videoContext)
         val playInApp = a.store.setting("video_inapp", "true") != "false"
+        val pinnedId = a.store.exerciseOverrides()[spec.id]?.videoId
+        val resolvedId = com.recoverwell.core.protocol.ExerciseVideo.resolveVideoId(spec.id, pinnedId)
 
         // animated quick reference (offline); a play overlay opens a real video
         val demoCard = Ui.frame(a)
@@ -127,8 +128,8 @@ object ExercisesScreen {
         watchRow.isClickable = true
         watchRow.contentDescription = "Watch a video demonstration"
         watchRow.setOnClickListener {
-            if (playInApp) a.pushOverlay { VideoScreen.build(a, videoQuery, spec.name, videoUrl) }
-            else a.openUrl(videoUrl)
+            if (playInApp) a.pushOverlay { VideoScreen.build(a, spec.name, resolvedId, videoUrl) }
+            else a.openUrl(if (resolvedId != null) "https://www.youtube.com/watch?v=$resolvedId" else videoUrl)
         }
         watchRow.addView(Ui.icon(a, "ic_play", 20, com.recoverwell.draw.Palette.ON_PRIMARY))
         val wlabel = Ui.text(a, "Watch video demonstration", 15.5f, com.recoverwell.draw.Palette.ON_PRIMARY, bold = true)
@@ -137,8 +138,21 @@ object ExercisesScreen {
         watchRow.addView(Ui.text(a, if (playInApp) "In-app" else "YouTube",
             12f, com.recoverwell.draw.Palette.withAlpha(com.recoverwell.draw.Palette.ON_PRIMARY, 0xCC)))
         col.addView(Ui.fullWidth(watchRow, a, 10))
-        col.addView(Ui.caption(a, if (playInApp) "Plays inside the app · the animation above works offline"
-            else "Opens YouTube · the animation above works offline"))
+
+        // pinned vs auto, with one-tap control so any exercise can be made to "always work"
+        val sourceRow = Ui.row(a)
+        sourceRow.gravity = android.view.Gravity.CENTER_VERTICAL
+        sourceRow.addView(Ui.weight(Ui.caption(a, if (pinnedId != null) "Your pinned video · always plays"
+            else "Best YouTube match · the offline animation above always works"), 1f))
+        sourceRow.addView(Ui.textButton(a, if (pinnedId != null) "Change" else "Pin a video") {
+            pinVideoDialog(a, spec)
+        })
+        if (pinnedId != null) {
+            sourceRow.addView(Ui.textButton(a, "Reset", Ui.TEXT_DIM) {
+                setPinnedVideo(a, spec, null); a.refresh()
+            })
+        }
+        col.addView(sourceRow)
 
         // prescription as stat tiles
         col.addView(Ui.section(a, "Prescription"))
@@ -225,6 +239,36 @@ object ExercisesScreen {
 
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
+    }
+
+    /** Pin (or clear) the user's chosen demonstration video, keeping prescription edits. */
+    private fun setPinnedVideo(a: MainActivity, spec: ExerciseSpec, videoId: String?) {
+        val existing = a.store.exerciseOverrides()[spec.id]
+        val base = existing ?: ExerciseOverride(spec.id, null, null, null, null, true)
+        a.store.saveExerciseOverride(base.copy(videoId = videoId))
+    }
+
+    private fun pinVideoDialog(a: MainActivity, spec: ExerciseSpec) {
+        val input = Forms.editText(a, "", "Paste a YouTube link or video id")
+        val pad = Ui.dp(a, 18)
+        val holder = LinearLayout(a).apply { setPadding(pad, Ui.dp(a, 6), pad, 0); addView(input) }
+        android.app.AlertDialog.Builder(a)
+            .setTitle("Pin a video for \"${spec.name}\"")
+            .setMessage("Paste any YouTube link (or 11-character id). It will always play for this " +
+                "exercise and is saved in your backup. Find one you trust, then paste it here.")
+            .setView(holder)
+            .setPositiveButton("Pin") { _, _ ->
+                val id = com.recoverwell.core.protocol.ExerciseVideo.parseVideoId(input.text.toString())
+                if (id == null) {
+                    Forms.info(a, "Couldn't read that link",
+                        "Paste a normal YouTube link such as https://youtu.be/XXXXXXXXXXX or the 11-character id.")
+                } else {
+                    setPinnedVideo(a, spec, id)
+                    a.refresh()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun DemoLibraryCaption(demoId: String): String =
@@ -369,11 +413,12 @@ object ExercisesScreen {
 
         col.addView(Ui.spacer(a, 12))
         col.addView(Ui.fullWidth(Ui.button(a, "Save changes") {
-            a.store.saveExerciseOverride(ExerciseOverride(spec.id, sets, reps, hold, perDay, enabled))
+            a.store.saveExerciseOverride(ExerciseOverride(spec.id, sets, reps, hold, perDay, enabled, existing?.videoId))
             a.popOverlay()
         }, a))
         col.addView(Ui.fullWidth(Ui.textButton(a, "Reset to protocol default") {
-            a.store.saveExerciseOverride(ExerciseOverride(spec.id, null, null, null, null, true))
+            // keep any pinned demonstration video; only the prescription resets
+            a.store.saveExerciseOverride(ExerciseOverride(spec.id, null, null, null, null, true, existing?.videoId))
             a.popOverlay()
         }, a, 4))
         col.addView(Ui.spacer(a, 24))

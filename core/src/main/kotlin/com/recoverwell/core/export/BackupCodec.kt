@@ -228,7 +228,8 @@ object BackupCodec {
         "reps" to Json.of(o.reps),
         "holdSeconds" to Json.of(o.holdSeconds),
         "sessionsPerDay" to Json.of(o.sessionsPerDay),
-        "enabled" to Json.of(o.enabled)
+        "enabled" to Json.of(o.enabled),
+        "videoId" to Json.of(o.videoId)
     )
 
     fun overrideFrom(j: JsonValue): ExerciseOverride = ExerciseOverride(
@@ -237,7 +238,8 @@ object BackupCodec {
         reps = j.opt("reps")?.asInt(),
         holdSeconds = j.opt("holdSeconds")?.asInt(),
         sessionsPerDay = j.opt("sessionsPerDay")?.asInt(),
-        enabled = j.opt("enabled")?.asBool() ?: true
+        enabled = j.opt("enabled")?.asBool() ?: true,
+        videoId = j.opt("videoId")?.asString()
     )
 
     // -- daily log ----------------------------------------------------------

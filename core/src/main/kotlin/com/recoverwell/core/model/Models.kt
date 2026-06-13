@@ -151,7 +151,9 @@ data class ExerciseOverride(
     val reps: Int?,
     val holdSeconds: Int?,
     val sessionsPerDay: Int?,
-    val enabled: Boolean
+    val enabled: Boolean,
+    /** User-pinned YouTube video id for this exercise's demonstration. */
+    val videoId: String? = null
 )
 
 data class PhaseSpec(
