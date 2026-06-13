@@ -178,3 +178,17 @@ The journey previews regenerate via `gradle :designlab:render` (journey_*.png)
 so the review is reproducible and cannot drift from the shipped palette/icons.
 
 53 tests green; signed v1.8 APK.
+
+---
+
+# Device-feedback round (v1.9) - five issues from real screenshots
+
+| # | Reported issue | Fix |
+|---|---|---|
+| 1 | Bottom menu looked wonky (no active tab under overlays; nav showing during onboarding) | Current tab now stays highlighted under any overlay so the nav never looks dead; the bottom nav and disclaimer strip are hidden during the modal onboarding flow |
+| 2 | "Injury hard-coded in the design - not scalable" | Remaining injury-specific screen copy (onboarding welcome + safety blurb, red-flag intro, twin red-flag button label) moved into InjuryProtocol data fields; screens read them from the registry. No injury wording left in screen code |
+| 3 | Demo figure's boot drawn the wrong way (seated pose) | Boot redrawn as thick strokes that follow the actual shank and foot segments (+ rocker sole + straps), so it wraps correctly in seated, lying and standing poses instead of a fixed shape that deformed |
+| 4 | Too much text | Removed the redundant caption under the exercise demo; trimmed exercise name; tightened copy |
+| 5 | Boot is degree-based, not wedges | SupportDevice generalised with a unit symbol, max value and formatter; WedgePlan gained a step size. The Achilles boot is now heel-angle degrees (30° -> 0° in 5° steps from week 3), shown as "Heel angle 30°" everywhere (Today, twin, tracker, settings, PDF). The body model lifts the heel by angle with no wedge stack. Settings expose start/now/step/interval; backup format carries stepSize (old backups default to 1) |
+
+53 tests green (schedule/snapshot tests updated for degrees); signed v1.9 APK.

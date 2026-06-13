@@ -21,7 +21,7 @@ object MoreScreen {
 
         col.addView(Ui.section(a, "My recovery"))
         col.addView(Ui.listRow(a, "ic_heart", "Injury & goal",
-            "Dates, side, wedge plan, appointments") { a.pushOverlay { profileEditor(a) } })
+            "Dates, side, boot plan, appointments") { a.pushOverlay { profileEditor(a) } })
         col.addView(Ui.listRow(a, "ic_calendar", "Phase dates",
             "Adjust timings agreed with your physio") { a.pushOverlay { phaseDatesEditor(a) } })
         col.addView(Ui.listRow(a, "ic_pill", "Medications",
@@ -108,23 +108,28 @@ object MoreScreen {
         col.addView(Ui.section(a, (device?.name ?: "Support") + " & weight-bearing"))
         val bootCard = Ui.card(a)
         if (device != null) {
-            val unit = device.unitName
             val units = device.unitNamePlural
-            bootCard.addView(Forms.stepper(a, "${units.replaceFirstChar { it.uppercase() }} in ${device.name.lowercase()} now",
-                p.currentWedges, 0, 8) { p = p.copy(currentWedges = it) })
-            bootCard.addView(Forms.stepper(a, "${units.replaceFirstChar { it.uppercase() }} fitted at start",
-                p.wedgePlan.initialWedges, 1, 8) {
+            val step = device.plan.stepSize.coerceAtLeast(1)
+            bootCard.addView(Forms.stepper(a, "Setting now ($units)",
+                p.currentWedges, 0, device.maxValue, step = step) { p = p.copy(currentWedges = it) })
+            bootCard.addView(Forms.stepper(a, "Setting at start ($units)",
+                p.wedgePlan.initialWedges, 0, device.maxValue, step = step) {
                 p = p.copy(wedgePlan = p.wedgePlan.copy(initialWedges = it))
             })
-            bootCard.addView(Forms.stepper(a, "First removal · week", p.wedgePlan.removalStartWeek, 1, 12) {
+            bootCard.addView(Forms.stepper(a, "Reduce by each change ($units)",
+                p.wedgePlan.stepSize, 1, device.maxValue) {
+                p = p.copy(wedgePlan = p.wedgePlan.copy(stepSize = it))
+            })
+            bootCard.addView(Forms.stepper(a, "First change · week", p.wedgePlan.removalStartWeek, 1, 12) {
                 p = p.copy(wedgePlan = p.wedgePlan.copy(removalStartWeek = it))
             })
-            bootCard.addView(Forms.stepper(a, "Days between removals", p.wedgePlan.removalIntervalDays, 3, 28) {
+            bootCard.addView(Forms.stepper(a, "Days between changes", p.wedgePlan.removalIntervalDays, 3, 28) {
                 p = p.copy(wedgePlan = p.wedgePlan.copy(removalIntervalDays = it))
             })
             bootCard.addView(Ui.spacer(a, 4))
-            bootCard.addView(Ui.caption(a, "Default: one $unit weekly from week " +
-                "${device.plan.removalStartWeek} (typical plan). Match whatever your clinic prescribed."))
+            bootCard.addView(Ui.caption(a, "Default: lower by ${device.plan.stepSize} $units every " +
+                "${device.plan.removalIntervalDays} days from week ${device.plan.removalStartWeek}. " +
+                "Match whatever your clinic prescribed."))
         }
         bootCard.addView(Forms.label(a, "Weight-bearing"))
         bootCard.addView(Forms.choiceRow(a, WeightBearing.values().toList(), { it.shortLabel }, p.weightBearing) {
@@ -349,7 +354,7 @@ object MoreScreen {
     private fun tasksEditor(a: MainActivity): View {
         val col = Ui.column(a)
         col.addView(Ui.backRow(a, "Daily care") { a.popOverlay() })
-        col.addView(Ui.caption(a, "Wedge-change reminders come from your wedge plan automatically " +
+        col.addView(Ui.caption(a, "Boot-change reminders come from your boot plan automatically " +
             "(edit it under Injury & goal)."))
         col.addView(Ui.spacer(a, 4))
 

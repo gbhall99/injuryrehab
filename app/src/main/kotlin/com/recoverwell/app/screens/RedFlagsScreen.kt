@@ -15,13 +15,11 @@ object RedFlagsScreen {
     fun build(a: MainActivity): View {
         val col = Ui.column(a)
         col.addView(Ui.backRow(a, "Red flags") { a.popOverlay() })
-        col.addView(Ui.body(a,
-            "After an Achilles rupture you are at raised risk of a blood clot, and the " +
-                "healing tendon can re-tear. Your anticoagulant exists exactly because of " +
-                "this - take these signs seriously even if they seem mild."))
+        val protocol = ProtocolRegistry.forProfile(a.store.profile())
+        col.addView(Ui.body(a, protocol.redFlagIntro))
         col.addView(Ui.spacer(a, 8))
 
-        for (rf in ProtocolRegistry.forProfile(a.store.profile()).redFlags) {
+        for (rf in protocol.redFlags) {
             val urgent = rf.id == "pe"
             val card = Ui.card(a, if (urgent) Ui.DANGER_BG else Ui.CARD)
             val head = Ui.row(a)

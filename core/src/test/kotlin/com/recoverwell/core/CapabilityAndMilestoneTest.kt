@@ -19,7 +19,7 @@ class CapabilityAndMilestoneTest {
     fun snapshotReflectsPhase1() {
         val snap = Capability.snapshot(profile, injury.plusDays(5))
         assertEquals(1, snap.phaseNumber)
-        assertEquals(5, snap.wedges)
+        assertEquals(30, snap.wedges)
         assertTrue(snap.bootStatus.contains("Boot on at all times"))
         assertTrue(snap.notAllowed.any { it.contains("without the boot") })
     }

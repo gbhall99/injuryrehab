@@ -236,23 +236,36 @@ object DemoScene {
         val toeY = midY + toyd * L * 0.18f
 
         if (boot) {
-            // modern boot shell behind the leg segments
-            val shell = PathSpec.of {
-                moveTo(kneeX + sxd * L * 0.30f - w * 0.85f, kneeY + syd * L * 0.30f)
-                lineTo(kneeX + sxd * L * 0.30f + w * 0.85f, kneeY + syd * L * 0.30f)
-                lineTo(toeX + fxd * w * 0.6f, toeY - w * 0.55f)
-                quadTo(toeX + fxd * w * 1.2f, toeY + w * 0.35f, toeX, toeY + w * 0.85f)
-                lineTo(ankleX - fxd * L * 0.30f - w * 0.55f, ankleY + w * 0.95f)
-                close()
-            }
-            s.fill(shell, Palette.withAlpha(Palette.BOOT_DARK, 0xD9))
-            // one subtle band keeps the pictogram clean at small sizes
+            // Boot drawn as thick strokes that FOLLOW the shank and foot segments,
+            // so it wraps correctly in any pose (seated, lying, standing) instead
+            // of a fixed shape that deforms. The lighter leg strokes draw on top,
+            // giving a cuff/outline read.
+            val shaftFrom = 0.34f  // start the shaft a third down from the knee
+            val sx0 = kneeX + sxd * L * shaftFrom
+            val sy0 = kneeY + syd * L * shaftFrom
+            // shaft up the shank
+            s.stroke(PathSpec.line(sx0, sy0, ankleX, ankleY), Palette.withAlpha(Palette.BOOT_DARK, 0xE6), w * 1.95f)
+            // foot box: ankle -> mid -> toe
+            s.stroke(PathSpec.of {
+                moveTo(ankleX, ankleY); lineTo(midX, midY); lineTo(toeX, toeY)
+            }, Palette.withAlpha(Palette.BOOT_DARK, 0xE6), w * 1.7f)
+            // rocker sole: a darker line just outside the foot underside
+            val pfx = -fyd; val pfy = fxd            // perpendicular to the foot
+            val soleOff = w * 0.95f
+            s.stroke(PathSpec.of {
+                moveTo(ankleX + pfx * soleOff, ankleY + pfy * soleOff)
+                lineTo(midX + pfx * soleOff, midY + pfy * soleOff)
+                lineTo(toeX + pfx * soleOff * 0.8f, toeY + pfy * soleOff * 0.8f)
+            }, Palette.BOOT_DARK, w * 0.5f)
+            // straps: two short bands perpendicular to the shank
             val pnx = -syd; val pny = sxd
-            val cxp = kneeX + sxd * L * 0.58f
-            val cyp = kneeY + syd * L * 0.58f
-            s.stroke(PathSpec.line(cxp - pnx * w * 0.72f, cyp - pny * w * 0.72f,
-                cxp + pnx * w * 0.72f, cyp + pny * w * 0.72f),
-                Palette.BOOT_MID, w * 0.22f, roundCaps = false)
+            for (f in listOf(0.55f, 0.80f)) {
+                val cxp = kneeX + sxd * L * f
+                val cyp = kneeY + syd * L * f
+                s.stroke(PathSpec.line(cxp - pnx * w * 1.0f, cyp - pny * w * 1.0f,
+                    cxp + pnx * w * 1.0f, cyp + pny * w * 1.0f),
+                    Palette.BOOT_MID, w * 0.28f, roundCaps = false)
+            }
         }
 
         s.stroke(PathSpec.line(hipX, hipY, kneeX, kneeY), color, w)

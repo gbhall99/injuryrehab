@@ -76,9 +76,9 @@ object TrackerScreen {
             form.addView(Forms.choiceRow(a, listOf(true, false), { if (it) "Yes" else "No" }, log.bootWornAsPlanned) {
                 log = log.copy(bootWornAsPlanned = it)
             })
-            form.addView(Forms.stepper(a,
-                "${device.unitNamePlural.replaceFirstChar { it.uppercase() }} in ${device.name.lowercase()}",
-                log.wedges ?: a.store.profile().currentWedges, 0, 8) {
+            form.addView(Forms.stepper(a, "Boot setting (${device.unitNamePlural})",
+                log.wedges ?: a.store.profile().currentWedges, 0, device.maxValue,
+                step = device.plan.stepSize.coerceAtLeast(1)) {
                 log = log.copy(wedges = it)
             })
         }

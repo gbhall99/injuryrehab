@@ -65,9 +65,9 @@ fun main(args: Array<String>) {
 
     // ---- body model across phases -------------------------------------------
     for (phase in 1..5) {
-        val wedges = when (phase) { 1 -> 5; 2 -> 2; else -> 0 }
+        val frac = when (phase) { 1 -> 1.0f; 2 -> 0.5f; else -> 0f }
         png("body_p$phase", 360, 420, Palette.SURFACE_CARD) { s ->
-            BodyScene.render(s, phase, wedges, mirrored = false)
+            BodyScene.render(s, phase, frac, 0, mirrored = false)
         }
     }
 

@@ -104,13 +104,6 @@ object ExercisesScreen {
         demoCard.addView(demo, ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(a, 230))
         col.addView(demoCard, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        val capRow = Ui.row(a)
-        capRow.setPadding(Ui.dp(a, 4), Ui.dp(a, 8), 0, 0)
-        capRow.addView(Ui.icon(a, "ic_info", 16, Ui.TEXT_DIM))
-        val cap = Ui.caption(a, DemoLibraryCaption(spec.demoId))
-        cap.setPadding(Ui.dp(a, 8), 0, 0, 0)
-        capRow.addView(Ui.weight(cap, 1f))
-        col.addView(capRow)
 
         // prescription as stat tiles
         col.addView(Ui.section(a, "Prescription"))

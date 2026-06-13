@@ -32,9 +32,9 @@ object Journeys {
         m.s.text("Welcome to", m.pad, 184f, 16f, Palette.ON_SURFACE_VARIANT)
         m.s.text("RecoverWell", m.pad, 218f, 30f, Palette.ON_SURFACE, medium = true)
         m.y = 234f
-        m.textLine("Your daily coach for achilles tendon rupture rehab", 15f, Palette.ON_SURFACE)
-        m.textLine("(conservative, non-surgical) - exercises, reminders", 15f, Palette.ON_SURFACE)
-        m.textLine("and progress tracking, back to the padel court.", 15f, Palette.ON_SURFACE)
+        m.textLine("Your daily coach through a conservative (non-surgical)", 15f, Palette.ON_SURFACE)
+        m.textLine("Achilles rupture - exercises, reminders and", 15f, Palette.ON_SURFACE)
+        m.textLine("progress tracking.", 15f, Palette.ON_SURFACE)
         m.y += 8f
         // disclaimer card
         val t1 = m.card(96f, Palette.WARN_CONTAINER)
@@ -47,7 +47,7 @@ object Journeys {
         MaterialIcons.draw(m.s, "ic_alert", m.pad + 23f, t2 + 19f, 22f, Palette.ERROR)
         m.s.text("Safety first", m.pad + 60f, t2 + 36f, 16f, Palette.ON_ERROR_CONTAINER, medium = true)
         m.s.text("Achilles rupture carries a real risk of blood", m.pad + 16f, t2 + 64f, 13.5f, Palette.ON_ERROR_CONTAINER)
-        m.s.text("clots - that is why you take an anticoagulant.", m.pad + 16f, t2 + 84f, 13.5f, Palette.ON_ERROR_CONTAINER)
+        m.s.text("clots - that is why you take a clot-prevention med.", m.pad + 16f, t2 + 84f, 13.5f, Palette.ON_ERROR_CONTAINER)
         m.s.roundRect(m.pad + 16f, t2 + 100f, m.W - m.pad - 16f, t2 + 138f, 19f, Palette.ERROR)
         m.s.text("Read the red flags", m.W / 2f, t2 + 124f, 14f, Palette.ON_ERROR, medium = true, centered = true)
         m.primaryButton("I understand - continue")
@@ -109,8 +109,6 @@ object Journeys {
         DemoScene.render(sub, "toe_scrunch", 900L)
         m.s.restore()
         m.y = top + dh + 6f
-        m.s.text("Ankle still in the boot - only the toes curl", m.pad + 4f, m.y + 14f, 12.5f, Palette.ON_SURFACE_VARIANT)
-        m.y += 24f
         m.section("Prescription")
         // stat tiles
         val tt = m.y + 4f
@@ -221,7 +219,7 @@ object Journeys {
         val ht = 230f; val top = m.card(ht)
         m.s.save(); m.s.translate(m.pad + 8f, top + 8f)
         val sub = object : Sketch by m.s { override val width = 150f; override val height = ht - 16f }
-        BodyScene.render(sub, 1, 5, false)
+        BodyScene.render(sub, 1, 1.0f, 0, false)
         m.s.restore()
         val fx = m.pad + 168f
         m.s.roundRect(fx, top + 16f, fx + 150f, top + 42f, 13f, Palette.PRIMARY_CONTAINER)
@@ -231,7 +229,7 @@ object Journeys {
         m.s.text("Tendon ends knitting", fx, top + 116f, 12.5f, Palette.ON_SURFACE_VARIANT)
         m.s.text("together", fx, top + 132f, 12.5f, Palette.ON_SURFACE_VARIANT)
         m.s.text("Boot on at all times", fx, top + 162f, 13f, Palette.ON_SURFACE)
-        m.s.text("5 wedges, heel raised", fx, top + 182f, 13f, Palette.ON_SURFACE)
+        m.s.text("Heel angle 30°", fx, top + 182f, 13f, Palette.ON_SURFACE)
         m.section("Can I...")
         val cc = m.card(186f)
         val rows = listOf("Walk without the boot" to false, "Drive a car" to false, "Play padel" to false)

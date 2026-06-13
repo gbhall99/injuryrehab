@@ -85,7 +85,7 @@ object ScheduleEngine {
                     kind = ItemKind.WEDGE_CHANGE,
                     refId = "wedge_$after",
                     slotKey = d.toString(),
-                    title = "${device.name} change due: ${device.reductionVerb} (${after} ${device.unitNamePlural} left)",
+                    title = "Boot change due: ${device.reductionVerb} to ${device.format(after)}",
                     subtitle = ProtocolRegistry.forProfile(profile).placeholderNote +
                         " Only adjust the ${device.name.lowercase()} if your clinic has agreed this step.",
                     time = LocalTime.of(9, 0),

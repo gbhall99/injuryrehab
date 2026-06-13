@@ -24,12 +24,7 @@ object Onboarding {
         col.addView(Ui.display(a, "RecoverWell"))
         col.addView(Ui.spacer(a, 4))
         val protocol = ProtocolRegistry.forProfile(a.store.profile())
-        col.addView(Ui.body(
-            a,
-            "Your daily coach for ${protocol.injuryName.lowercase()} rehab " +
-                "(${protocol.variantName.lowercase()}) - exercises, reminders and " +
-                "progress tracking, all the way back to the padel court."
-        ))
+        col.addView(Ui.body(a, protocol.welcomeBlurb))
 
         col.addView(Ui.spacer(a, 12))
         val disc = Ui.card(a, Ui.WARN_BG)
@@ -41,18 +36,12 @@ object Onboarding {
         val safety = Ui.card(a, Ui.DANGER_BG)
         val sr = Ui.row(a)
         sr.addView(Ui.iconBadge(a, "ic_alert", Ui.DANGER, 0x14B3261E, boxDp = 36))
-        val st = Ui.text(a, "Safety first", 16f, Ui.ON_DANGER_BG, bold = true)
+        val st = Ui.text(a, protocol.safetyTitle, 16f, Ui.ON_DANGER_BG, bold = true)
         st.setPadding(Ui.dp(a, 12), 0, 0, 0)
         sr.addView(Ui.weight(st, 1f))
         safety.addView(sr)
         safety.addView(Ui.spacer(a, 6))
-        safety.addView(Ui.text(
-            a,
-            "Achilles rupture carries a real risk of blood clots - that is why you " +
-                "take an anticoagulant. The red-flag button stays at the top of every " +
-                "screen. Read it once now so you know what to watch for.",
-            14.5f, Ui.ON_DANGER_BG
-        ))
+        safety.addView(Ui.text(a, protocol.safetyBlurb, 14.5f, Ui.ON_DANGER_BG))
         safety.addView(Ui.fullWidth(Ui.dangerButton(a, "Read the red flags") {
             a.pushOverlay { RedFlagsScreen.build(a) }
         }, a))

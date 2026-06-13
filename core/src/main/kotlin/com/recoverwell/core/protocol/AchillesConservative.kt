@@ -35,12 +35,12 @@ object AchillesConservative {
             title = "Immobilisation & protection",
             subtitle = "Weeks 0-2 · boot at full equinus, let the tendon ends knit",
             tissueState = "Tendon ends knitting together - maximum protection",
-            deviceUsage = "Boot on at all times · {n} wedge(s), heel raised",
+            deviceUsage = "Boot on at all times · heel angle {n}°",
             startWeek = 0,
             endWeek = 2,
             entryCriteria = listOf(
                 "Achilles rupture confirmed and conservative pathway chosen by your clinical team",
-                "Walking boot fitted with full wedge set (foot pointed down / full equinus)"
+                "Walking boot set to full heel angle (foot pointed down / full equinus)"
             ),
             goals = listOf(
                 "Protect the healing tendon - boot on at all times, including in bed unless told otherwise",
@@ -51,7 +51,7 @@ object AchillesConservative {
             precautions = listOf(
                 "Never walk without the boot, even for one step (e.g. night-time bathroom trips)",
                 "Do not move the ankle up towards you (dorsiflexion) - the boot angle protects the tendon",
-                "Do not remove or change wedges yourself unless your clinic has told you to",
+                "Do not change the boot's heel angle yourself unless your clinic has told you to",
                 "Watch daily for DVT warning signs - calf pain, heat, swelling, redness"
             ),
             allowed = listOf(
@@ -72,28 +72,28 @@ object AchillesConservative {
         ),
         PhaseSpec(
             number = 2,
-            title = "Progressive weight-bearing & wedge reduction",
+            title = "Progressive weight-bearing & heel-angle reduction",
             subtitle = "Weeks 2-8 · step the heel down gradually, build to full weight",
             tissueState = "Early healing tissue forming - protected loading helps it organise",
-            deviceUsage = "Boot on at all times · {n} wedge(s)",
+            deviceUsage = "Boot on at all times · heel angle {n}°",
             startWeek = 2,
             endWeek = 8,
             entryCriteria = listOf(
                 "Around 2 weeks since injury (typical protocol - confirm with your physio)",
                 "Comfortable in the boot with pain and swelling settling",
-                "Clinic happy for the wedge-reduction plan to start"
+                "Clinic happy for the heel-angle reduction plan to start"
             ),
             goals = listOf(
-                "Remove wedges on schedule so the boot reaches neutral by ~week 8 (your clinic sets the exact plan)",
+                "Lower the heel angle on schedule so the boot reaches neutral (0°) by ~week 8",
                 "Progress from crutches to confident full weight-bearing in the boot",
                 "Keep swelling controlled; continue clot-prevention medication if still prescribed",
                 "Maintain strength everywhere else so phase 4 starts from a good base"
             ),
             precautions = listOf(
-                "Only remove wedges on the planned dates and only if your clinic agrees",
+                "Only lower the heel angle on the planned dates and only if your clinic agrees",
                 "Still no steps without the boot",
                 "No dorsiflexion past the current boot angle, no calf stretching",
-                "If a wedge change causes sharp pain, put the wedge back and call your clinic",
+                "If lowering the heel angle causes sharp pain, set it back and call your clinic",
                 "Keep watching for DVT signs - risk persists while immobilised"
             ),
             allowed = listOf(
@@ -242,7 +242,7 @@ object AchillesConservative {
 
     private fun phase1Exercises() = listOf(
         ExerciseSpec(
-            id = "p1_toe_scrunch", phase = 1, name = "Toe wiggles & scrunches (in boot)",
+            id = "p1_toe_scrunch", phase = 1, name = "Toe wiggles & scrunches",
             demoId = "toe_scrunch",
             cues = listOf(
                 "Keep the boot on and the ankle completely still",
@@ -587,9 +587,9 @@ object AchillesConservative {
         Milestone(0, "Injury & boot fitted", "Rupture confirmed; boot on in full equinus; clot-prevention plan started."),
         Milestone(1, "Specialist review", "Consultant confirms the conservative pathway and the boot/wedge plan."),
         Milestone(2, "Settled in the boot", "Pain and swelling settling; weight-bearing as tolerated becoming comfortable."),
-        Milestone(3, "First wedge out", "Wedge reduction typically begins (clinic-dependent: weekly or fortnightly)."),
+        Milestone(3, "First heel-angle reduction", "Heel-angle reduction typically begins (clinic-dependent: weekly or fortnightly)."),
         Milestone(6, "Walking confidently in boot", "Full weight-bearing without crutches for most people."),
-        Milestone(8, "Boot at neutral", "All wedges typically removed; foot flat in the boot."),
+        Milestone(8, "Boot at neutral", "Heel angle typically at neutral (0°); foot flat in the boot."),
         Milestone(10, "Boot weaning", "Transition to supportive shoes with a heel raise, guided by your physio."),
         Milestone(12, "Out of the boot", "Normal shoes; gentle stretching may begin ONLY if your physio approves."),
         Milestone(16, "Strength building", "Double-leg heel raises strong; balance work progressing."),
@@ -723,10 +723,13 @@ object AchillesConservative {
         sided = true,
         supportDevice = SupportDevice(
             name = "Walking boot",
-            unitName = "wedge",
-            unitNamePlural = "wedges",
-            reductionVerb = "remove 1 wedge",
-            plan = WedgePlan(initialWedges = 5, removalStartWeek = 3, removalIntervalDays = 7)
+            unitName = "degree",
+            unitNamePlural = "degrees",
+            unitSymbol = "°",
+            reductionVerb = "lower the heel angle",
+            maxValue = 40,
+            // heel angle stepped from 30° to neutral, 5° a week from week 3 -> 0° by ~week 8
+            plan = WedgePlan(initialWedges = 30, removalStartWeek = 3, removalIntervalDays = 7, stepSize = 5)
         ),
         phases = phases,
         milestones = milestones,
@@ -748,6 +751,15 @@ object AchillesConservative {
                 "Drills first; competitive play typically 9-12 months with sign-off")
         ),
         bodySceneId = "lower_leg",
+        welcomeBlurb = "Your daily coach through a conservative (non-surgical) Achilles " +
+            "rupture - exercises, reminders and progress tracking.",
+        safetyTitle = "Safety first",
+        safetyBlurb = "Achilles rupture carries a real risk of blood clots - that is why " +
+            "you take a clot-prevention medication. The red-flag button stays at the top " +
+            "of every screen. Read it once now so you know what to watch for.",
+        redFlagIntro = "After an Achilles rupture you are at raised risk of a blood clot, and " +
+            "the healing tendon can re-tear. Take these signs seriously even if they seem mild.",
+        redFlagButtonLabel = "DVT & re-rupture red flags",
         prefillDescription = "Full Achilles tendon rupture (left), injured playing padel; " +
             "managed conservatively in a walking boot.",
         prefillGoal = "Full recovery and return to playing padel",

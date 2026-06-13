@@ -53,16 +53,16 @@ class ScheduleEngineTest {
 
     @Test
     fun wedgeChangeAppearsOnPlannedDates() {
-        // Default plan: 5 wedges, one removed weekly from start of week 3.
-        val firstRemoval = injury.plusDays(14)
-        val items = ScheduleEngine.wedgeChangesOn(profile, firstRemoval)
+        // Default plan: heel angle 30 degrees, lowered 5 every week from week 3.
+        val firstChange = injury.plusDays(14)
+        val items = ScheduleEngine.wedgeChangesOn(profile, firstChange)
         assertEquals(1, items.size)
-        assertTrue(items[0].title, items[0].title.contains("4 wedges left"))
-        assertTrue(ScheduleEngine.wedgeChangesOn(profile, firstRemoval.plusDays(1)).isEmpty())
-        // Last removal leaves 0 wedges, 4 weeks after the first.
-        val last = ScheduleEngine.wedgeChangesOn(profile, firstRemoval.plusWeeks(4))
+        assertTrue(items[0].title, items[0].title.contains("25°"))
+        assertTrue(ScheduleEngine.wedgeChangesOn(profile, firstChange.plusDays(1)).isEmpty())
+        // 30 -> 0 in 5-degree steps takes 6 changes; the 6th leaves 0 degrees.
+        val last = ScheduleEngine.wedgeChangesOn(profile, firstChange.plusWeeks(5))
         assertEquals(1, last.size)
-        assertTrue(last[0].title.contains("0 wedges left"))
+        assertTrue(last[0].title, last[0].title.contains("0°"))
     }
 
     @Test

@@ -50,7 +50,10 @@ object PdfReport {
         line(Style.BODY, "Pathway: ${protocol.variantName} · Goal: ${profile.goal}")
         val phase = PhaseEngine.currentPhase(profile, today)
         line(Style.BODY, "Current phase: ${phase.number} - ${phase.title}")
-        line(Style.BODY, "Boot wedges: ${profile.currentWedges} (plan expects ${profile.wedgePlan.expectedWedges(profile.injuryDate, today)}) · ${profile.weightBearing.label}")
+        protocol.supportDevice?.let { dev ->
+            line(Style.BODY, "${dev.name}: ${dev.format(profile.currentWedges)} " +
+                "(plan expects ${dev.format(profile.wedgePlan.expectedWedges(profile.injuryDate, today))}) · ${profile.weightBearing.label}")
+        }
         for (a in profile.appointments) {
             line(Style.BODY, "Appointment: ${a.date} ${a.label}${if (a.completed) " (completed)" else ""}")
         }

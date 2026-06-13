@@ -35,6 +35,16 @@ data class InjuryProtocol(
     val movementChecks: List<MovementCheckSpec>,
     /** Which drawn body visual the twin screen uses (registry key). */
     val bodySceneId: String,
+    // ---- copy that would otherwise be hard-coded in screens (scalable) ----
+    /** One-line welcome blurb on the onboarding screen. */
+    val welcomeBlurb: String,
+    /** Headline + body of the onboarding "safety first" card. */
+    val safetyTitle: String,
+    val safetyBlurb: String,
+    /** Intro paragraph at the top of the red-flags screen. */
+    val redFlagIntro: String,
+    /** Label of the red-flags shortcut button on the digital-twin screen. */
+    val redFlagButtonLabel: String,
     // ---- onboarding prefills (all editable in-app) ----
     val prefillDescription: String,
     val prefillGoal: String,
@@ -48,13 +58,21 @@ data class InjuryProtocol(
 data class SupportDevice(
     /** e.g. "Walking boot" */
     val name: String,
-    /** e.g. "wedge" / "wedges" */
+    /** e.g. "wedge" / "wedges", or "degree" / "degrees" */
     val unitName: String,
     val unitNamePlural: String,
-    /** What a scheduled reduction means, e.g. "remove 1 wedge". */
+    /** Compact symbol for the unit, e.g. "°"; empty for counted units. */
+    val unitSymbol: String,
+    /** What a scheduled reduction means, e.g. "remove a wedge" / "lower the heel angle". */
     val reductionVerb: String,
+    /** Upper bound for the in-app stepper editing this device's value. */
+    val maxValue: Int,
     val plan: WedgePlan
-)
+) {
+    /** Display a value with its unit: "20°" or "3 wedges". */
+    fun format(value: Int): String =
+        if (unitSymbol.isNotEmpty()) "$value$unitSymbol" else "$value $unitNamePlural"
+}
 
 data class MovementCheckSpec(
     val movement: String,

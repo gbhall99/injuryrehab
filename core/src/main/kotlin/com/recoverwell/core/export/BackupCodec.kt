@@ -72,7 +72,8 @@ object BackupCodec {
         "wedgePlan" to Json.obj(
             "initialWedges" to Json.of(p.wedgePlan.initialWedges),
             "removalStartWeek" to Json.of(p.wedgePlan.removalStartWeek),
-            "removalIntervalDays" to Json.of(p.wedgePlan.removalIntervalDays)
+            "removalIntervalDays" to Json.of(p.wedgePlan.removalIntervalDays),
+            "stepSize" to Json.of(p.wedgePlan.stepSize)
         ),
         "currentWedges" to Json.of(p.currentWedges),
         "weightBearing" to Json.of(p.weightBearing.name),
@@ -105,7 +106,8 @@ object BackupCodec {
             WedgePlan(
                 it.get("initialWedges").asInt(),
                 it.get("removalStartWeek").asInt(),
-                it.get("removalIntervalDays").asInt()
+                it.get("removalIntervalDays").asInt(),
+                it.opt("stepSize")?.asInt() ?: 1
             )
         },
         currentWedges = j.get("currentWedges").asInt(),

@@ -110,19 +110,26 @@ object BodyScene {
         else -> 0xFF3E8E5E.toInt()
     }
 
-    fun render(s: Sketch, phase: Int, wedges: Int, mirrored: Boolean) {
+    /**
+     * @param heelFraction 0..1, how raised the heel is (1 = full equinus) -
+     *   works for any unit (wedges or degrees), computed by the caller.
+     * @param wedgeStackCount orange wedges to draw under the heel; 0 for
+     *   degree-based boots (which lift the heel without a wedge stack).
+     */
+    fun render(s: Sketch, phase: Int, heelFraction: Float, wedgeStackCount: Int, mirrored: Boolean) {
         val w = s.width
         val h = s.height
         val groundY = h * 0.90f
         val inBoot = phase <= 2
-        val nWedges = if (inBoot) wedges.coerceIn(0, 6) else 0
+        val nWedges = if (inBoot) wedgeStackCount.coerceIn(0, 6) else 0
 
         val cx = w * 0.42f               // shank centreline
         val kneeY = h * 0.06f
         // barefoot rests on the ground; in the boot the foot sits on the sole
         val soleTopY = if (inBoot) groundY - h * 0.040f else groundY
         val wedgeH = h * 0.016f
-        val heelLift = nWedges * wedgeH
+        val maxLift = h * 0.096f
+        val heelLift = if (inBoot) heelFraction.coerceIn(0f, 1f) * maxLift else 0f
         val ankleY = (if (inBoot) soleTopY - heelLift else soleTopY) - h * 0.092f
 
         // contact shadow

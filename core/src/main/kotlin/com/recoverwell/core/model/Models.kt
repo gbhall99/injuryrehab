@@ -30,30 +30,35 @@ data class Appointment(
 )
 
 /**
- * Plan for stepping the boot down from full equinus to neutral.
- * Defaults follow a typical NHS conservative functional protocol
- * (one wedge removed per week from the start of week 3) but every value
- * is a physio-confirmable placeholder, editable in the app.
+ * Plan for stepping a support device down from its starting setting to neutral
+ * (0). The value is expressed in the device's own unit - boot wedges (step 1)
+ * or heel-angle degrees (e.g. step 5) - and [stepSize] is how much each
+ * scheduled change reduces it. Every value is a physio-confirmable placeholder,
+ * editable in the app. Field names keep the historical "wedge" spelling for
+ * backup compatibility; the unit is defined by the protocol's SupportDevice.
  */
 data class WedgePlan(
     val initialWedges: Int,
     val removalStartWeek: Int,
-    val removalIntervalDays: Int
+    val removalIntervalDays: Int,
+    val stepSize: Int = 1
 ) {
-    /** Dates on which one wedge is due to be removed, with the wedge count after removal. */
+    private val step get() = stepSize.coerceAtLeast(1)
+
+    /** Dates on which a reduction is due, with the device value after it. */
     fun removalSchedule(injuryDate: LocalDate): List<Pair<LocalDate, Int>> {
         val out = ArrayList<Pair<LocalDate, Int>>()
         var date = injuryDate.plusDays((removalStartWeek - 1) * 7L)
         var remaining = initialWedges
         while (remaining > 0) {
-            remaining -= 1
+            remaining = (remaining - step).coerceAtLeast(0)
             out.add(date to remaining)
             date = date.plusDays(removalIntervalDays.toLong())
         }
         return out
     }
 
-    /** Expected wedge count in the boot on a given date. */
+    /** Expected device value on a given date. */
     fun expectedWedges(injuryDate: LocalDate, on: LocalDate): Int {
         var expected = initialWedges
         for ((date, after) in removalSchedule(injuryDate)) {

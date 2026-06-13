@@ -21,6 +21,7 @@ object TwinScreen {
     fun build(a: MainActivity): View {
         val today = LocalDate.now()
         val profile = a.store.profile()
+        val protocol = ProtocolRegistry.forProfile(profile)
         val snap = Capability.snapshot(profile, today)
         val col = Ui.column(a)
 
@@ -28,9 +29,14 @@ object TwinScreen {
         val heroCard = Ui.card(a)
         val heroRow = Ui.row(a)
         // visuals are registered per protocol; unknown ids simply show no scene
+        val device = protocol.supportDevice
+        val initial = device?.plan?.initialWedges ?: 1
+        val heelFraction = if (initial > 0) snap.wedges.toFloat() / initial else 0f
+        // an orange wedge stack only makes sense for counted (wedge) boots
+        val wedgeStack = if (device != null && device.unitSymbol.isEmpty()) snap.wedges else 0
         val scene: ((com.recoverwell.draw.Sketch) -> Unit)? =
-            when (ProtocolRegistry.forProfile(profile).bodySceneId) {
-                "lower_leg" -> { s -> BodyScene.render(s, snap.phaseNumber, snap.wedges, profile.side == Side.RIGHT) }
+            when (protocol.bodySceneId) {
+                "lower_leg" -> { s -> BodyScene.render(s, snap.phaseNumber, heelFraction, wedgeStack, profile.side == com.recoverwell.core.model.Side.RIGHT) }
                 else -> null
             }
         if (scene != null) {
@@ -42,7 +48,6 @@ object TwinScreen {
         facts.addView(Ui.pillBadge(a, "Week ${snap.weeksSinceInjury} · Phase ${snap.phaseNumber}",
             Ui.ON_PRIMARY_CONTAINER, Ui.PRIMARY_CONTAINER))
         facts.addView(Ui.spacer(a, 8))
-        val protocol = ProtocolRegistry.forProfile(profile)
         val sideLabel = if (protocol.sided)
             profile.side.name.lowercase().replaceFirstChar { it.uppercase() } + " · " else ""
         facts.addView(Ui.text(a, sideLabel + protocol.injuryName, 16f, Ui.TEXT, bold = true))
@@ -122,7 +127,7 @@ object TwinScreen {
         }
         col.addView(dontCard)
 
-        col.addView(Ui.fullWidth(Ui.dangerButton(a, "DVT & re-rupture red flags") {
+        col.addView(Ui.fullWidth(Ui.dangerButton(a, protocol.redFlagButtonLabel) {
             a.pushOverlay { RedFlagsScreen.build(a) }
         }, a))
 

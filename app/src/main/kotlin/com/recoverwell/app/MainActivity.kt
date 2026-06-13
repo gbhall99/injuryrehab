@@ -35,6 +35,7 @@ class MainActivity : Activity() {
     lateinit var store: Store
     private lateinit var content: FrameLayout
     private lateinit var tabBar: LinearLayout
+    private lateinit var disclaimer: android.widget.TextView
     private lateinit var appBarTitle: android.widget.TextView
     var currentTab = Tab.TODAY
     private val overlays = ArrayList<() -> View>()
@@ -86,7 +87,7 @@ class MainActivity : Activity() {
         root.addView(content, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
 
         // persistent disclaimer: quiet but always present and tappable
-        val disclaimer = Ui.caption(this, "Supports - never replaces - your physio and consultant")
+        disclaimer = Ui.caption(this, "Supports - never replaces - your physio and consultant")
         disclaimer.gravity = Gravity.CENTER
         disclaimer.setPadding(Ui.dp(this, 12), Ui.dp(this, 6), Ui.dp(this, 12), Ui.dp(this, 6))
         disclaimer.setOnClickListener { Forms.info(this, "Medical disclaimer", RehabFramework.DISCLAIMER) }
@@ -137,10 +138,16 @@ class MainActivity : Activity() {
         }
     }
 
+    /** Onboarding is a modal flow: hide the bottom nav and disclaimer during it. */
+    private fun onboardingActive(): Boolean =
+        overlays.isNotEmpty() && !store.profile().onboardingComplete
+
     private fun rebuildTabBar() {
         tabBar.removeAllViews()
         for (tab in Tab.values()) {
-            val active = tab == currentTab && overlays.isEmpty()
+            // keep the current tab highlighted even under an overlay, so the nav
+            // never looks "dead" - the overlay is a child of this tab
+            val active = tab == currentTab
             val item = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_HORIZONTAL
@@ -196,6 +203,9 @@ class MainActivity : Activity() {
 
     private fun render(animated: Boolean) {
         rebuildTabBar()
+        val onboarding = onboardingActive()
+        tabBar.visibility = if (onboarding) View.GONE else View.VISIBLE
+        disclaimer.visibility = if (onboarding) View.GONE else View.VISIBLE
         appBarTitle.text = if (overlays.isNotEmpty()) "RecoverWell" else currentTab.label
         for (i in 0 until content.childCount) content.getChildAt(i).animate().cancel()
         content.removeAllViews()

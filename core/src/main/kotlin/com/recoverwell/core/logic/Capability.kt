@@ -92,10 +92,10 @@ object Capability {
             out.add(
                 Warning(
                     Severity.WARNING,
-                    "${device.unitNamePlural.replaceFirstChar { it.uppercase() }} ahead of plan",
-                    "${device.name} has ${profile.currentWedges} ${device.unitNamePlural} but the plan " +
-                        "expects $expected today. Reducing support early increases re-injury risk - " +
-                        "check with your physio."
+                    "${device.name} ahead of plan",
+                    "Your ${device.name.lowercase()} is set to ${device.format(profile.currentWedges)} " +
+                        "but the plan expects ${device.format(expected)} today. Reducing support early " +
+                        "increases re-injury risk - check with your physio."
                 )
             )
         }
@@ -103,9 +103,10 @@ object Capability {
             out.add(
                 Warning(
                     Severity.INFO,
-                    "${device.unitNamePlural.replaceFirstChar { it.uppercase() }} behind plan",
-                    "${device.name} has ${profile.currentWedges} ${device.unitNamePlural}; the plan expects " +
-                        "$expected. Fine if your clinic chose this - otherwise a change may be overdue."
+                    "${device.name} behind plan",
+                    "Your ${device.name.lowercase()} is set to ${device.format(profile.currentWedges)}; " +
+                        "the plan expects ${device.format(expected)}. Fine if your clinic chose this - " +
+                        "otherwise a change may be overdue."
                 )
             )
         }

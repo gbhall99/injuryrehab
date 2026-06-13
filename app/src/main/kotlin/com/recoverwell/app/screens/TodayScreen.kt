@@ -217,11 +217,12 @@ object TodayScreen {
                     }
                 } else {
                     val after = item.refId.removePrefix("wedge_").toIntOrNull()
+                    val device = ProtocolRegistry.forProfile(a.store.profile()).supportDevice
+                    val afterLabel = after?.let { device?.format(it) ?: it.toString() }
                     Forms.confirm(
-                        a, "Wedge change",
-                        "Only change wedges if your clinic agreed this step. " +
-                            "Mark one wedge removed" +
-                            (after?.let { " ($it left in the boot)" } ?: "") + "?"
+                        a, "Boot change",
+                        "Only change the boot if your clinic agreed this step. " +
+                            "Mark it done" + (afterLabel?.let { " (now $it)" } ?: "") + "?"
                     ) {
                         if (after != null) {
                             a.store.saveProfile(a.store.profile().copy(currentWedges = after))
