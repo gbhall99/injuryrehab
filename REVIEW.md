@@ -192,3 +192,18 @@ so the review is reproducible and cannot drift from the shipped palette/icons.
 | 5 | Boot is degree-based, not wedges | SupportDevice generalised with a unit symbol, max value and formatter; WedgePlan gained a step size. The Achilles boot is now heel-angle degrees (30° -> 0° in 5° steps from week 3), shown as "Heel angle 30°" everywhere (Today, twin, tracker, settings, PDF). The body model lifts the heel by angle with no wedge stack. Settings expose start/now/step/interval; backup format carries stepSize (old backups default to 1) |
 
 53 tests green (schedule/snapshot tests updated for degrees); signed v1.9 APK.
+
+---
+
+# Device-feedback (v2.0) - bottom-nav label alignment
+
+Reported: menu labels not aligned to their icons. Cause: each tab label was a
+WRAP_CONTENT TextView relying on the parent's CENTER_HORIZONTAL gravity, which
+on-device left the text left-shifted in its slot while the icon (centred in its
+pill) sat centre. Fix: the label is now a full-slot-width (MATCH_PARENT)
+TextView with its own Gravity.CENTER, and the icon pill carries an explicit
+CENTER_HORIZONTAL layout gravity - canonical bottom-nav centring, so label and
+icon always share the slot centre. NavAlignmentTest (Robolectric) asserts all
+5 tab labels are centre-gravity, full-width TextViews so this can't regress.
+
+54 tests green; signed v2.0 APK.

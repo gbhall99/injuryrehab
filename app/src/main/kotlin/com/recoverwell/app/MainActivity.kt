@@ -159,13 +159,15 @@ class MainActivity : Activity() {
                 setPadding(0, Ui.dp(this@MainActivity, 4), 0, 0)
                 setOnClickListener { show(tab) }
             }
-            // icon inside a pill that lights up when active
+            // icon inside a pill that lights up when active, centred in the slot
             val pill = FrameLayout(this).apply {
                 background = GradientDrawable().apply {
                     cornerRadius = Ui.dpF(this@MainActivity, 16f)
                     setColor(if (active) Ui.PRIMARY_CONTAINER else 0x00000000)
                 }
-                layoutParams = LinearLayout.LayoutParams(Ui.dp(this@MainActivity, 56), Ui.dp(this@MainActivity, 30))
+                layoutParams = LinearLayout.LayoutParams(
+                    Ui.dp(this@MainActivity, 56), Ui.dp(this@MainActivity, 30)
+                ).apply { gravity = Gravity.CENTER_HORIZONTAL }
             }
             val iv = ImageView(this).apply {
                 setImageResource(Ui.drawableId(this@MainActivity, tab.iconName))
@@ -175,10 +177,15 @@ class MainActivity : Activity() {
             ivLp.gravity = Gravity.CENTER
             pill.addView(iv, ivLp)
             item.addView(pill)
+            // label fills the slot width and centres its own text, so it always
+            // lines up under the icon regardless of label length
             val label = Ui.text(this, tab.label, 11.5f,
                 if (active) Ui.TEXT else Ui.TEXT_DIM, bold = active)
-            label.setPadding(0, Ui.dp(this, 3), 0, 0)
-            item.addView(label)
+            label.gravity = Gravity.CENTER
+            label.setPadding(Ui.dp(this, 2), Ui.dp(this, 3), Ui.dp(this, 2), 0)
+            label.maxLines = 1
+            item.addView(label, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             tabBar.addView(item, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         }
     }
