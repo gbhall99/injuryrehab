@@ -207,3 +207,22 @@ icon always share the slot centre. NavAlignmentTest (Robolectric) asserts all
 5 tab labels are centre-gravity, full-width TextViews so this can't regress.
 
 54 tests green; signed v2.0 APK.
+
+---
+
+# Device-feedback (v2.1) - real video demonstrations
+
+Reported: the procedural demo "videos" are poor; use YouTube examples.
+The app is offline-first (no INTERNET permission) and cannot bundle video here,
+so each exercise now leads with a "Watch video demonstration" button that opens
+a YouTube *search* scoped to the exact movement + the protocol's rehab context
+(ExerciseVideo.youtubeSearchUrl, e.g. "Seated heel raises Achilles rupture rehab
+physiotherapy"). It hands off via a standard ACTION_VIEW web intent to the
+device's YouTube app/browser - real, reputable, live video that can never rot
+into a dead hard-coded id. The procedural animation stays as a labelled offline
+"Quick reference". The app keeps zero INTERNET permission (verified in badging);
+the hand-off is user-initiated and stated under About. Search phrase is data
+(InjuryProtocol.videoContext + optional per-exercise videoQuery), so a new
+injury links to its own videos with no code change.
+
+56 tests green (new ExerciseVideoTest); signed v2.1 APK; no INTERNET permission.

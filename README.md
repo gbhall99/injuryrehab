@@ -144,25 +144,27 @@ runtime smoke check. In a normal environment the same two modules drop into
 a standard AGP build without code changes (`core` is build-system agnostic;
 `app` is plain Kotlin + resources).
 
-### Demonstrations: procedural Canvas animation, not video files
+### Demonstrations: real YouTube video, with an offline animation fallback
 
-Each exercise has an **animated demonstration rendered procedurally**
-(`ExerciseDemoView`): a side-view figure driven by named joint-angle
-keyframes (hip/knee/ankle/toes), interpolated at 60 fps, with props (boot,
-crutches, band, step, wall, bike, cones, racquet) and play/pause on tap.
+Each exercise leads with a **"Watch video demonstration"** button that opens a
+YouTube search scoped to that exact movement plus the protocol's rehab context
+(e.g. *"Seated heel raises Achilles rupture rehab physiotherapy"*). It opens in
+the device's YouTube app or browser via a standard `ACTION_VIEW` web intent, so:
 
-Why this over video:
+- the demonstrations are **real video from reputable physios**, not a stylised
+  figure, and the link can never rot into a dead hard-coded video id - a search
+  always returns live, relevant results;
+- the **app itself stays offline and permission-free** - it holds no `INTERNET`
+  permission and sends nothing; the hand-off to YouTube is user-initiated and
+  the system handles the network (stated in-app under About);
+- when offline, the bundled **procedural animation** (`ExerciseDemoView`,
+  rendered from the `draw/` module) remains as an at-a-glance quick reference,
+  paired with written cues, prescription and a precaution line.
 
-- **Offline & reliable by construction** — no streaming, no caching step, no
-  third-party links that rot or get taken down. The "video" is code in this
-  repo, owned outright, with no licensing risk.
-- **Tiny** — the entire demonstration library adds ~20 KB to the APK vs
-  ~5–15 MB *per clip* for bundled video.
-- **Clinically reviewable & editable** — a physio-suggested tweak (e.g.
-  "dorsiflexion only to neutral") is a one-line keyframe change with a code
-  review trail, not a re-shoot.
-- The demo is always paired with written cues, prescription and a
-  precaution line, which carry the clinical detail.
+The search phrase is data: `InjuryProtocol.videoContext` plus an optional
+per-exercise `videoQuery` override, so a new injury links to its own videos
+with no code change.
+
 
 ### Storage: app-private SQLite, offline-only, export-first
 

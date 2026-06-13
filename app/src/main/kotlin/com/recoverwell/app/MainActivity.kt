@@ -315,6 +315,18 @@ class MainActivity : Activity() {
         PdfReport.build(store), "PDF report exported"
     )
 
+    /** Open an external link (e.g. a YouTube demonstration) in the system handler. */
+    fun openUrl(url: String) {
+        try {
+            startActivity(
+                Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        } catch (e: Exception) {
+            Toast.makeText(this, "No app found to open the link", Toast.LENGTH_LONG).show()
+        }
+    }
+
     fun importBackup() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)

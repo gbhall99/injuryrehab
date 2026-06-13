@@ -508,7 +508,9 @@ object MoreScreen {
             a,
             "No account, no analytics, no network permission - the operating system " +
                 "enforces that the app cannot reach the internet. Your data leaves this " +
-                "phone only when you export it.",
+                "phone only when you export it. Tapping \"Watch video demonstration\" hands " +
+                "off to YouTube or your browser (which have their own network); the app " +
+                "itself still sends nothing.",
             14f
         ))
         col.addView(priv)

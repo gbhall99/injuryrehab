@@ -96,14 +96,43 @@ object ExercisesScreen {
         val col = Ui.column(a)
         col.addView(Ui.backRow(a, spec.name) { a.popOverlay() })
 
+        val videoUrl = com.recoverwell.core.protocol.ExerciseVideo.youtubeSearchUrl(
+            spec, ProtocolRegistry.forProfile(a.store.profile()).videoContext
+        )
+
+        // animated quick reference (offline); a play overlay opens a real video
         val demoCard = Ui.frame(a)
         demoCard.background = Ui.rounded(Ui.SURFACE_HIGH)
         demoCard.clipToOutline = true
         val demo = ExerciseDemoView(a)
         demo.demoId = spec.demoId
         demoCard.addView(demo, ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(a, 230))
+        // "Quick reference" tag, top-left
+        val tag = Ui.text(a, "Quick reference", 11.5f, Ui.TEXT_DIM, bold = true)
+        tag.background = Ui.rounded(com.recoverwell.draw.Palette.withAlpha(Ui.CARD, 0xE6), 10f)
+        tag.setPadding(Ui.dp(a, 8), Ui.dp(a, 3), Ui.dp(a, 8), Ui.dp(a, 3))
+        val tagLp = android.widget.FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        tagLp.setMargins(Ui.dp(a, 10), Ui.dp(a, 10), 0, 0)
+        demoCard.addView(tag, tagLp)
         col.addView(demoCard, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+
+        // primary CTA: watch a real demonstration on YouTube
+        val watchRow = Ui.row(a)
+        watchRow.background = Ui.ripple(a, Ui.rounded(Ui.PRIMARY, 25f), 0x33FFFFFF)
+        watchRow.minimumHeight = Ui.dp(a, 50)
+        watchRow.setPadding(Ui.dp(a, 18), Ui.dp(a, 8), Ui.dp(a, 18), Ui.dp(a, 8))
+        watchRow.isClickable = true
+        watchRow.contentDescription = "Watch a video demonstration on YouTube"
+        watchRow.setOnClickListener { a.openUrl(videoUrl) }
+        watchRow.addView(Ui.icon(a, "ic_play", 20, com.recoverwell.draw.Palette.ON_PRIMARY))
+        val wlabel = Ui.text(a, "Watch video demonstration", 15.5f, com.recoverwell.draw.Palette.ON_PRIMARY, bold = true)
+        wlabel.setPadding(Ui.dp(a, 10), 0, 0, 0)
+        watchRow.addView(Ui.weight(wlabel, 1f))
+        watchRow.addView(Ui.text(a, "YouTube", 12f, com.recoverwell.draw.Palette.withAlpha(com.recoverwell.draw.Palette.ON_PRIMARY, 0xCC)))
+        col.addView(Ui.fullWidth(watchRow, a, 10))
+        col.addView(Ui.caption(a, "Opens YouTube · the animation above works offline"))
 
         // prescription as stat tiles
         col.addView(Ui.section(a, "Prescription"))
@@ -131,7 +160,7 @@ object ExercisesScreen {
         spec.cues.forEachIndexed { i, cue ->
             if (i > 0) cueCard.addView(Ui.spacer(a, 8))
             val r = Ui.row(a)
-            val n = Ui.text(a, "${i + 1}", 13f, Ui.ON_PRIMARY_CONTAINER, bold = true)
+            val n = Ui.text(a, "${i + 1}", 13f, com.recoverwell.draw.Palette.ON_PRIMARY_CONTAINER, bold = true)
             n.background = Ui.rounded(Ui.PRIMARY_CONTAINER, 13f)
             n.setPadding(Ui.dp(a, 9), Ui.dp(a, 2), Ui.dp(a, 9), Ui.dp(a, 2))
             r.addView(n)
@@ -260,7 +289,7 @@ object ExercisesScreen {
                     stage.addView(Ui.spacer(a, 8))
                 }
                 stage.addView(Ui.pillBadge(a, "Set $set of ${effective.sets}",
-                    Ui.ON_PRIMARY_CONTAINER, Ui.PRIMARY_CONTAINER))
+                    com.recoverwell.draw.Palette.ON_PRIMARY_CONTAINER, Ui.PRIMARY_CONTAINER))
                 stage.addView(Ui.spacer(a, 8))
                 val big = Ui.text(a, "${rep + 1}", 56f, Ui.PRIMARY, bold = true)
                 big.gravity = android.view.Gravity.CENTER

@@ -108,7 +108,19 @@ object Journeys {
         }
         DemoScene.render(sub, "toe_scrunch", 900L)
         m.s.restore()
+        // "Quick reference" tag on the animation
+        m.s.roundRect(m.pad + 10f, top + 10f, m.pad + 122f, top + 34f, 10f, Palette.withAlpha(Palette.SURFACE_CARD, 0xE6))
+        m.s.text("Quick reference", m.pad + 18f, top + 26f, 11.5f, Palette.ON_SURFACE_VARIANT, medium = true)
         m.y = top + dh + 6f
+        // primary CTA: watch real video on YouTube
+        val by = m.y + 10f
+        m.s.roundRect(m.pad, by, m.W - m.pad, by + 50f, 25f, Palette.PRIMARY)
+        MaterialIcons.draw(m.s, "ic_play", m.pad + 18f, by + 15f, 20f, Palette.ON_PRIMARY)
+        m.s.text("Watch video demonstration", m.pad + 48f, by + 31f, 15.5f, Palette.ON_PRIMARY, medium = true)
+        m.s.text("YouTube", m.W - m.pad - 60f, by + 31f, 12f, Palette.withAlpha(Palette.ON_PRIMARY, 0xCC))
+        m.y = by + 50f + 6f
+        m.s.text("Opens YouTube · the animation above works offline", m.pad + 4f, m.y + 12f, 12f, Palette.ON_SURFACE_VARIANT)
+        m.y += 20f
         m.section("Prescription")
         // stat tiles
         val tt = m.y + 4f
@@ -121,17 +133,6 @@ object Journeys {
             m.s.text(l, lx + 12f, tt + 46f, 12.5f, Palette.ON_SURFACE_VARIANT)
         }
         m.y = tt + 56f + 6f
-        m.section("How to do it")
-        val ch = m.card(90f)
-        listOf("Keep the boot on and the ankle still",
-            "Spread and wiggle all five toes, then scrunch",
-            "Slow and rhythmic - a circulation pump").forEachIndexed { i, c ->
-            val ly = ch + 24f + i * 22f
-            m.s.roundRect(m.pad + 14f, ly - 12f, m.pad + 34f, ly + 6f, 9f, Palette.PRIMARY_CONTAINER)
-            m.s.text("${i + 1}", m.pad + 21f, ly + 1f, 12f, Palette.ON_PRIMARY_CONTAINER, medium = true, centered = true)
-            m.s.text(c, m.pad + 44f, ly + 1f, 13.5f, Palette.ON_SURFACE)
-        }
-        m.primaryButton("Start guided session")
         m.save(out, "journey_exercise$sfx")
     }
 

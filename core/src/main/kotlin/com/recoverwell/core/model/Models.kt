@@ -134,7 +134,10 @@ data class ExerciseSpec(
     val holdSeconds: Int,
     val sessionsPerDay: Int,
     val whyItMatters: String,
-    val precaution: String
+    val precaution: String,
+    /** Optional override search phrase for the "watch on YouTube" link;
+     *  blank = derive from the exercise name + protocol video context. */
+    val videoQuery: String = ""
 )
 
 /** User edits applied on top of the protocol defaults; null = keep default. */

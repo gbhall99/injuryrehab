@@ -45,6 +45,8 @@ data class InjuryProtocol(
     val redFlagIntro: String,
     /** Label of the red-flags shortcut button on the digital-twin screen. */
     val redFlagButtonLabel: String,
+    /** Appended to exercise names when searching YouTube for a demonstration. */
+    val videoContext: String,
     // ---- onboarding prefills (all editable in-app) ----
     val prefillDescription: String,
     val prefillGoal: String,

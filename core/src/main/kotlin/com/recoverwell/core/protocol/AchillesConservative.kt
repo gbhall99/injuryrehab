@@ -760,6 +760,7 @@ object AchillesConservative {
         redFlagIntro = "After an Achilles rupture you are at raised risk of a blood clot, and " +
             "the healing tendon can re-tear. Take these signs seriously even if they seem mild.",
         redFlagButtonLabel = "DVT & re-rupture red flags",
+        videoContext = "Achilles rupture rehab physiotherapy",
         prefillDescription = "Full Achilles tendon rupture (left), injured playing padel; " +
             "managed conservatively in a walking boot.",
         prefillGoal = "Full recovery and return to playing padel",
