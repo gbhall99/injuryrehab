@@ -76,6 +76,10 @@ progressive wedge reduction — built around a real recovery that started on
   reshape. Each stage clears only when its thresholds are met *and* — for
   impact stages — you record physio sign-off, mirroring the two-key gate used
   for phases. Sports are pure data (`SportRegistry`); adding one is a data entry.
+  Protocol copy uses `{sport}` placeholders resolved once per profile, so the
+  chosen sport flows through *everything* — the milestone timeline ("Return to
+  running"), the digital-twin "Can I play …?" check, phase guidance, and the
+  offline "Ask my recovery" answers — not just the program screen.
 - **Physio loop** — an auto-generated "bring to your appointment" pack
   (pending phase gates, return-to-sport sign-offs due, caution-tone insights,
   pace vs the typical timeline, plus your own questions) with a current-numbers

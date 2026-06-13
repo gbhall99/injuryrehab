@@ -195,5 +195,20 @@ object ProtocolRegistry {
 
     fun byId(id: String): InjuryProtocol = all.firstOrNull { it.id == id } ?: default
 
-    fun forProfile(profile: Profile): InjuryProtocol = byId(profile.protocolId)
+    /** Resolved per (protocol, sport) so the {sport} tokens are substituted once. */
+    private val resolvedCache = java.util.concurrent.ConcurrentHashMap<String, InjuryProtocol>()
+
+    /**
+     * The protocol for this profile, with its {sport} placeholders resolved to
+     * the user's chosen sport (or the protocol default). Every screen and engine
+     * reads through here, so picking a sport reshapes all the copy at once.
+     */
+    fun forProfile(profile: Profile): InjuryProtocol {
+        val base = byId(profile.protocolId)
+        val sportId = profile.sportId.ifBlank { base.defaultSportId ?: "" }
+        val sport = SportRegistry.byId(sportId) ?: return base
+        return resolvedCache.getOrPut(base.id + "|" + sport.id) {
+            SportText.resolveProtocol(base, sport.name)
+        }
+    }
 }

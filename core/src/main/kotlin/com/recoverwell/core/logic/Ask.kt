@@ -43,7 +43,8 @@ object Ask {
             m.contains("stretch") || m.contains("neutral") -> listOf("stretch", "stretching", "calf", "dorsiflex")
             m.contains("heel raise") || m.contains("raises") -> listOf("heel raise", "calf raise", "raises")
             m.contains("walk") -> listOf("walk", "walking", "boot off", "without the boot")
-            m.contains("padel") -> listOf("padel", "sport", "court", "play")
+            // the sport-return check is "Play {sport}" - match it for any sport
+            m.startsWith("play ") -> listOf("sport", "play", "court", m.removePrefix("play ").trim())
             else -> emptyList()
         }
         return (base + extra).distinct()

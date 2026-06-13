@@ -66,7 +66,7 @@ object AchillesConservative {
                 "Pulling the foot/toes up towards you (dorsiflexion past the boot angle)",
                 "Calf stretching of any kind",
                 "Driving",
-                "Running, jumping, sport of any kind - padel comes much later"
+                "Running, jumping, sport of any kind - {sport} comes much later"
             ),
             exercises = phase1Exercises()
         ),
@@ -107,7 +107,7 @@ object AchillesConservative {
                 "Calf stretching or forcing the ankle upwards",
                 "Removing more wedges than planned to “speed things up”",
                 "Driving (most people cannot drive safely in a boot - ask your clinic and insurer)",
-                "Impact activity: running, jumping, padel"
+                "Impact activity: running, jumping, {sport}"
             ),
             exercises = phase2Exercises()
         ),
@@ -148,7 +148,7 @@ object AchillesConservative {
                 "Barefoot or flat-shoe walking",
                 "Single-leg heel raises - far too early",
                 "Running, hopping, jumping",
-                "Padel, even “just a gentle rally”"
+                "{Sport}, even a gentle session"
             ),
             exercises = phase3Exercises()
         ),
@@ -188,7 +188,7 @@ object AchillesConservative {
             notAllowed = listOf(
                 "Running and jumping (until physio clears - typically phase 5)",
                 "Ballistic or forced calf stretching",
-                "Sports with sudden direction changes - padel still waits",
+                "Returning to {sport} - that is phase 5 work",
                 "Maximal single-leg hopping or sprinting"
             ),
             exercises = phase4Exercises()
@@ -196,7 +196,7 @@ object AchillesConservative {
         PhaseSpec(
             number = 5,
             title = "Return to sport",
-            subtitle = "Week 24 onwards · earn your way back to the padel court",
+            subtitle = "Week 24 onwards · earn your way back to {sport}",
             tissueState = "Tendon maturing - building sport-level capacity",
             deviceUsage = null,
             startWeek = 24,
@@ -210,8 +210,8 @@ object AchillesConservative {
             goals = listOf(
                 "Build a graded running programme: walk-jog intervals first",
                 "Add hopping and plyometric capacity, then direction changes",
-                "Padel-specific drills: court movement, shadow play, controlled rallies",
-                "Return to competitive padel when cleared - typically 9-12 months after injury"
+                "{Sport}-specific drills: graded, physio-approved practice",
+                "Return to competitive {sport} when cleared - typically 9-12 months after injury"
             ),
             precautions = listOf(
                 "Each step up (jog, hop, agility, rally, match) needs physio sign-off",
@@ -222,8 +222,8 @@ object AchillesConservative {
             allowed = listOf(
                 "Graded running once cleared",
                 "Plyometric progressions once cleared",
-                "Padel drills and controlled rallies once cleared",
-                "Full competitive padel typically from 9-12 months, with physio sign-off"
+                "{Sport} drills once cleared",
+                "Full competitive {sport} typically from 9-12 months, with physio sign-off"
             ),
             notAllowed = listOf(
                 "Competitive matches before your physio explicitly signs them off",
@@ -487,7 +487,7 @@ object AchillesConservative {
                 "Increase step height before adding speed"
             ),
             sets = 3, reps = 10, holdSeconds = 0, sessionsPerDay = 1,
-            whyItMatters = "Builds the leg drive and confidence needed for stairs, slopes and eventually the lunging footwork padel demands.",
+            whyItMatters = "Builds the leg drive and confidence needed for stairs, slopes and eventually the footwork {sport} demands.",
             precaution = "Use the rail until balance is solid."
         ),
         ExerciseSpec(
@@ -499,7 +499,7 @@ object AchillesConservative {
                 "Drive up evenly through both legs"
             ),
             sets = 3, reps = 12, holdSeconds = 0, sessionsPerDay = 1,
-            whyItMatters = "Restores symmetrical leg strength and ankle confidence under bend - the position every padel shot starts from.",
+            whyItMatters = "Restores symmetrical leg strength and ankle confidence under bend - the positions {sport} demands.",
             precaution = "Heels stay down; depth only as ankle comfort allows."
         ),
         ExerciseSpec(
@@ -550,7 +550,7 @@ object AchillesConservative {
                 "Land softly - quiet feet"
             ),
             sets = 3, reps = 10, holdSeconds = 0, sessionsPerDay = 1,
-            whyItMatters = "Padel is a game of springs: plyometric capacity is the last physical quality the tendon needs before real rallies.",
+            whyItMatters = "Sport is built on springs: plyometric capacity is the last physical quality the tendon needs before returning to {sport}.",
             precaution = "Each new hop variation needs physio sign-off."
         ),
         ExerciseSpec(
@@ -566,16 +566,16 @@ object AchillesConservative {
             precaution = "Fatigue ruins technique: stop while movements still feel crisp."
         ),
         ExerciseSpec(
-            id = "p5_padel", phase = 5, name = "Padel-specific drills",
+            id = "p5_padel", phase = 5, name = "{Sport}-specific drills",
             demoId = "padel_drill",
             cues = listOf(
-                "Stage 1: shadow swings and court movement, no ball",
-                "Stage 2: cooperative rallies, no competitive points",
-                "Stage 3: friendly matches, then competition - each stage physio-approved"
+                "Stage 1: sport-specific movement patterns at low intensity, no resistance",
+                "Stage 2: light, controlled practice - skills before speed",
+                "Stage 3: progressive return to full play, then competition - each stage physio-approved"
             ),
             sets = 1, reps = 1, holdSeconds = 1200, sessionsPerDay = 1,
-            whyItMatters = "Staged court exposure rebuilds timing and confidence while keeping loads predictable - the final bridge back to the game you are doing all this for.",
-            precaution = "Full competitive padel typically returns 9-12 months after injury, only with explicit physio sign-off."
+            whyItMatters = "Staged exposure to {sport} rebuilds timing and confidence while keeping loads predictable - the final bridge back to the game you are doing all this for.",
+            precaution = "Full competitive {sport} typically returns 9-12 months after injury, only with explicit physio sign-off."
         )
     )
 
@@ -594,8 +594,8 @@ object AchillesConservative {
         Milestone(12, "Out of the boot", "Normal shoes; gentle stretching may begin ONLY if your physio approves."),
         Milestone(16, "Strength building", "Double-leg heel raises strong; balance work progressing."),
         Milestone(24, "Single-leg strength & jogging", "Single-leg raise benchmark approaching; walk-jog may begin once cleared."),
-        Milestone(39, "Padel drills", "Court movement and controlled rallies, physio-approved (~9 months)."),
-        Milestone(52, "Return to padel", "Typical window for full competitive return is 9-12 months with sign-off.")
+        Milestone(39, "{Sport} drills", "Sport-specific drills and graded practice, physio-approved (~9 months)."),
+        Milestone(52, "Return to {sport}", "Typical window for full competitive return is 9-12 months with sign-off.")
     )
 
     // ------------------------------------------------------------------
@@ -885,7 +885,7 @@ object AchillesConservative {
         PhaseMindset(
             phase = 5,
             normalToFeel = listOf(
-                "Excitement and nerves about impact and, finally, padel",
+                "Excitement and nerves about impact and, finally, {sport}",
                 "Fear of re-rupture the first time you jog, hop or change direction",
                 "Wanting to rush the last stretch - the hardest patience of all"
             ),
@@ -942,7 +942,7 @@ object AchillesConservative {
                 "Phase 4 work - too early now", "Progress as prescribed"),
             MovementCheckSpec("Run / jump", 5,
                 "Phase 5 work after strength benchmarks", "Graded programme once physio clears it"),
-            MovementCheckSpec("Play padel", 5,
+            MovementCheckSpec("Play {sport}", 5,
                 "The end goal - but not yet",
                 "Drills first; competitive play typically 9-12 months with sign-off")
         ),
