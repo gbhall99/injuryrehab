@@ -13,7 +13,11 @@ data class AppState(
     val tasks: List<RehabTask>,
     val exerciseOverrides: Map<String, ExerciseOverride>,
     val dailyLogs: List<DailyLog>,
-    val events: List<EventLog>
+    val events: List<EventLog>,
+    val selfTestResults: List<SelfTestResult> = emptyList(),
+    /** Ids of return-to-sport rungs the user recorded physio clearance for. */
+    val rtsSignoffs: List<String> = emptyList(),
+    val physioNotes: List<PhysioNote> = emptyList()
 )
 
 /**
@@ -22,7 +26,7 @@ data class AppState(
  */
 object BackupCodec {
 
-    const val VERSION = 2
+    const val VERSION = 4
 
     fun encode(state: AppState): String = Json.write(
         Json.obj(
@@ -33,7 +37,10 @@ object BackupCodec {
             "tasks" to Json.arr(state.tasks.map { taskJson(it) }),
             "exerciseOverrides" to Json.arr(state.exerciseOverrides.values.map { overrideJson(it) }),
             "dailyLogs" to Json.arr(state.dailyLogs.map { logJson(it) }),
-            "events" to Json.arr(state.events.map { eventJson(it) })
+            "events" to Json.arr(state.events.map { eventJson(it) }),
+            "selfTestResults" to Json.arr(state.selfTestResults.map { selfTestJson(it) }),
+            "rtsSignoffs" to Json.strings(state.rtsSignoffs),
+            "physioNotes" to Json.arr(state.physioNotes.map { physioNoteJson(it) })
         )
     )
 
@@ -48,9 +55,50 @@ object BackupCodec {
             exerciseOverrides = root.get("exerciseOverrides").asArr()
                 .map { overrideFrom(it) }.associateBy { it.exerciseId },
             dailyLogs = root.get("dailyLogs").asArr().map { logFrom(it) },
-            events = root.get("events").asArr().map { eventFrom(it) }
+            events = root.get("events").asArr().map { eventFrom(it) },
+            // v<3 backups predate the return-to-sport program
+            selfTestResults = (root.opt("selfTestResults")?.asArr() ?: emptyList()).map { selfTestFrom(it) },
+            rtsSignoffs = (root.opt("rtsSignoffs")?.asArr() ?: emptyList()).map { it.asString() },
+            // v<4 backups predate the physio loop
+            physioNotes = (root.opt("physioNotes")?.asArr() ?: emptyList()).map { physioNoteFrom(it) }
         )
     }
+
+    // -- physio note --------------------------------------------------------
+
+    fun physioNoteJson(n: PhysioNote): JsonValue = Json.obj(
+        "id" to Json.of(n.id),
+        "date" to Json.of(n.date.toString()),
+        "text" to Json.of(n.text)
+    )
+
+    fun physioNoteFrom(j: JsonValue): PhysioNote = PhysioNote(
+        id = j.get("id").asString(),
+        date = LocalDate.parse(j.get("date").asString()),
+        text = j.opt("text")?.asString() ?: ""
+    )
+
+    // -- self-test result ---------------------------------------------------
+
+    fun selfTestJson(s: SelfTestResult): JsonValue = Json.obj(
+        "id" to Json.of(s.id),
+        "testId" to Json.of(s.testId),
+        "date" to Json.of(s.date.toString()),
+        "injuredValue" to Json.of(s.injuredValue),
+        "otherValue" to Json.of(s.otherValue),
+        "painFree" to Json.of(s.painFree),
+        "note" to Json.of(s.note)
+    )
+
+    fun selfTestFrom(j: JsonValue): SelfTestResult = SelfTestResult(
+        id = j.get("id").asString(),
+        testId = j.get("testId").asString(),
+        date = LocalDate.parse(j.get("date").asString()),
+        injuredValue = j.get("injuredValue").asDouble(),
+        otherValue = j.opt("otherValue")?.asDouble(),
+        painFree = j.opt("painFree")?.asBool() ?: true,
+        note = j.opt("note")?.asString() ?: ""
+    )
 
     // -- profile --------------------------------------------------------
 

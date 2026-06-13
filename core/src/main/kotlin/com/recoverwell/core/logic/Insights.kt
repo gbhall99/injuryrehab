@@ -53,6 +53,19 @@ object Insights {
             }
         }
 
+        // ---- mood: recovery is mental too ----
+        trend(logs, today, { it.mood?.toDouble() })?.let { (recent, prior) ->
+            val delta = recent - prior
+            when {
+                delta <= -0.8 -> out.add(Insight(Tone.CAUTION, "Your mood has dipped this week",
+                    "A lower mood is a normal part of a long recovery - it doesn't mean you're doing anything wrong. " +
+                        "Be kind to yourself, and reach out to someone if it lingers."))
+                delta >= 0.8 -> out.add(Insight(Tone.POSITIVE, "Brighter week",
+                    "Your logged mood is up on last week. Momentum like this makes the rehab work feel lighter."))
+                else -> {}
+            }
+        }
+
         // ---- habit -> outcome: elevation days vs swelling ----
         elevationVsSwelling(tasks, events, logs, today)?.let { out.add(it) }
 

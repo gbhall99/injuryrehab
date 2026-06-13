@@ -63,6 +63,28 @@ progressive wedge reduction — built around a real recovery that started on
   revoked, battery optimisation killing alarms), each with a one-tap route to
   the right system screen and a "send a test reminder now" button. A home-screen
   warning appears if delivery is actively blocked.
+- **Return-to-padel program** — a criteria-based ladder for the final stretch,
+  built on objective self-tests you perform and log (single-leg heel-rise
+  symmetry, balance, calf girth, walking/jogging tolerance, hop count and hop
+  symmetry). Each stage clears only when its thresholds are met *and* — for
+  impact stages — you record physio sign-off, mirroring the two-key gate used
+  for phases. An overall readiness percentage tracks progress toward the court;
+  reachable from Today, Progress and the program screen itself.
+- **Physio loop** — an auto-generated "bring to your appointment" pack
+  (pending phase gates, return-to-sport sign-offs due, caution-tone insights,
+  pace vs the typical timeline, plus your own questions) with a current-numbers
+  summary you can copy or export as PDF; and a post-visit capture that writes
+  straight back into the plan (phase confirmations, return-to-sport sign-offs,
+  boot/date edits) and a durable, backed-up visit note. Home-screen prompts
+  appear before an appointment and after, to prep and to capture.
+- **The mental side** — per-phase "what's normal to feel" with encouragement,
+  reassurance about the fear of re-rupture (ordinary sensations vs genuine
+  warning signs, one tap from the red-flag guide), a gentle reflection that
+  acts on your logged mood trend, and quiet celebration of milestones reached.
+- **Accessibility** — screen-reader headings for jump-navigation, decorative
+  graphics skipped by TalkBack while charts and the leg model carry spoken
+  descriptions, labelled icon controls throughout, ≥48dp targets and
+  system-font scaling. Guarded by tests.
 
 ## Rehab protocol (conservative / non-surgical only)
 

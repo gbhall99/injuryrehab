@@ -41,6 +41,8 @@ object TwinScreen {
             }
         if (scene != null) {
             val body = SceneView(a, scene)
+            body.contentDescription = "Model of your ${if (protocol.sided) profile.side.name.lowercase() + " " else ""}leg. " +
+                "${snap.tendonState}. ${snap.bootStatus}."
             heroRow.addView(body, LinearLayout.LayoutParams(Ui.dp(a, 150), Ui.dp(a, 210)))
         }
         val facts = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }

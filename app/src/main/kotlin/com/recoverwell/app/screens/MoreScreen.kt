@@ -22,8 +22,12 @@ object MoreScreen {
         col.addView(Ui.section(a, "My recovery"))
         col.addView(Ui.listRow(a, "ic_heart", "Injury & goal",
             "Dates, side, boot plan, appointments") { a.pushOverlay { profileEditor(a) } })
+        col.addView(Ui.listRow(a, "ic_heart", "How you're doing",
+            "What's normal to feel, reassurance, milestones") { a.pushOverlay { WellbeingScreen.build(a) } })
         col.addView(Ui.listRow(a, "ic_calendar", "Phase dates",
             "Adjust timings agreed with your physio") { a.pushOverlay { phaseDatesEditor(a) } })
+        col.addView(Ui.listRow(a, "ic_edit", "Physio visits",
+            "Appointment pack, sign-offs and visit notes") { a.pushOverlay { PhysioScreen.build(a) } })
         col.addView(Ui.listRow(a, "ic_pill", "Medications",
             "Doses, times and reminders") { a.pushOverlay { medsEditor(a) } })
         col.addView(Ui.listRow(a, "ic_bell", "Daily care reminders",
@@ -218,7 +222,7 @@ object MoreScreen {
 
     // ------------------------------------------------------------------
 
-    private fun phaseDatesEditor(a: MainActivity): View {
+    fun phaseDatesEditor(a: MainActivity): View {
         val col = Ui.column(a)
         col.addView(Ui.backRow(a, "Phase dates") { a.popOverlay() })
         col.addView(Ui.caption(a, "Defaults follow the typical conservative protocol, anchored to " +

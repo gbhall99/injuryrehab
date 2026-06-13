@@ -125,10 +125,15 @@ object Ui {
     }
 
     fun display(context: Context, value: String): TextView =
-        text(context, value, 26f, TEXT, bold = true)
+        text(context, value, 26f, TEXT, bold = true).apply { asHeading(this) }
 
     fun headline(context: Context, value: String): TextView =
-        text(context, value, 21f, TEXT, bold = true)
+        text(context, value, 21f, TEXT, bold = true).apply { asHeading(this) }
+
+    /** Flag a view as a screen-reader heading so TalkBack users can jump by heading. */
+    fun asHeading(view: View) {
+        if (android.os.Build.VERSION.SDK_INT >= 28) view.isAccessibilityHeading = true
+    }
 
     fun title(context: Context, value: String): TextView =
         text(context, value, 17f, TEXT, bold = true)
@@ -142,6 +147,9 @@ object Ui {
             letterSpacing = 0.08f
             isAllCaps = true
             setPadding(dp(context, 4), dp(context, 22), 0, dp(context, 8))
+            // keep the spoken label normal-case (not letter-by-letter) and jumpable
+            contentDescription = value
+            asHeading(this)
         }
 
     // ------------------------------------------------------------------ shape

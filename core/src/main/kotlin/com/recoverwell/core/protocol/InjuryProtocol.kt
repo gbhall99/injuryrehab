@@ -33,6 +33,14 @@ data class InjuryProtocol(
     val redFlags: List<RedFlagSection>,
     /** Digital-twin "Can I...?" checks, unlocked by phase. */
     val movementChecks: List<MovementCheckSpec>,
+    /** Objective self-tests the user can perform and log (heel-rise, hop, ...). */
+    val selfTests: List<SelfTest> = emptyList(),
+    /** Criteria-based return-to-sport ladder built on those self-tests. */
+    val returnToSport: List<RtsRung> = emptyList(),
+    /** Per-phase "what's normal to feel" + encouragement (the emotional side). */
+    val mindset: List<PhaseMindset> = emptyList(),
+    /** Reassurance about the injury's signature fear (e.g. re-rupture). */
+    val reassurance: Reassurance? = null,
     /** Which drawn body visual the twin screen uses (registry key). */
     val bodySceneId: String,
     // ---- copy that would otherwise be hard-coded in screens (scalable) ----
@@ -75,6 +83,70 @@ data class SupportDevice(
     fun format(value: Int): String =
         if (unitSymbol.isNotEmpty()) "$value$unitSymbol" else "$value $unitNamePlural"
 }
+
+/**
+ * An objective self-test the user performs at home. A [symmetry] test compares
+ * the injured side against the other side (pass = limb-symmetry index >=
+ * [passThreshold]%); a single-value test passes when the injured-side value
+ * meets [passThreshold] in the test's [unit] (>=, or <= when [lowerIsBetter]).
+ */
+data class SelfTest(
+    val id: String,
+    val name: String,
+    val unit: String,
+    val symmetry: Boolean,
+    val passThreshold: Double,
+    val requirePainFree: Boolean,
+    val lowerIsBetter: Boolean,
+    val howTo: List<String>,
+    val precaution: String,
+    /** Earliest rehab phase in which it is appropriate to attempt this test. */
+    val earliestPhase: Int
+) {
+    /** "90% symmetry" or "20 reps" etc. - the bar to clear. */
+    fun targetLabel(): String =
+        if (symmetry) "${passThreshold.toInt()}% symmetry"
+        else (if (lowerIsBetter) "<= " else "") + "${trim(passThreshold)} $unit" +
+            (if (lowerIsBetter) "" else "+")
+
+    fun valueLabel(r: com.recoverwell.core.model.SelfTestResult): String =
+        if (symmetry) (r.symmetryPct?.let { "$it% symmetry" } ?: "needs both sides")
+        else "${trim(r.injuredValue)} $unit"
+
+    private fun trim(v: Double): String =
+        if (v == Math.floor(v)) v.toInt().toString() else v.toString()
+}
+
+/**
+ * One rung of the return-to-sport ladder. Cleared when every test in [testIds]
+ * passes and (if [requiresPhysioSignoff]) the user records physio clearance.
+ */
+data class RtsRung(
+    val id: String,
+    val order: Int,
+    val title: String,
+    val summary: String,
+    /** Rehab phase this rung belongs to; it stays locked until that phase is active. */
+    val phase: Int,
+    val testIds: List<String>,
+    val guidance: List<String>,
+    val requiresPhysioSignoff: Boolean
+)
+
+/** The emotional reality of a phase: what's normal to feel, and a nudge forward. */
+data class PhaseMindset(
+    val phase: Int,
+    val normalToFeel: List<String>,
+    val encouragement: String
+)
+
+/** Addresses the injury's signature anxiety (for Achilles: fear of re-rupture). */
+data class Reassurance(
+    val title: String,
+    val body: String,
+    /** How to tell ordinary recovery sensations from genuine warning signs. */
+    val normalVsFlag: List<Pair<String, String>>
+)
 
 data class MovementCheckSpec(
     val movement: String,

@@ -143,6 +143,51 @@ class Store private constructor(context: Context) :
             out
         }
 
+    // -- self-test results (return-to-sport) ---------------------------------
+
+    fun selfTestResults(): List<SelfTestResult> =
+        getKv("selfTestResults")?.let { Json.parse(it).asArr().map(BackupCodec::selfTestFrom) }
+            ?: emptyList()
+
+    fun saveSelfTestResult(r: SelfTestResult) {
+        val all = selfTestResults() + r
+        putKv("selfTestResults", Json.write(Json.arr(all.map(BackupCodec::selfTestJson))))
+    }
+
+    fun deleteSelfTestResult(id: String) {
+        val all = selfTestResults().filter { it.id != id }
+        putKv("selfTestResults", Json.write(Json.arr(all.map(BackupCodec::selfTestJson))))
+    }
+
+    fun rtsSignoffs(): Set<String> =
+        getKv("rtsSignoffs")?.let { Json.parse(it).asArr().map { v -> v.asString() }.toSet() }
+            ?: emptySet()
+
+    fun setRtsSignoff(rungId: String, on: Boolean) {
+        val all = if (on) rtsSignoffs() + rungId else rtsSignoffs() - rungId
+        putKv("rtsSignoffs", Json.write(Json.strings(all.toList())))
+    }
+
+    // -- physio loop ----------------------------------------------------------
+
+    fun physioNotes(): List<PhysioNote> =
+        getKv("physioNotes")?.let { Json.parse(it).asArr().map(BackupCodec::physioNoteFrom) }
+            ?: emptyList()
+
+    private fun savePhysioNotes(notes: List<PhysioNote>) =
+        putKv("physioNotes", Json.write(Json.arr(notes.map(BackupCodec::physioNoteJson))))
+
+    fun addPhysioNote(n: PhysioNote) = savePhysioNotes(physioNotes() + n)
+
+    fun deletePhysioNote(id: String) = savePhysioNotes(physioNotes().filter { it.id != id })
+
+    /** User's own questions to raise next visit (prep notes, not clinical record). */
+    fun physioQuestions(): List<String> =
+        getKv("physioQuestions")?.let { Json.parse(it).asArr().map { v -> v.asString() } } ?: emptyList()
+
+    fun savePhysioQuestions(qs: List<String>) =
+        putKv("physioQuestions", Json.write(Json.strings(qs)))
+
     // -- backup / restore ----------------------------------------------------------
 
     fun snapshot(): AppState = AppState(
@@ -151,7 +196,10 @@ class Store private constructor(context: Context) :
         tasks = tasks(),
         exerciseOverrides = exerciseOverrides(),
         dailyLogs = allLogs(),
-        events = allEvents()
+        events = allEvents(),
+        selfTestResults = selfTestResults(),
+        rtsSignoffs = rtsSignoffs().toList(),
+        physioNotes = physioNotes()
     )
 
     fun restore(state: AppState) {
@@ -171,5 +219,11 @@ class Store private constructor(context: Context) :
         state.exerciseOverrides.values.forEach { saveExerciseOverride(it) }
         state.dailyLogs.forEach { saveDailyLog(it) }
         state.events.forEach { addEvent(it) }
+        if (state.selfTestResults.isNotEmpty())
+            putKv("selfTestResults", Json.write(Json.arr(state.selfTestResults.map(BackupCodec::selfTestJson))))
+        if (state.rtsSignoffs.isNotEmpty())
+            putKv("rtsSignoffs", Json.write(Json.strings(state.rtsSignoffs)))
+        if (state.physioNotes.isNotEmpty())
+            putKv("physioNotes", Json.write(Json.arr(state.physioNotes.map(BackupCodec::physioNoteJson))))
     }
 }

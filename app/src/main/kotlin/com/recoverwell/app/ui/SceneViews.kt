@@ -119,6 +119,18 @@ class AndroidSketch(private val canvas: Canvas) : Sketch {
 
 /** Static scene host: renders a Sketch lambda once per draw. */
 class SceneView(context: Context, var scene: (Sketch) -> Unit) : View(context) {
+    init {
+        // decorative by default: every scene has an adjacent text readout, so
+        // TalkBack should skip the empty graphic unless given a description
+        importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
+    }
+
+    override fun setContentDescription(contentDescription: CharSequence?) {
+        super.setContentDescription(contentDescription)
+        importantForAccessibility = if (contentDescription.isNullOrBlank())
+            IMPORTANT_FOR_ACCESSIBILITY_NO else IMPORTANT_FOR_ACCESSIBILITY_YES
+    }
+
     override fun onDraw(canvas: Canvas) {
         scene(AndroidSketch(canvas))
     }

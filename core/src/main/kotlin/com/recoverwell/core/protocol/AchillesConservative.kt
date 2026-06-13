@@ -711,6 +711,209 @@ object AchillesConservative {
     )
 
     // ------------------------------------------------------------------
+    // Return-to-sport self-tests and ladder (criteria, not dates)
+    // ------------------------------------------------------------------
+
+    private val selfTests: List<SelfTest> = listOf(
+        SelfTest(
+            id = "heel_rise_sym", name = "Single-leg heel-rise count", unit = "reps",
+            symmetry = true, passThreshold = 90.0, requirePainFree = true, lowerIsBetter = false,
+            howTo = listOf(
+                "Stand by a wall or counter for light balance support only",
+                "On one leg, rise fully onto your toes and lower with control - that's one rep",
+                "Count good-quality reps until form drops or you fatigue, then test the other side",
+                "Record reps for each side"
+            ),
+            precaution = "Calf strength symmetry is the single best marker before impact. Stop at sharp tendon pain.",
+            earliestPhase = 4
+        ),
+        SelfTest(
+            id = "balance_eo", name = "Single-leg balance (eyes open)", unit = "seconds",
+            symmetry = false, passThreshold = 30.0, requirePainFree = false, lowerIsBetter = false,
+            howTo = listOf(
+                "Stand on the injured leg only, hands on hips, near support",
+                "Time how long you hold steady before you touch down or grab support",
+                "Cap the timing at 45 seconds"
+            ),
+            precaution = "Tests the ankle's control and confidence, not just strength.",
+            earliestPhase = 4
+        ),
+        SelfTest(
+            id = "calf_girth_sym", name = "Calf circumference", unit = "cm",
+            symmetry = true, passThreshold = 95.0, requirePainFree = false, lowerIsBetter = false,
+            howTo = listOf(
+                "Sit with the leg relaxed; find the widest part of the calf",
+                "Measure around it with a tape, same spot on each leg",
+                "Record both sides - the injured calf is usually a little smaller at first"
+            ),
+            precaution = "A shrinking gap shows the calf muscle is rebuilding. Not a strength test on its own.",
+            earliestPhase = 4
+        ),
+        SelfTest(
+            id = "walk_tol", name = "Pain-free brisk walk", unit = "minutes",
+            symmetry = false, passThreshold = 30.0, requirePainFree = true, lowerIsBetter = false,
+            howTo = listOf(
+                "Walk briskly on even ground at a comfortable pace",
+                "Record how many minutes you manage with no tendon pain and no limp",
+                "Stop the count the moment pain or a limp appears"
+            ),
+            precaution = "Walking tolerance is the floor you build running on.",
+            earliestPhase = 4
+        ),
+        SelfTest(
+            id = "jog_tol", name = "Continuous easy jog", unit = "minutes",
+            symmetry = false, passThreshold = 20.0, requirePainFree = true, lowerIsBetter = false,
+            howTo = listOf(
+                "Only once your physio has cleared jogging",
+                "On a flat, even surface, jog easily and record continuous pain-free minutes",
+                "Next-morning stiffness that settles within an hour is acceptable; worsening week-on-week is not"
+            ),
+            precaution = "Build by a few minutes per session, never in big jumps.",
+            earliestPhase = 5
+        ),
+        SelfTest(
+            id = "hop_count", name = "Single-leg hops in a row", unit = "hops",
+            symmetry = false, passThreshold = 20.0, requirePainFree = true, lowerIsBetter = false,
+            howTo = listOf(
+                "Only once your physio has cleared hopping",
+                "On the injured leg, do small controlled pogo hops on the spot",
+                "Count consecutive springy, pain-free hops before form drops"
+            ),
+            precaution = "Land softly through the forefoot; this is springiness, not height.",
+            earliestPhase = 5
+        ),
+        SelfTest(
+            id = "hop_sym", name = "Single-leg hop for distance", unit = "cm",
+            symmetry = true, passThreshold = 90.0, requirePainFree = true, lowerIsBetter = false,
+            howTo = listOf(
+                "Only once your physio has cleared hopping",
+                "From standing on one leg, hop forward as far as you can land cleanly and hold it",
+                "Measure the distance for each leg (best of 3) and record both"
+            ),
+            precaution = "Limb symmetry on hopping is a key gate before cutting and court sport.",
+            earliestPhase = 5
+        )
+    )
+
+    private val returnToSport: List<RtsRung> = listOf(
+        RtsRung(
+            id = "rts_strength", order = 1, title = "Single-leg strength base", phase = 4,
+            summary = "Rebuild calf strength, balance and walking tolerance before any impact.",
+            testIds = listOf("heel_rise_sym", "balance_eo", "calf_girth_sym", "walk_tol"),
+            guidance = listOf(
+                "This is the foundation - skipping it is how tendons get re-injured later.",
+                "Re-test every week or two; expect steady, not overnight, gains."
+            ),
+            requiresPhysioSignoff = false
+        ),
+        RtsRung(
+            id = "rts_jog", order = 2, title = "Cleared to start jogging", phase = 5,
+            summary = "Strength and walking are there; impact can begin - with physio sign-off.",
+            testIds = listOf("heel_rise_sym", "walk_tol"),
+            guidance = listOf(
+                "Starting impact too early is the classic setback. Your physio confirms this step.",
+                "Begin with walk-jog intervals, not a continuous run."
+            ),
+            requiresPhysioSignoff = true
+        ),
+        RtsRung(
+            id = "rts_run_hop", order = 3, title = "Running & hopping", phase = 5,
+            summary = "Build continuous jogging and basic plyometric capacity.",
+            testIds = listOf("jog_tol", "hop_count", "heel_rise_sym"),
+            guidance = listOf(
+                "Add hopping work alongside steady jogging volume.",
+                "Keep one easy day between impact sessions early on."
+            ),
+            requiresPhysioSignoff = true
+        ),
+        RtsRung(
+            id = "rts_agility", order = 4, title = "Change of direction", phase = 5,
+            summary = "Add the cutting and lateral movement padel actually demands.",
+            testIds = listOf("hop_sym", "hop_count"),
+            guidance = listOf(
+                "Side shuffles, then diagonal cuts, building from 50% speed.",
+                "Sharp direction changes are exactly what ruptured the tendon - rehearse them progressively."
+            ),
+            requiresPhysioSignoff = true
+        ),
+        RtsRung(
+            id = "rts_padel", order = 5, title = "Return to padel", phase = 5,
+            summary = "Court movement, then controlled rallies, then friendly matches, then competition.",
+            testIds = listOf("hop_sym"),
+            guidance = listOf(
+                "Stage it: shadow movement, cooperative rallies, friendly games, competition.",
+                "Each stage needs physio sign-off; full competitive padel is typically 9-12 months after injury."
+            ),
+            requiresPhysioSignoff = true
+        )
+    )
+
+    // ------------------------------------------------------------------
+    // The emotional side: what's normal to feel, and reassurance
+    // ------------------------------------------------------------------
+
+    private val mindset: List<PhaseMindset> = listOf(
+        PhaseMindset(
+            phase = 1,
+            normalToFeel = listOf(
+                "Shock and frustration that one wrong step changed your routine - that's normal",
+                "Feeling clumsy and dependent on crutches and the boot",
+                "Anxiety about the clot risk - the medication and your daily checks are exactly how you manage it"
+            ),
+            encouragement = "Right now your only job is to protect the tendon and rest. Doing little is doing the work."
+        ),
+        PhaseMindset(
+            phase = 2,
+            normalToFeel = listOf(
+                "Impatience as the days blur together in the boot",
+                "Small wins - a longer walk, fewer crutches - feeling surprisingly big",
+                "Worry every time you lower the heel angle; a bit of unfamiliarity is expected"
+            ),
+            encouragement = "Steady, boring weeks are good weeks. The tendon is knitting on schedule."
+        ),
+        PhaseMindset(
+            phase = 3,
+            normalToFeel = listOf(
+                "Nervousness about those first steps out of the boot - almost everyone feels it",
+                "The ankle feeling stiff, weak and strangely unfamiliar",
+                "A wobble of confidence on uneven ground"
+            ),
+            encouragement = "Confidence comes back one careful step at a time. Trust the wean, not the calendar."
+        ),
+        PhaseMindset(
+            phase = 4,
+            normalToFeel = listOf(
+                "Motivation returning as you can finally train and feel stronger",
+                "Frustration that the calf is weaker than you expected",
+                "Comparing yourself to where you 'should' be - try not to"
+            ),
+            encouragement = "This is where the real rebuilding happens. Consistent strength work now is what gets you back on court."
+        ),
+        PhaseMindset(
+            phase = 5,
+            normalToFeel = listOf(
+                "Excitement and nerves about impact and, finally, padel",
+                "Fear of re-rupture the first time you jog, hop or change direction",
+                "Wanting to rush the last stretch - the hardest patience of all"
+            ),
+            encouragement = "You've earned this stage. Respect each step-up and the court will still be there."
+        )
+    )
+
+    private val reassurance = Reassurance(
+        title = "Worried about re-rupture?",
+        body = "Almost everyone recovering from an Achilles rupture feels a jolt of fear at every twinge. " +
+            "That fear is normal and it fades as strength and trust return. Knowing the difference between " +
+            "ordinary healing sensations and a genuine warning sign is what turns anxiety into confidence.",
+        normalVsFlag = listOf(
+            "Morning stiffness that eases as you move" to "A sudden snap or pop with loss of push-off power",
+            "A tendon that looks/feels a little thicker than the other side" to "A new gap or dip you can feel in the tendon",
+            "Mild ache for a day after a harder session" to "Sharp tendon pain that stops you mid-step",
+            "Twinges that settle within a day" to "New calf pain, heat, swelling or redness - think DVT"
+        )
+    )
+
+    // ------------------------------------------------------------------
     // The registry entry: everything above, wired as framework data
     // ------------------------------------------------------------------
 
@@ -750,6 +953,10 @@ object AchillesConservative {
                 "The end goal - but not yet",
                 "Drills first; competitive play typically 9-12 months with sign-off")
         ),
+        selfTests = selfTests,
+        returnToSport = returnToSport,
+        mindset = mindset,
+        reassurance = reassurance,
         bodySceneId = "lower_leg",
         welcomeBlurb = "Your daily coach through a conservative (non-surgical) Achilles " +
             "rupture - exercises, reminders and progress tracking.",

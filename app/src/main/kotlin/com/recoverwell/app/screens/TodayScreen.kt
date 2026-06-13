@@ -96,6 +96,22 @@ object TodayScreen {
             ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         col.addView(hero)
 
+        // ---- return to sport (once the strengthening phase is reached) ----
+        run {
+            val rts = com.recoverwell.core.logic.ReturnToSport.progress(
+                profile, a.store.selfTestResults(), a.store.rtsSignoffs(), today)
+            if (rts.available) {
+                val title = ProtocolRegistry.forProfile(profile).returnToSport
+                    .maxByOrNull { it.order }?.title ?: "Return to sport"
+                val sub = (rts.currentRung?.let { "Stage: ${it.title}" } ?: "Keep building strength") +
+                    " · ${rts.readinessPct}% ready"
+                col.addView(Ui.spacer(a, 2))
+                col.addView(Ui.listRow(a, "ic_flag", title, sub) {
+                    a.pushOverlay { ReturnToSportScreen.build(a) }
+                })
+            }
+        }
+
         // ---- urgent / warning cards ------------------------------------
         val recentLogs = a.store.allLogs().filter { !it.date.isBefore(today.minusDays(7)) }
         for (w in Capability.warnings(profile, recentLogs, today)
@@ -147,6 +163,45 @@ object TodayScreen {
             col.addView(card)
         }
 
+        // ---- physio appointment prep / capture --------------------------
+        run {
+            val appts = profile.appointments
+            val soon = appts.filter { !it.completed && !it.date.isBefore(today) &&
+                it.date.isBefore(today.plusDays(4)) }.minByOrNull { it.date }
+            val toCapture = appts.filter { !it.completed && it.date.isBefore(today) }.maxByOrNull { it.date }
+            if (soon != null) {
+                val card = Ui.card(a, Ui.INFO_BG)
+                val r = Ui.row(a)
+                r.addView(Ui.icon(a, "ic_calendar", 20, Ui.ON_INFO_BG))
+                val days = java.time.temporal.ChronoUnit.DAYS.between(today, soon.date)
+                val t = Ui.text(a, if (days == 0L) "${soon.label} today" else "${soon.label} in $days day${if (days==1L) "" else "s"}",
+                    15.5f, Ui.ON_INFO_BG, bold = true)
+                t.setPadding(Ui.dp(a, 10), 0, 0, 0)
+                r.addView(Ui.weight(t, 1f))
+                card.addView(r)
+                card.addView(Ui.spacer(a, 2))
+                card.addView(Ui.text(a, "Prep your questions and current numbers to make the most of it.", 14f, Ui.ON_INFO_BG))
+                card.addView(Ui.fullWidth(Ui.tonalButton(a, "Open appointment pack") {
+                    a.pushOverlay { PhysioScreen.build(a) }
+                }, a))
+                col.addView(card)
+            } else if (toCapture != null) {
+                val card = Ui.card(a, Ui.INFO_BG)
+                val r = Ui.row(a)
+                r.addView(Ui.icon(a, "ic_edit", 20, Ui.ON_INFO_BG))
+                val t = Ui.text(a, "How did your appointment go?", 15.5f, Ui.ON_INFO_BG, bold = true)
+                t.setPadding(Ui.dp(a, 10), 0, 0, 0)
+                r.addView(Ui.weight(t, 1f))
+                card.addView(r)
+                card.addView(Ui.spacer(a, 2))
+                card.addView(Ui.text(a, "Capture what your physio said so your plan stays in sync.", 14f, Ui.ON_INFO_BG))
+                card.addView(Ui.fullWidth(Ui.tonalButton(a, "Capture the visit") {
+                    a.pushOverlay { PhysioScreen.build(a) }
+                }, a))
+                col.addView(card)
+            }
+        }
+
         // ---- weekly digest nudge (Mondays) ------------------------------
         if (today.dayOfWeek == java.time.DayOfWeek.MONDAY && a.store.allLogs().size >= 5) {
             val card = Ui.card(a, Ui.INFO_BG)
@@ -161,6 +216,23 @@ object TodayScreen {
                 14f, Ui.ON_INFO_BG))
             card.addView(Ui.fullWidth(Ui.tonalButton(a, "Open this week") {
                 a.show(MainActivity.Tab.TRACKER)
+            }, a))
+            col.addView(card)
+        }
+
+        // ---- milestone celebration --------------------------------------
+        com.recoverwell.core.logic.Wellbeing.recentlyReachedMilestone(profile, today)?.let { m ->
+            val card = Ui.card(a, Ui.DONE_BG)
+            val r = Ui.row(a)
+            r.addView(Ui.icon(a, "ic_flag", 20, Ui.DONE))
+            val t = Ui.text(a, "Milestone reached: ${m.title}", 15.5f, Ui.DONE, bold = true)
+            t.setPadding(Ui.dp(a, 10), 0, 0, 0)
+            r.addView(Ui.weight(t, 1f))
+            card.addView(r)
+            card.addView(Ui.spacer(a, 2))
+            card.addView(Ui.text(a, m.detail, 14f, Ui.TEXT))
+            card.addView(Ui.fullWidth(Ui.tonalButton(a, "See how far you've come") {
+                a.pushOverlay { WellbeingScreen.build(a) }
             }, a))
             col.addView(card)
         }
@@ -229,6 +301,8 @@ object TodayScreen {
         col.addView(Ui.spacer(a, 6))
         col.addView(Ui.listRow(a, "ic_info", "Ask my recovery",
             "Can I drive yet? What's next? - answered offline") { a.pushOverlay { AskScreen.build(a) } })
+        col.addView(Ui.listRow(a, "ic_heart", "How you're doing",
+            "What's normal to feel right now") { a.pushOverlay { WellbeingScreen.build(a) } })
 
         // ---- checklist ----------------------------------------------------
         fun addGroup(label: String, kinds: Set<ScheduleEngine.ItemKind>) {

@@ -212,3 +212,29 @@ data class Milestone(
     val title: String,
     val detail: String
 )
+
+/** A dated record of what a clinician said - the durable half of the physio loop. */
+data class PhysioNote(
+    val id: String,
+    val date: LocalDate,
+    val text: String
+)
+
+/**
+ * One logged objective self-test (e.g. single-leg heel-rise count). Symmetry
+ * tests carry both sides so a limb-symmetry index can be computed; single-value
+ * tests leave [otherValue] null.
+ */
+data class SelfTestResult(
+    val id: String,
+    val testId: String,
+    val date: LocalDate,
+    val injuredValue: Double,
+    val otherValue: Double?,
+    val painFree: Boolean,
+    val note: String
+) {
+    /** Limb-symmetry index as a percentage (injured / other x 100), or null. */
+    val symmetryPct: Int?
+        get() = otherValue?.takeIf { it > 0.0 }?.let { ((injuredValue / it) * 100).toInt() }
+}

@@ -185,6 +185,11 @@ object TrackerScreen {
                 "No entries yet - save today's log above"
             ))
         }
+        chart.contentDescription = run {
+            val last = series.points.lastOrNull()
+            "$chartMetric trend chart. " + if (last == null) "No entries yet."
+            else "${series.points.size} entries, latest ${last.value}."
+        }
         chartCard.addView(chart, ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(a, 210))
         col.addView(chartCard, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
@@ -209,6 +214,21 @@ object TrackerScreen {
             }
         }
         col.addView(paceCard)
+
+        // ---- return to padel (criteria-based program) ----
+        run {
+            val rts = com.recoverwell.core.logic.ReturnToSport.progress(
+                a.store.profile(), a.store.selfTestResults(), a.store.rtsSignoffs(), today)
+            val title = ProtocolRegistry.forProfile(a.store.profile()).returnToSport
+                .maxByOrNull { it.order }?.title ?: "Return to sport"
+            val cleared = rts.rungs.count { it.cleared }
+            col.addView(Ui.section(a, "Return to sport"))
+            col.addView(Ui.listRow(a, "ic_flag", title,
+                if (rts.available) "$cleared of ${rts.rungs.size} stages cleared · ${rts.readinessPct}% ready"
+                else "Objective self-tests unlock around phase ${rts.startPhase}") {
+                a.pushOverlay { ReturnToSportScreen.build(a) }
+            })
+        }
 
         // ---- insights ----
         val insights = com.recoverwell.core.logic.Insights.generate(
