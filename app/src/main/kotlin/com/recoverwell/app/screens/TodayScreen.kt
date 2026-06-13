@@ -101,12 +101,10 @@ object TodayScreen {
             val rts = com.recoverwell.core.logic.ReturnToSport.progress(
                 profile, a.store.selfTestResults(), a.store.rtsSignoffs(), today)
             if (rts.available) {
-                val title = ProtocolRegistry.forProfile(profile).returnToSport
-                    .maxByOrNull { it.order }?.title ?: "Return to sport"
                 val sub = (rts.currentRung?.let { "Stage: ${it.title}" } ?: "Keep building strength") +
                     " · ${rts.readinessPct}% ready"
                 col.addView(Ui.spacer(a, 2))
-                col.addView(Ui.listRow(a, "ic_flag", title, sub) {
+                col.addView(Ui.listRow(a, "ic_flag", rts.returnPhrase, sub) {
                     a.pushOverlay { ReturnToSportScreen.build(a) }
                 })
             }

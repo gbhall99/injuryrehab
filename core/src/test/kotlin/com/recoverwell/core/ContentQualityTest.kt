@@ -37,6 +37,22 @@ class ContentQualityTest {
             }
         }
         achilles.milestones.forEach { sb.append(it.title).append('\n').append(it.detail).append('\n') }
+        achilles.selfTests.forEach { t ->
+            sb.append(t.name).append('\n').append(t.precaution).append('\n')
+            t.howTo.forEach { sb.append(it).append('\n') }
+        }
+        (achilles.returnToSport + com.recoverwell.core.protocol.SportRegistry.all.flatMap { it.tailRungs })
+            .forEach { r ->
+                sb.append(r.title).append('\n').append(r.summary).append('\n')
+                r.guidance.forEach { sb.append(it).append('\n') }
+            }
+        com.recoverwell.core.protocol.SportRegistry.all.forEach {
+            sb.append(it.name).append('\n').append(it.returnPhrase).append('\n').append(it.demands).append('\n')
+        }
+        achilles.mindset.forEach { m ->
+            m.normalToFeel.forEach { sb.append(it).append('\n') }
+            sb.append(m.encouragement).append('\n')
+        }
         achilles.redFlags.forEach { rf ->
             sb.append(rf.title).append('\n').append(rf.action).append('\n')
             rf.symptoms.forEach { sb.append(it).append('\n') }

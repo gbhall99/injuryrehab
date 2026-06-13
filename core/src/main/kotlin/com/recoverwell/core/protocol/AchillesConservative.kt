@@ -792,9 +792,22 @@ object AchillesConservative {
             ),
             precaution = "Limb symmetry on hopping is a key gate before cutting and court sport.",
             earliestPhase = 5
+        ),
+        SelfTest(
+            id = "run_long", name = "Longer continuous run", unit = "minutes",
+            symmetry = false, passThreshold = 40.0, requirePainFree = true, lowerIsBetter = false,
+            howTo = listOf(
+                "Only once you're comfortable with continuous easy jogging",
+                "On flat, even ground, run easily and record continuous pain-free minutes",
+                "Build distance gradually - no more than about 10% more per week"
+            ),
+            precaution = "Endurance running is calf-endurance work; increase volume slowly.",
+            earliestPhase = 5
         )
     )
 
+    // The SHARED foundation only; sport-specific tail stages live in SportRegistry
+    // so the same rehab scales from padel to running to cycling.
     private val returnToSport: List<RtsRung> = listOf(
         RtsRung(
             id = "rts_strength", order = 1, title = "Single-leg strength base", phase = 4,
@@ -823,26 +836,6 @@ object AchillesConservative {
             guidance = listOf(
                 "Add hopping work alongside steady jogging volume.",
                 "Keep one easy day between impact sessions early on."
-            ),
-            requiresPhysioSignoff = true
-        ),
-        RtsRung(
-            id = "rts_agility", order = 4, title = "Change of direction", phase = 5,
-            summary = "Add the cutting and lateral movement padel actually demands.",
-            testIds = listOf("hop_sym", "hop_count"),
-            guidance = listOf(
-                "Side shuffles, then diagonal cuts, building from 50% speed.",
-                "Sharp direction changes are exactly what ruptured the tendon - rehearse them progressively."
-            ),
-            requiresPhysioSignoff = true
-        ),
-        RtsRung(
-            id = "rts_padel", order = 5, title = "Return to padel", phase = 5,
-            summary = "Court movement, then controlled rallies, then friendly matches, then competition.",
-            testIds = listOf("hop_sym"),
-            guidance = listOf(
-                "Stage it: shadow movement, cooperative rallies, friendly games, competition.",
-                "Each stage needs physio sign-off; full competitive padel is typically 9-12 months after injury."
             ),
             requiresPhysioSignoff = true
         )
@@ -955,6 +948,8 @@ object AchillesConservative {
         ),
         selfTests = selfTests,
         returnToSport = returnToSport,
+        supportedSportIds = listOf("padel", "tennis", "football", "running", "hiking", "cycling", "swimming", "gym"),
+        defaultSportId = "padel",
         mindset = mindset,
         reassurance = reassurance,
         bodySceneId = "lower_leg",
@@ -1001,7 +996,8 @@ object Defaults {
             physioConfirmedPhase = 1,
             phaseStartOverrides = emptyMap(),
             onboardingComplete = false,
-            disclaimerAcknowledged = false
+            disclaimerAcknowledged = false,
+            sportId = p.defaultSportId ?: ""
         )
     }
 

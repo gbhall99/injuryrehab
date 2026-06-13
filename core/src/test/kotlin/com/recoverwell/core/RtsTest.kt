@@ -71,6 +71,30 @@ class RtsTest {
     }
 
     @Test
+    fun sportChoiceReshapesTheLadder() {
+        // padel: full impact foundation + court tail
+        val padel = ReturnToSport.progress(profileAtPhase(5).copy(sportId = "padel"), emptyList(), emptySet(), today)
+        assertEquals("Return to padel", padel.returnPhrase)
+        assertEquals(5, padel.rungs.size)
+        assertTrue(padel.rungs.any { it.rung.id == "rts_padel" })
+
+        // cycling: low impact - the jogging/hopping stages are dropped entirely
+        val cycling = ReturnToSport.progress(profileAtPhase(5).copy(sportId = "cycling"), emptyList(), emptySet(), today)
+        assertEquals("Return to cycling", cycling.returnPhrase)
+        assertEquals(2, cycling.rungs.size)
+        assertTrue(cycling.rungs.any { it.rung.id == "rts_cycle_return" })
+        assertFalse(cycling.rungs.any { it.rung.id == "rts_jog" })
+
+        // running: foundation + distance-building tail
+        val running = ReturnToSport.progress(profileAtPhase(5).copy(sportId = "running"), emptyList(), emptySet(), today)
+        assertEquals("Return to running", running.returnPhrase)
+        assertTrue(running.rungs.any { it.rung.id == "rts_run_return" })
+
+        // stages are renumbered sequentially regardless of sport
+        assertEquals((1..running.rungs.size).toList(), running.rungs.map { it.rung.order })
+    }
+
+    @Test
     fun painDuringTestFailsItEvenWithGoodNumbers() {
         val withPain = listOf(result("heel_rise_sym", 20.0, 20.0, painFree = false)) // 100% but painful
         val prog = ReturnToSport.progress(profileAtPhase(4), withPain, emptySet(), today)

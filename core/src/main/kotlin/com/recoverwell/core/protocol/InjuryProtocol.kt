@@ -35,8 +35,16 @@ data class InjuryProtocol(
     val movementChecks: List<MovementCheckSpec>,
     /** Objective self-tests the user can perform and log (heel-rise, hop, ...). */
     val selfTests: List<SelfTest> = emptyList(),
-    /** Criteria-based return-to-sport ladder built on those self-tests. */
+    /**
+     * The SHARED foundation of the return-to-sport ladder (strength, jogging,
+     * hopping) - sport-agnostic rungs every supported sport builds on. Each
+     * sport then contributes its own tail (see [supportedSportIds]).
+     */
     val returnToSport: List<RtsRung> = emptyList(),
+    /** Ids (into SportRegistry) of the sports this injury's program supports. */
+    val supportedSportIds: List<String> = emptyList(),
+    /** Sport selected when the user hasn't chosen one yet; null = generic. */
+    val defaultSportId: String? = null,
     /** Per-phase "what's normal to feel" + encouragement (the emotional side). */
     val mindset: List<PhaseMindset> = emptyList(),
     /** Reassurance about the injury's signature fear (e.g. re-rupture). */

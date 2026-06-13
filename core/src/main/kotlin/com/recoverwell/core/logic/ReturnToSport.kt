@@ -6,6 +6,8 @@ import com.recoverwell.core.protocol.InjuryProtocol
 import com.recoverwell.core.protocol.ProtocolRegistry
 import com.recoverwell.core.protocol.RtsRung
 import com.recoverwell.core.protocol.SelfTest
+import com.recoverwell.core.protocol.Sport
+import com.recoverwell.core.protocol.SportRegistry
 import java.time.LocalDate
 
 /**
@@ -43,8 +45,26 @@ object ReturnToSport {
         val readinessPct: Int,
         /** The program is relevant once the earliest rung's phase is reached. */
         val available: Boolean,
-        val startPhase: Int
+        val startPhase: Int,
+        /** Resolved target sport (null = generic), and its display labels. */
+        val sport: Sport?,
+        val returnPhrase: String
     )
+
+    /** Resolve the user's target sport (their choice, else the protocol default). */
+    fun resolveSport(profile: Profile, protocol: InjuryProtocol): Sport? {
+        val id = profile.sportId.ifBlank { protocol.defaultSportId ?: "" }
+        return if (id.isBlank()) null else SportRegistry.byId(id)
+    }
+
+    /** Foundation rungs the sport keeps, then the sport's tail - renumbered 1..N. */
+    fun effectiveLadder(protocol: InjuryProtocol, sport: Sport?): List<RtsRung> {
+        val foundation = protocol.returnToSport.sortedBy { it.order }
+        val kept = if (sport == null) foundation
+            else foundation.filter { it.id in sport.foundationRungIds }.ifEmpty { foundation }
+        val tail = sport?.tailRungs.orEmpty().sortedBy { it.order }
+        return (kept + tail).mapIndexed { i, r -> r.copy(order = i + 1) }
+    }
 
     fun latestFor(testId: String, results: List<SelfTestResult>): SelfTestResult? =
         results.filter { it.testId == testId }.maxByOrNull { it.date }
@@ -77,7 +97,8 @@ object ReturnToSport {
         today: LocalDate,
         protocol: InjuryProtocol = ProtocolRegistry.forProfile(profile)
     ): Progress {
-        val ladder = protocol.returnToSport.sortedBy { it.order }
+        val sport = resolveSport(profile, protocol)
+        val ladder = effectiveLadder(protocol, sport)
         val testsById = protocol.selfTests.associateBy { it.id }
         val currentPhase = PhaseEngine.currentPhase(profile, today).number
         val startPhase = ladder.minOfOrNull { it.phase } ?: Int.MAX_VALUE
@@ -126,7 +147,9 @@ object ReturnToSport {
             nextLockedByPhase = nextLockedByPhase,
             readinessPct = readiness,
             available = currentPhase >= startPhase,
-            startPhase = if (startPhase == Int.MAX_VALUE) 99 else startPhase
+            startPhase = if (startPhase == Int.MAX_VALUE) 99 else startPhase,
+            sport = sport,
+            returnPhrase = sport?.returnPhrase ?: "Return to sport"
         )
     }
 }

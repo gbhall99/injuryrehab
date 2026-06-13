@@ -1,5 +1,6 @@
 package com.recoverwell.app.screens
 
+import android.app.AlertDialog
 import android.text.InputType
 import android.view.Gravity
 import android.view.View
@@ -14,8 +15,10 @@ import com.recoverwell.app.ui.SceneView
 import com.recoverwell.app.ui.Ui
 import com.recoverwell.core.logic.ReturnToSport
 import com.recoverwell.core.model.SelfTestResult
+import com.recoverwell.core.protocol.InjuryProtocol
 import com.recoverwell.core.protocol.ProtocolRegistry
 import com.recoverwell.core.protocol.SelfTest
+import com.recoverwell.core.protocol.SportRegistry
 import com.recoverwell.draw.RingScene
 import java.time.LocalDate
 import java.util.UUID
@@ -34,12 +37,20 @@ object ReturnToSportScreen {
         val results = a.store.selfTestResults()
         val signoffs = a.store.rtsSignoffs()
         val prog = ReturnToSport.progress(profile, results, signoffs, today, protocol)
-        val headerTitle = protocol.returnToSport.maxByOrNull { it.order }?.title ?: "Return to sport"
         val total = prog.rungs.size
         val clearedCount = prog.rungs.count { it.cleared }
 
         val col = Ui.column(a)
-        col.addView(Ui.backRow(a, headerTitle) { a.popOverlay() })
+        col.addView(Ui.backRow(a, prog.returnPhrase) { a.popOverlay() })
+
+        // ---- target sport selector (scales the whole ladder) ----------------
+        if (protocol.supportedSportIds.size > 1) {
+            col.addView(Ui.listRow(a, "ic_flag", "Training for",
+                (prog.sport?.name ?: "Sport") + " · tap to change") {
+                pickSport(a, protocol, prog.sport?.id ?: "")
+            })
+        }
+        prog.sport?.demands?.let { col.addView(Ui.caption(a, it)) }
 
         // ---- readiness hero -------------------------------------------------
         val hero = Ui.card(a, Ui.HERO_BG)
@@ -103,6 +114,22 @@ object ReturnToSportScreen {
 
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
+    }
+
+    private fun pickSport(a: MainActivity, protocol: InjuryProtocol, currentId: String) {
+        val sports = protocol.supportedSportIds.mapNotNull { SportRegistry.byId(it) }
+        if (sports.isEmpty()) return
+        val names = sports.map { it.name }.toTypedArray()
+        val current = sports.indexOfFirst { it.id == currentId }
+        AlertDialog.Builder(a)
+            .setTitle("What are you working back to?")
+            .setSingleChoiceItems(names, current) { d, which ->
+                a.store.saveProfile(a.store.profile().copy(sportId = sports[which].id))
+                d.dismiss()
+                a.refresh()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     // ------------------------------------------------------------------

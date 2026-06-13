@@ -1,5 +1,6 @@
 package com.recoverwell.app.screens
 
+import android.app.AlertDialog
 import android.view.View
 import com.recoverwell.app.MainActivity
 import com.recoverwell.app.notify.Reminders
@@ -9,6 +10,7 @@ import com.recoverwell.core.model.*
 import com.recoverwell.core.protocol.Defaults
 import com.recoverwell.core.protocol.ProtocolRegistry
 import com.recoverwell.core.protocol.RehabFramework
+import com.recoverwell.core.protocol.SportRegistry
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
@@ -132,6 +134,28 @@ object MoreScreen {
         card.addView(Forms.label(a, "Goal"))
         val goalEdit = Forms.editText(a, p.goal, "What are you working back to?")
         card.addView(goalEdit)
+
+        val sports = ProtocolRegistry.byId(p.protocolId).supportedSportIds.mapNotNull { SportRegistry.byId(it) }
+        if (sports.isNotEmpty()) {
+            card.addView(Forms.label(a, "Sport to return to · shapes your return-to-sport plan"))
+            val defaultId = ProtocolRegistry.byId(p.protocolId).defaultSportId ?: ""
+            var sportBtn: android.widget.TextView? = null
+            fun currentSportName() = sports.firstOrNull { it.id == p.sportId.ifBlank { defaultId } }?.name ?: "Choose sport"
+            sportBtn = Ui.tonalButton(a, currentSportName()) {
+                val names = sports.map { it.name }.toTypedArray()
+                val idx = sports.indexOfFirst { it.id == p.sportId.ifBlank { defaultId } }
+                AlertDialog.Builder(a)
+                    .setTitle("What are you working back to?")
+                    .setSingleChoiceItems(names, idx) { d, which ->
+                        p = p.copy(sportId = sports[which].id)
+                        sportBtn?.text = sports[which].name
+                        d.dismiss()
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+            }
+            card.addView(Ui.fullWidth(sportBtn, a, 4))
+        }
         col.addView(card)
 
         val device = ProtocolRegistry.byId(p.protocolId).supportDevice

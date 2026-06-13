@@ -133,7 +133,8 @@ object BackupCodec {
             p.phaseConfirmedDates.entries.associate { (k, v) -> k.toString() to Json.of(v.toString()) }
         ),
         "onboardingComplete" to Json.of(p.onboardingComplete),
-        "disclaimerAcknowledged" to Json.of(p.disclaimerAcknowledged)
+        "disclaimerAcknowledged" to Json.of(p.disclaimerAcknowledged),
+        "sportId" to Json.of(p.sportId)
     )
 
     fun profileFrom(j: JsonValue): Profile = Profile(
@@ -169,7 +170,8 @@ object BackupCodec {
         phaseConfirmedDates = (j.opt("phaseConfirmedDates")?.asObj() ?: emptyMap())
             .entries.associate { (k, v) -> k.toInt() to LocalDate.parse(v.asString()) },
         onboardingComplete = j.opt("onboardingComplete")?.asBool() ?: false,
-        disclaimerAcknowledged = j.opt("disclaimerAcknowledged")?.asBool() ?: false
+        disclaimerAcknowledged = j.opt("disclaimerAcknowledged")?.asBool() ?: false,
+        sportId = j.opt("sportId")?.asString() ?: ""
     )
 
     // -- medication -----------------------------------------------------

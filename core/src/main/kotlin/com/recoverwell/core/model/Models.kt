@@ -88,7 +88,9 @@ data class Profile(
     /** Date each phase was physio-confirmed, for pace/forecasting. Key = phase number. */
     val phaseConfirmedDates: Map<Int, LocalDate> = emptyMap(),
     val onboardingComplete: Boolean,
-    val disclaimerAcknowledged: Boolean
+    val disclaimerAcknowledged: Boolean,
+    /** Target sport for the return-to-sport program; blank = the protocol default. */
+    val sportId: String = ""
 )
 
 data class Medication(

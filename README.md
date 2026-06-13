@@ -63,13 +63,19 @@ progressive wedge reduction — built around a real recovery that started on
   revoked, battery optimisation killing alarms), each with a one-tap route to
   the right system screen and a "send a test reminder now" button. A home-screen
   warning appears if delivery is actively blocked.
-- **Return-to-padel program** — a criteria-based ladder for the final stretch,
-  built on objective self-tests you perform and log (single-leg heel-rise
-  symmetry, balance, calf girth, walking/jogging tolerance, hop count and hop
-  symmetry). Each stage clears only when its thresholds are met *and* — for
+- **Return-to-sport program (scalable by sport)** — a criteria-based ladder
+  for the final stretch, built on objective self-tests you perform and log
+  (single-leg heel-rise symmetry, balance, calf girth, walking/jogging
+  tolerance, hop count, hop symmetry, longer-run tolerance). The injury owns a
+  shared foundation (strength → jogging → hopping); each **sport** contributes
+  its own tail of stages on top, so the same Achilles rehab scales from padel
+  and tennis (cutting, court drills) to running (distance), football (sprint,
+  kick, contact), hiking (uneven ground), and low-impact cycling/swimming
+  (which skip the impact stages entirely). Pick your target sport on the
+  program screen or in Settings and the whole ladder, headline and readiness
+  reshape. Each stage clears only when its thresholds are met *and* — for
   impact stages — you record physio sign-off, mirroring the two-key gate used
-  for phases. An overall readiness percentage tracks progress toward the court;
-  reachable from Today, Progress and the program screen itself.
+  for phases. Sports are pure data (`SportRegistry`); adding one is a data entry.
 - **Physio loop** — an auto-generated "bring to your appointment" pack
   (pending phase gates, return-to-sport sign-offs due, caution-tone insights,
   pace vs the typical timeline, plus your own questions) with a current-numbers

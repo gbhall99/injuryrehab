@@ -219,11 +219,9 @@ object TrackerScreen {
         run {
             val rts = com.recoverwell.core.logic.ReturnToSport.progress(
                 a.store.profile(), a.store.selfTestResults(), a.store.rtsSignoffs(), today)
-            val title = ProtocolRegistry.forProfile(a.store.profile()).returnToSport
-                .maxByOrNull { it.order }?.title ?: "Return to sport"
             val cleared = rts.rungs.count { it.cleared }
             col.addView(Ui.section(a, "Return to sport"))
-            col.addView(Ui.listRow(a, "ic_flag", title,
+            col.addView(Ui.listRow(a, "ic_flag", rts.returnPhrase,
                 if (rts.available) "$cleared of ${rts.rungs.size} stages cleared · ${rts.readinessPct}% ready"
                 else "Objective self-tests unlock around phase ${rts.startPhase}") {
                 a.pushOverlay { ReturnToSportScreen.build(a) }
