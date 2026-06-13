@@ -226,7 +226,10 @@ object MoreScreen {
         confirmCard.addView(Ui.text(a, "Physio-confirmed phase", 15.5f, Ui.TEXT, bold = true))
         confirmCard.addView(Ui.caption(a, "If you progressed by mistake, wind this back."))
         confirmCard.addView(Forms.stepper(a, "Confirmed up to", current, 1, 5) { v ->
-            a.store.saveProfile(a.store.profile().copy(physioConfirmedPhase = v))
+            val pp = a.store.profile()
+            val dates = if (v > pp.physioConfirmedPhase)
+                pp.phaseConfirmedDates + (v to LocalDate.now()) else pp.phaseConfirmedDates
+            a.store.saveProfile(pp.copy(physioConfirmedPhase = v, phaseConfirmedDates = dates))
             Reminders.reschedule(a)
         })
         col.addView(confirmCard)

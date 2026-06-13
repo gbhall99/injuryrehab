@@ -18,8 +18,36 @@ object Journeys {
             twin(out, suffix)
             redFlags(out, suffix)
             settings(out, suffix)
+            smart(out, suffix)
         }
         Palette.dark = false
+    }
+
+    // ---- Smart layer: insights + pace + ask ----
+    private fun smart(out: File, sfx: String) {
+        val m = ScreenMock()
+        m.fill(); m.statusBar(); m.appBar("Progress", withAlert = false)
+        m.section("Your pace")
+        val pt = m.card(96f)
+        m.s.text("~1 week ahead", m.pad + 16f, pt + 30f, 16f, Palette.ON_SURFACE, medium = true)
+        m.s.text("You're tracking about 1 week ahead of the typical", m.pad + 16f, pt + 54f, 13.5f, Palette.ON_SURFACE)
+        m.s.text("timeline. Keep letting your physio set the pace.", m.pad + 16f, pt + 74f, 13.5f, Palette.ON_SURFACE)
+        m.section("Insights")
+        fun insight(bg: Int, fg: Int, icon: String, title: String, body: List<String>) {
+            val h = 46f + body.size * 19f
+            val t = m.card(h, bg)
+            MaterialIcons.draw(m.s, icon, m.pad + 14f, t + 16f, 20f, fg)
+            m.s.text(title, m.pad + 44f, t + 30f, 15f, fg, medium = true)
+            body.forEachIndexed { i, line -> m.s.text(line, m.pad + 44f, t + 52f + i * 19f, 13f, Palette.ON_SURFACE) }
+        }
+        insight(Palette.DONE_BG, Palette.DONE, "ic_check", "Pain is easing",
+            listOf("Average pain is down 2 points vs last week", "(6 → 4). A good sign the tendon is settling."))
+        insight(Palette.DONE_BG, Palette.DONE, "ic_check", "Elevation seems to help your swelling",
+            listOf("On days you logged elevation, swelling tended", "to be lower (1.1 vs 2.0). Worth keeping up."))
+        insight(Palette.INFO_CONTAINER, Palette.ON_INFO_CONTAINER, "ic_info", "Ask my recovery",
+            listOf("Can I drive yet? What's next? - answered offline"))
+        m.disclaimerStrip(); m.bottomNav(2)
+        m.save(out, "journey_smart$sfx")
     }
 
     // ---- Journey 1: first launch ----

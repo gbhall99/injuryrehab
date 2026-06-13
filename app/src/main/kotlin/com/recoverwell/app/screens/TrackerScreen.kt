@@ -147,6 +147,33 @@ object TrackerScreen {
         col.addView(Ui.spacer(a, 6))
         col.addView(Ui.caption(a, "Solid line: daily entries · dashed: 7-entry average"))
 
+        // ---- your pace (personalised vs the typical timeline) ----
+        val pace = com.recoverwell.core.logic.Pace.project(a.store.profile(), today)
+        col.addView(Ui.section(a, "Your pace"))
+        val paceCard = Ui.card(a)
+        val paceHead = if (pace.earlyDays) "Tracking your progress"
+            else if (pace.deltaWeeks >= 1) "~${pace.deltaWeeks} week${if (pace.deltaWeeks == 1) "" else "s"} ahead"
+            else if (pace.deltaWeeks <= -1) "~${-pace.deltaWeeks} week${if (pace.deltaWeeks == -1) "" else "s"} behind"
+            else "On track"
+        paceCard.addView(Ui.text(a, paceHead, 16f, Ui.TEXT, bold = true))
+        paceCard.addView(Ui.spacer(a, 2))
+        paceCard.addView(Ui.text(a, pace.summary, 14f, Ui.TEXT))
+        if (pace.projectedMilestones.isNotEmpty()) {
+            paceCard.addView(Ui.spacer(a, 6))
+            for ((m, date) in pace.projectedMilestones) {
+                paceCard.addView(Ui.caption(a, "~${date.format(fmt)} · ${m.title}"))
+            }
+        }
+        col.addView(paceCard)
+
+        // ---- insights ----
+        val insights = com.recoverwell.core.logic.Insights.generate(
+            a.store.profile(), logs, a.store.allEvents(), a.store.medications(), a.store.tasks(), today)
+        if (insights.isNotEmpty()) {
+            col.addView(Ui.section(a, "Insights"))
+            for (ins in insights) col.addView(TodayScreen.insightCard(a, ins))
+        }
+
         // ---- milestone timeline ----
         col.addView(Ui.section(a, "Milestones"))
         col.addView(Ui.pillBadge(a, ProtocolRegistry.forProfile(a.store.profile()).placeholderNote, Ui.WARN, Ui.WARN_BG))

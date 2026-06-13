@@ -81,6 +81,9 @@ object BackupCodec {
         "phaseStartOverrides" to JsonValue.Obj(
             p.phaseStartOverrides.entries.associate { (k, v) -> k.toString() to Json.of(v.toString()) }
         ),
+        "phaseConfirmedDates" to JsonValue.Obj(
+            p.phaseConfirmedDates.entries.associate { (k, v) -> k.toString() to Json.of(v.toString()) }
+        ),
         "onboardingComplete" to Json.of(p.onboardingComplete),
         "disclaimerAcknowledged" to Json.of(p.disclaimerAcknowledged)
     )
@@ -114,6 +117,8 @@ object BackupCodec {
         weightBearing = WeightBearing.valueOf(j.get("weightBearing").asString()),
         physioConfirmedPhase = j.get("physioConfirmedPhase").asInt(),
         phaseStartOverrides = (j.opt("phaseStartOverrides")?.asObj() ?: emptyMap())
+            .entries.associate { (k, v) -> k.toInt() to LocalDate.parse(v.asString()) },
+        phaseConfirmedDates = (j.opt("phaseConfirmedDates")?.asObj() ?: emptyMap())
             .entries.associate { (k, v) -> k.toInt() to LocalDate.parse(v.asString()) },
         onboardingComplete = j.opt("onboardingComplete")?.asBool() ?: false,
         disclaimerAcknowledged = j.opt("disclaimerAcknowledged")?.asBool() ?: false

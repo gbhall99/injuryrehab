@@ -144,13 +144,55 @@ object TodayScreen {
                     "Has your physiotherapist explicitly confirmed phase " +
                         "${gate.nextPhase!!.number} (${gate.nextPhase!!.title})?"
                 ) {
-                    a.store.saveProfile(a.store.profile().copy(physioConfirmedPhase = gate.nextPhase!!.number))
+                    val pp = a.store.profile()
+                    a.store.saveProfile(pp.copy(
+                        physioConfirmedPhase = gate.nextPhase!!.number,
+                        phaseConfirmedDates = pp.phaseConfirmedDates + (gate.nextPhase!!.number to today)
+                    ))
                     Reminders.reschedule(a)
                     a.refresh()
                 }
             }, a))
             col.addView(gateCard)
         }
+
+        // ---- smart reminder suggestion (learned from when you log doses) ----
+        val allEvents = a.store.allEvents()
+        com.recoverwell.core.logic.AdaptiveReminders
+            .timeSuggestions(a.store.medications(), allEvents, today).firstOrNull()?.let { sug ->
+            val card = Ui.card(a, Ui.INFO_BG)
+            val r = Ui.row(a)
+            r.addView(Ui.icon(a, "ic_clock", 20, Ui.ON_INFO_BG))
+            val t = Ui.text(a, "Smarter reminder time", 15.5f, Ui.ON_INFO_BG, bold = true)
+            t.setPadding(Ui.dp(a, 10), 0, 0, 0)
+            r.addView(Ui.weight(t, 1f))
+            card.addView(r)
+            card.addView(Ui.spacer(a, 2))
+            card.addView(Ui.text(a, "You usually take ${sug.medName} around " +
+                "${com.recoverwell.core.logic.Insights.minuteLabel(sug.typicalMinute)}, but its reminder is " +
+                "set for ${com.recoverwell.core.logic.Insights.minuteLabel(sug.scheduledMinute)}.", 14f, Ui.ON_INFO_BG))
+            card.addView(Ui.fullWidth(Ui.button(a, "Move reminder to " +
+                com.recoverwell.core.logic.Insights.minuteLabel(sug.typicalMinute)) {
+                a.store.saveMedications(com.recoverwell.core.logic.AdaptiveReminders
+                    .applySuggestion(a.store.medications(), sug))
+                Reminders.reschedule(a)
+                a.refresh()
+            }, a))
+            col.addView(card)
+        }
+
+        // ---- insights (on-device analysis of your own data) ----
+        val insights = com.recoverwell.core.logic.Insights.generate(
+            profile, a.store.allLogs(), allEvents, a.store.medications(), a.store.tasks(), today)
+        if (insights.isNotEmpty()) {
+            col.addView(Ui.section(a, "Insights"))
+            for (ins in insights.take(3)) col.addView(insightCard(a, ins))
+        }
+
+        // ---- ask my recovery ----
+        col.addView(Ui.spacer(a, 6))
+        col.addView(Ui.listRow(a, "ic_info", "Ask my recovery",
+            "Can I drive yet? What's next? - answered offline") { a.pushOverlay { AskScreen.build(a) } })
 
         // ---- checklist ----------------------------------------------------
         fun addGroup(label: String, kinds: Set<ScheduleEngine.ItemKind>) {
@@ -239,6 +281,27 @@ object TodayScreen {
                 } else record(a, item, EventStatus.DONE)
             }
         }
+    }
+
+    /** A single insight rendered as a toned card with a leading icon. */
+    fun insightCard(a: MainActivity, ins: com.recoverwell.core.logic.Insights.Insight): View {
+        val (bg, fg, icon) = when (ins.tone) {
+            com.recoverwell.core.logic.Insights.Tone.POSITIVE -> Triple(Ui.DONE_BG, Ui.DONE, "ic_check")
+            com.recoverwell.core.logic.Insights.Tone.CAUTION -> Triple(Ui.WARN_BG, Ui.WARN, "ic_alert")
+            com.recoverwell.core.logic.Insights.Tone.NEUTRAL -> Triple(Ui.INFO_BG, Ui.ON_INFO_BG, "ic_info")
+        }
+        val card = Ui.card(a, bg)
+        val r = Ui.row(a)
+        r.gravity = android.view.Gravity.TOP
+        r.addView(Ui.icon(a, icon, 20, fg))
+        val texts = android.widget.LinearLayout(a).apply { orientation = android.widget.LinearLayout.VERTICAL }
+        texts.setPadding(Ui.dp(a, 10), 0, 0, 0)
+        texts.addView(Ui.text(a, ins.title, 15f, fg, bold = true))
+        texts.addView(Ui.spacer(a, 2))
+        texts.addView(Ui.text(a, ins.detail, 13.5f, Ui.TEXT))
+        r.addView(Ui.weight(texts, 1f))
+        card.addView(r)
+        return card
     }
 
     fun record(a: MainActivity, item: ScheduleEngine.ChecklistItem, status: EventStatus) {

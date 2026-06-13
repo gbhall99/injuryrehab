@@ -226,3 +226,22 @@ the hand-off is user-initiated and stated under About. Search phrase is data
 injury links to its own videos with no code change.
 
 56 tests green (new ExerciseVideoTest); signed v2.1 APK; no INTERNET permission.
+
+---
+
+# Intelligence layer (v2.2) - all four chosen capabilities
+
+All on-device, private, physio-advisory; pure `core` logic with tests, thin UI.
+
+| Capability | What it does | Where |
+|---|---|---|
+| Insights engine | Pain/swelling trends (last 7 vs prior 7 days), a habit->outcome correlation (elevation days vs swelling), medication-adherence read, and a data-backed "you may be ready for the next phase" signal | Today (top 3) + Progress (all), toned cards |
+| Adaptive reminders | Learns the median time you actually log each dose; if it's >=30 min off the reminder, offers a one-tap "move reminder to HH:MM"; also flags routinely-missed slots | Today card (applies + reschedules) |
+| Pace & forecasting | Compares the dates you had each phase physio-confirmed vs the protocol baseline -> "~N weeks ahead/behind" + projected upcoming milestone dates, caveated | Progress "Your pace" card |
+| Ask my recovery | Offline Q&A mapping questions to the protocol's own movement checks / red flags / phase info ("Can I drive yet?", "What's next?") with deep-link actions | New screen from Today |
+
+New: profile.phaseConfirmedDates (backup-carried) records when each phase was
+confirmed, powering pace. 10 new SmartTest cases (trends, correlation, reminder
+suggest+apply, miss pattern, pace ahead/early-days, ask intents, backup).
+
+64 tests green; signed v2.2 APK; still no INTERNET permission.

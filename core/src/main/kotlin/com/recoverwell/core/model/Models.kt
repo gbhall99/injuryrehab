@@ -85,6 +85,8 @@ data class Profile(
     val physioConfirmedPhase: Int,
     /** Optional per-phase start date overrides set by the user/physio. Key = phase number. */
     val phaseStartOverrides: Map<Int, LocalDate>,
+    /** Date each phase was physio-confirmed, for pace/forecasting. Key = phase number. */
+    val phaseConfirmedDates: Map<Int, LocalDate> = emptyMap(),
     val onboardingComplete: Boolean,
     val disclaimerAcknowledged: Boolean
 )
