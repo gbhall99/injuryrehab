@@ -56,8 +56,8 @@ object TrackerScreen {
         var log = a.store.dailyLog(day)
         val form = Ui.card(a)
 
-        form.addView(Forms.label(a, "Pain right now · 0 none, 10 worst"))
-        form.addView(Forms.scaleSlider(a, 10, log.pain) { log = log.copy(pain = it) })
+        form.addView(Forms.label(a, "Pain right now"))
+        form.addView(Forms.scaleSlider(a, 10, log.pain, "0 · None", "10 · Worst") { log = log.copy(pain = it) })
 
         form.addView(Forms.label(a, "Swelling"))
         form.addView(Forms.choiceRow(a, Swelling.values().toList(), { it.label }, log.swelling) {

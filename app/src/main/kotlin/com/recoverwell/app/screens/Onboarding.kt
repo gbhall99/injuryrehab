@@ -17,8 +17,11 @@ object Onboarding {
 
     fun build(a: MainActivity): View {
         val col = Ui.column(a)
-        col.addView(Ui.spacer(a, 18))
-        col.addView(Ui.display(a, "Welcome to RecoverWell"))
+        col.addView(Ui.spacer(a, 24))
+        col.addView(Ui.heroBadge(a, "ic_leg", boxDp = 72))
+        col.addView(Ui.spacer(a, 14))
+        col.addView(Ui.text(a, "Welcome to", 16f, Ui.TEXT_DIM))
+        col.addView(Ui.display(a, "RecoverWell"))
         col.addView(Ui.spacer(a, 4))
         val protocol = ProtocolRegistry.forProfile(a.store.profile())
         col.addView(Ui.body(

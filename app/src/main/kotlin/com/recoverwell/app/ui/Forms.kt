@@ -144,8 +144,12 @@ object Forms {
         return row
     }
 
-    /** 0-10 slider with a live value readout, for the pain scale. */
-    fun scaleSlider(ctx: Activity, max: Int, initial: Int?, onChange: (Int) -> Unit): LinearLayout {
+    /** 0-10 slider with a live value readout and scale anchors, for the pain scale. */
+    fun scaleSlider(
+        ctx: Activity, max: Int, initial: Int?,
+        minLabel: String? = null, maxLabel: String? = null,
+        onChange: (Int) -> Unit
+    ): LinearLayout {
         val col = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
         val readout = Ui.text(ctx, initial?.toString() ?: "–", 22f, Ui.PRIMARY, bold = true)
         readout.gravity = Gravity.CENTER
@@ -167,6 +171,15 @@ object Forms {
         }
         col.addView(readout)
         col.addView(bar)
+        if (minLabel != null || maxLabel != null) {
+            val anchors = Ui.row(ctx)
+            anchors.setPadding(Ui.dp(ctx, 18), 0, Ui.dp(ctx, 18), 0)
+            anchors.addView(Ui.weight(Ui.text(ctx, minLabel ?: "", 12f, Ui.TEXT_DIM), 1f))
+            val mx = Ui.text(ctx, maxLabel ?: "", 12f, Ui.TEXT_DIM)
+            mx.gravity = Gravity.END
+            anchors.addView(mx)
+            col.addView(anchors)
+        }
         return col
     }
 

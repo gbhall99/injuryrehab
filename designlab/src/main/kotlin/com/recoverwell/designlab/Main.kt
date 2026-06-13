@@ -99,6 +99,8 @@ fun main(args: Array<String>) {
     Palette.dark = true
     renderTodayMock(out, "screen_today_dark")
     Palette.dark = false
+
+    Journeys.renderAll(out)
 }
 
 /** Faithful tone-preview of the redesigned Today screen (Roboto on device). */

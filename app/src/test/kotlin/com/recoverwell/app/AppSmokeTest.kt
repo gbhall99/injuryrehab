@@ -38,7 +38,8 @@ class OnboardingSmokeTest : SmokeBase() {
     fun launchesIntoOnboardingWithDisclaimer() {
         val activity = Robolectric.setupActivity(MainActivity::class.java)
         val texts = allText(activity.window.decorView).joinToString("\n")
-        assertTrue(texts.has("Welcome to RecoverWell"))
+        assertTrue(texts.has("Welcome to"))
+        assertTrue(texts.has("RecoverWell"))
         assertTrue(texts.has("supports"))
         assertTrue(texts.has("Red flags"))
     }

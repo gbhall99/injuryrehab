@@ -78,13 +78,17 @@ object TwinScreen {
         col.addView(Ui.section(a, "Can I..."))
         val checksCard = Ui.card(a)
         Capability.movementChecks(profile, today).forEachIndexed { i, c ->
-            if (i > 0) checksCard.addView(Ui.spacer(a, 10))
+            if (i > 0) checksCard.addView(Ui.divider(a))
             val row = Ui.row(a)
-            row.addView(Ui.icon(a, if (c.allowed) "ic_check" else "ic_close", 20,
-                if (c.allowed) Ui.DONE else Ui.DANGER))
+            row.gravity = android.view.Gravity.TOP
+            val badge = Ui.iconBadge(a, if (c.allowed) "ic_check" else "ic_close",
+                if (c.allowed) Ui.DONE else Ui.DANGER,
+                if (c.allowed) Ui.DONE_BG else Ui.DANGER_BG, boxDp = 34)
+            row.addView(badge)
             val texts = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
-            texts.setPadding(Ui.dp(a, 12), 0, 0, 0)
+            texts.setPadding(Ui.dp(a, 12), Ui.dp(a, 1), 0, 0)
             texts.addView(Ui.text(a, c.movement, 15f, Ui.TEXT, bold = true))
+            texts.addView(Ui.spacer(a, 2))
             texts.addView(Ui.caption(a, c.note))
             row.addView(Ui.weight(texts, 1f))
             checksCard.addView(row)

@@ -262,6 +262,10 @@ object ExercisesScreen {
                 stage.addView(Ui.caption(a, "${effective.sets} sets of ${effective.reps} - nicely done"))
                 stage.addView(Ui.fullWidth(Ui.button(a, "Finish & log session") { finish() }, a))
             } else {
+                if (effective.sets > 1) {
+                    stage.addView(Ui.setDots(a, effective.sets, set - 1))
+                    stage.addView(Ui.spacer(a, 8))
+                }
                 stage.addView(Ui.pillBadge(a, "Set $set of ${effective.sets}",
                     Ui.ON_PRIMARY_CONTAINER, Ui.PRIMARY_CONTAINER))
                 stage.addView(Ui.spacer(a, 8))

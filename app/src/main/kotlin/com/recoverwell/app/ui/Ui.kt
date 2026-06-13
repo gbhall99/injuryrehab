@@ -306,6 +306,44 @@ object Ui {
         if (chevron && onClick != null) addView(icon(context, "ic_chevron", 18, TEXT_DIM))
     }
 
+    /** Hairline divider for separating list items inside a card. */
+    fun divider(context: Context): View = View(context).apply {
+        setBackgroundColor(OUTLINE)
+        layoutParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 1)
+        ).apply { setMargins(0, dp(context, 10), 0, dp(context, 10)) }
+    }
+
+    /** Row of progress dots (filled up to [current] of [total]) - guided sessions. */
+    fun setDots(context: Context, total: Int, current: Int): LinearLayout =
+        row(context).apply {
+            gravity = Gravity.CENTER
+            for (i in 0 until total) {
+                val on = i < current
+                val dot = View(context).apply {
+                    background = GradientDrawable().apply {
+                        shape = GradientDrawable.OVAL
+                        setColor(if (on) PRIMARY else PRIMARY_CONTAINER)
+                    }
+                }
+                val sz = dp(context, if (on) 10 else 8)
+                val lp = LinearLayout.LayoutParams(sz, sz)
+                lp.setMargins(dp(context, 4), 0, dp(context, 4), 0)
+                addView(dot, lp)
+            }
+        }
+
+    /** A circular brand/illustration badge - the visual anchor of intro screens. */
+    fun heroBadge(context: Context, iconName: String, boxDp: Int = 72): FrameLayout =
+        FrameLayout(context).apply {
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(PRIMARY_CONTAINER) }
+            layoutParams = LinearLayout.LayoutParams(dp(context, boxDp), dp(context, boxDp))
+            val iv = icon(context, iconName, (boxDp * 0.5f).toInt(), ON_PRIMARY_CONTAINER)
+            val lp = FrameLayout.LayoutParams(dp(context, (boxDp * 0.5f).toInt()), dp(context, (boxDp * 0.5f).toInt()))
+            lp.gravity = Gravity.CENTER
+            addView(iv, lp)
+        }
+
     /** Checklist row: drawn circular check, whole row toggles, time on the right. */
     fun checkRow(
         context: Context,

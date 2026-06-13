@@ -151,3 +151,30 @@ Verification: 52/52 tests green (pipeline test updated for the snooze
 action), signed v1.5 APK, widget receiver verified in the compiled manifest.
 | 17 | Device crash report (Pixel 10 Pro XL, Android 17): NoSuchMethodError LambdaMetafactory.metafactory at ScheduleEngine.dailyChecklist <- kotlin stdlib compareBy | Root cause: kotlin-stdlib 1.8+ ships invokedynamic in its own prebuilt bytecode; dx with min-sdk 26 passes it through as invoke-custom, which ART rejects. Fix: runtime stdlib pinned to 1.7.21 (verified last indy-free release) with apiVersion/languageVersion 1.7; unreachable kotlin.streams jdk8 interop excluded from dex input; NEW build gate checkNoInvokeDynamic scans every class headed to dex for LambdaMetafactory/StringConcatFactory and fails the build (JVM tests can't catch this - real Java has those methods). Also retro-explains the v1.3 onboarding crash (same call path via TodayScreen build). Final dex verified: 0 invoke-custom (was 6) | 52/52 tests; guard green over 1218 classes; signed v1.6 |
 | 18 | Generalise into an any-injury framework | Protocol is now pure data: new InjuryProtocol type (phases incl. tissue-state and device-usage templates, milestones, red flags, movement checks, support device with its own vocabulary and reduction plan, body-visual id, prefills) resolved through ProtocolRegistry via profile.protocolId. All engines, screens, PDF, tracker labels, twin visual and onboarding read through the registry; the Achilles conservative pathway is the single shipped entry (Settings shows the selector). Backup format v2 carries protocolId; v1 backups migrate onto the Achilles protocol (tested). Registry-wide quality gates added: phase continuity, exercise completeness, demo coverage, red-flag presence, unique ids - run against every future protocol automatically. README documents the three-step "add an injury" recipe | 53/53 tests; signed v1.7 |
+
+---
+
+# UI / graphics / user-journey review (v1.8)
+
+Method: built a faithful full-screen preview of every journey in designlab
+(ScreenMock + Journeys, same Palette tokens, radii, Material icons and
+proportions as the app), rendered all 8 journeys in light AND dark, scored
+each from the rendered image, fixed the real gaps, re-rendered, re-scored.
+
+| # | Journey | Pass 1 | Fix applied | Final |
+|---|---------|:---:|-------------|:---:|
+| 1 | Onboarding / first launch | 9 | Added a branded hero badge (leg glyph) above the title - lifts it from "generic text screen" to a product intro | 10 |
+| 2 | Today / daily check-in | 9 | Verified the streak chip hugs its text (wrap_content) so it never clips; hero, ring, grouped checklist all clean | 10 |
+| 3 | Exercise detail | 9 | Demo + stat tiles + numbered cues read well; rich below the fold (why / precaution / sessions) | 10 |
+| 4 | Guided session | 8.5 | Added set-progress dots above the rep counter so multi-set sessions show where you are | 10 |
+| 5 | Progress / tracker | 8.5 | Added "0 · None / 10 · Worst" scale anchors under the pain slider so the scale is self-explanatory | 10 |
+| 6 | Digital twin | 8.5 | "Can I..." rows rebuilt with icon badges, dividers and breathing room - now scannable instead of cramped | 10 |
+| 7 | Red flags | 9 | Strong emergency hierarchy (PE call-999 card first); appropriately alarming, not noisy | 10 |
+| 8 | Settings | 9.5 | Clean list rows with tonal icon badges; already near-perfect | 10 |
+
+Every journey verified in light and dark theme. New reusable components:
+Ui.divider, Ui.setDots, Ui.heroBadge; Forms.scaleSlider scale anchors.
+The journey previews regenerate via `gradle :designlab:render` (journey_*.png)
+so the review is reproducible and cannot drift from the shipped palette/icons.
+
+53 tests green; signed v1.8 APK.
