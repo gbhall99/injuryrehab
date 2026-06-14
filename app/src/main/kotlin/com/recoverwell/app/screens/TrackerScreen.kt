@@ -72,63 +72,11 @@ object TrackerScreen {
         nav.addView(nextBtn)
         col.addView(nav)
         col.addView(Ui.spacer(a, 6))
-        var log = a.store.dailyLog(day)
-        val form = Ui.card(a)
-
-        form.addView(Forms.label(a, "Pain right now"))
-        form.addView(Forms.scaleSlider(a, 10, log.pain, "0 · None", "10 · Worst") { log = log.copy(pain = it) })
-
-        form.addView(Forms.label(a, "Swelling"))
-        form.addView(Forms.choiceRow(a, Swelling.values().toList(), { it.label }, log.swelling) {
-            log = log.copy(swelling = it)
-        })
-
-        form.addView(Forms.label(a, "Mood"))
-        form.addView(Forms.choiceRow(a, (1..5).toList(), { "$it" }, log.mood) { log = log.copy(mood = it) })
-
-        form.addView(Forms.label(a, "Energy"))
-        form.addView(Forms.choiceRow(a, (1..5).toList(), { "$it" }, log.energy) { log = log.copy(energy = it) })
-
-        val device = ProtocolRegistry.forProfile(a.store.profile()).supportDevice
-        if (device != null) {
-            form.addView(Forms.label(a, "${device.name} worn as planned?"))
-            form.addView(Forms.choiceRow(a, listOf(true, false), { if (it) "Yes" else "No" }, log.bootWornAsPlanned) {
-                log = log.copy(bootWornAsPlanned = it)
-            })
-            form.addView(Forms.stepper(a, "Boot setting (${device.unitNamePlural})",
-                log.wedges ?: a.store.profile().currentWedges, 0, device.maxValue,
-                step = device.plan.stepSize.coerceAtLeast(1)) {
-                log = log.copy(wedges = it)
-            })
-        }
-
-        form.addView(Forms.label(a, "Weight-bearing"))
-        form.addView(Forms.choiceRow(
-            a, WeightBearing.values().toList(), { it.shortLabel }, log.weightBearing
-        ) { log = log.copy(weightBearing = it) })
-
-        form.addView(Forms.label(a, "Range of movement · only if your physio measured it"))
-        val romEdit = Forms.editText(a, log.romNote ?: "", "e.g. plantarflexion 30°")
-        form.addView(romEdit)
-
-        form.addView(Forms.label(a, "Notes"))
-        val notesEdit = Forms.editText(a, log.notes ?: "", "Anything worth remembering", multiline = true)
-        form.addView(notesEdit)
-
-        form.addView(Ui.fullWidth(Ui.button(a, if (day == today) "Save today's log" else "Save log for $day") {
-            val wedges = log.wedges
-            a.store.saveDailyLog(log.copy(
-                romNote = romEdit.text.toString().ifBlank { null },
-                notes = notesEdit.text.toString().ifBlank { null }
-            ))
-            // the boot state only follows logs about today
-            if (day == today && wedges != null && wedges != a.store.profile().currentWedges) {
-                a.store.saveProfile(a.store.profile().copy(currentWedges = wedges))
-            }
+        // exactly the same check-in form Today uses (fully expanded here for backfill)
+        col.addView(TodayScreen.checkInCard(a, day, expanded = true) {
             Toast.makeText(a, "Log saved", Toast.LENGTH_SHORT).show()
             a.refresh()
-        }, a))
-        col.addView(form)
+        })
     }
 
     /** The review surfaces: trends, pace, return-to-sport, insights, milestones. */
