@@ -69,6 +69,38 @@ object PhysioScreen {
         }, a, 4))
         col.addView(apptCard)
 
+        // ---- unified schedule: appointments + boot changes + phase changes --
+        run {
+            data class Ev(val date: LocalDate, val label: String, val icon: String)
+            val evs = ArrayList<Ev>()
+            profile.appointments.filter { !it.completed && !it.date.isBefore(today) }
+                .forEach { evs.add(Ev(it.date, it.label, "ic_calendar")) }
+            val reg = ProtocolRegistry.forProfile(profile)
+            reg.supportDevice?.let { device ->
+                profile.wedgePlan.removalSchedule(profile.injuryDate)
+                    .filter { !it.first.isBefore(today) }
+                    .forEach { (d, after) ->
+                        evs.add(Ev(d, "Boot change: ${device.reductionVerb} to ${device.format(after)}", "ic_boot"))
+                    }
+            }
+            for (ph in reg.phases) {
+                val start = profile.phaseStartOverrides[ph.number]
+                    ?: profile.injuryDate.plusWeeks(ph.startWeek.toLong())
+                if (!start.isBefore(today)) evs.add(Ev(start, "Phase ${ph.number}: ${ph.title}", "ic_flag"))
+            }
+            val upcomingEvents = evs.sortedBy { it.date }.take(6)
+            if (upcomingEvents.isNotEmpty()) {
+                col.addView(Ui.section(a, "Coming up"))
+                val fmt = java.time.format.DateTimeFormatter.ofPattern("EEE d MMM")
+                for (e in upcomingEvents) {
+                    val days = java.time.temporal.ChronoUnit.DAYS.between(today, e.date)
+                    val whenStr = if (days == 0L) "Today"
+                        else "${e.date.format(fmt)} · in $days day${if (days == 1L) "" else "s"}"
+                    col.addView(Ui.listRow(a, e.icon, e.label, whenStr, chevron = false))
+                }
+            }
+        }
+
         // ---- bring-to-appointment pack -------------------------------------
         val pack = PhysioPrep.build(
             profile, a.store.allLogs(), a.store.allEvents(), a.store.medications(), a.store.tasks(),
@@ -227,12 +259,23 @@ object PhysioScreen {
         card.addView(Forms.label(a, "Note"))
         val text = Forms.editText(a, "", "e.g. Cleared to start jogging; recheck calf strength in 3 weeks", multiline = true)
         card.addView(text)
+        // ROM is measured at the visit, not daily - capture it here against this date
+        card.addView(Forms.label(a, "Range of movement measured · optional"))
+        val romEdit = Forms.editText(a, a.store.dailyLog(date).romNote ?: "", "e.g. plantarflexion 30°")
+        card.addView(romEdit)
         col.addView(card)
         col.addView(Ui.fullWidth(Ui.button(a, "Save note") {
             val t = text.text.toString().trim()
-            if (t.isBlank()) { Forms.info(a, "Empty note", "Type what your physio said first."); return@button }
-            a.store.addPhysioNote(PhysioNote(UUID.randomUUID().toString(), date, t))
-            Toast.makeText(a, "Visit note saved", Toast.LENGTH_SHORT).show()
+            val rom = romEdit.text.toString().trim()
+            if (t.isBlank() && rom.isBlank()) {
+                Forms.info(a, "Nothing to save", "Add a note or a range-of-movement measurement first.")
+                return@button
+            }
+            if (t.isNotBlank()) a.store.addPhysioNote(PhysioNote(UUID.randomUUID().toString(), date, t))
+            if (rom.isNotBlank()) {
+                a.store.saveDailyLog(a.store.dailyLog(date).copy(romNote = rom))
+            }
+            Toast.makeText(a, "Visit saved", Toast.LENGTH_SHORT).show()
             a.popOverlay()
         }, a))
         col.addView(Ui.spacer(a, 24))

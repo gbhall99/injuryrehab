@@ -221,40 +221,8 @@ object MoreScreen {
         rebuildBootSettings(a, p, bootCard, devicePickerCount = if (devices.size > 1) 2 else 0) { p = it }
         col.addView(bootCard)
 
-        col.addView(Ui.section(a, "Appointments"))
-        val apptCard = Ui.card(a)
-        // appointment edits rebuild the screen, so persist any typed-but-unsaved
-        // text fields first or they would be lost
-        fun saveWithTexts() {
-            a.store.saveProfile(p.copy(name = nameEdit.text.toString().trim()))
-            a.refresh()
-        }
-        p.appointments.forEachIndexed { i, appt ->
-            val row = Ui.row(a)
-            val texts = Ui.text(a, "${appt.date} · ${appt.label}" + if (appt.completed) "  ✓" else "", 14.5f)
-            row.addView(Ui.weight(texts, 1f))
-            row.addView(Ui.textButton(a, if (appt.completed) "Reopen" else "Done") {
-                val list = p.appointments.toMutableList()
-                list[i] = appt.copy(completed = !appt.completed)
-                p = p.copy(appointments = list)
-                saveWithTexts()
-            })
-            row.addView(Ui.iconButton(a, "ic_close", Ui.TEXT_DIM, desc = "Remove appointment") {
-                p = p.copy(appointments = p.appointments.filterIndexed { j, _ -> j != i })
-                saveWithTexts()
-            })
-            apptCard.addView(row)
-        }
-        var newDate = LocalDate.now()
-        apptCard.addView(Forms.dateRow(a, "New appointment", newDate) { newDate = it })
-        val newLabel = Forms.editText(a, "", "e.g. Physio review")
-        apptCard.addView(newLabel)
-        apptCard.addView(Ui.fullWidth(Ui.tonalButton(a, "Add appointment") {
-            val label = newLabel.text.toString().ifBlank { "Appointment" }
-            p = p.copy(appointments = p.appointments + Appointment(newDate, label, false))
-            saveWithTexts()
-        }, a))
-        col.addView(apptCard)
+        // Appointments are managed in one place only - Physio visits - so they're
+        // not duplicated here (and the onboarding path that mis-saved them is gone).
 
         col.addView(Ui.spacer(a, 10))
         col.addView(Ui.fullWidth(Ui.button(a, if (onDone == null) "Save" else "Confirm & continue") {

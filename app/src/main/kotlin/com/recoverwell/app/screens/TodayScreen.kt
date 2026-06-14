@@ -126,8 +126,13 @@ object TodayScreen {
             col.addView(card)
         }
 
-        // ---- quick check-in: log how today feels without leaving Today ----
-        col.addView(quickCheckInCard(a, today))
+        // ---- daily check-in (the same shared form Progress uses) ----
+        val todayLog = a.store.dailyLog(today)
+        if (todayLog.pain != null && !checkInExpanded) {
+            col.addView(checkInSummary(a, todayLog))
+        } else {
+            col.addView(checkInCard(a, today, checkInExpanded) { checkInExpanded = false; a.refresh() })
+        }
 
         val prompts = ArrayList<Prompt>()
 
@@ -217,6 +222,7 @@ object TodayScreen {
 
         // ---- checklist (the daily task: kept directly under the hero/focus,
         // above the discretionary "More for you" list, so it's never buried) ----
+        // medication stays one row per dose (each dose is logged individually)
         fun addGroup(label: String, kinds: Set<ScheduleEngine.ItemKind>) {
             val group = items.filter { it.kind in kinds }
             if (group.isEmpty()) return
@@ -228,19 +234,39 @@ object TodayScreen {
                     else -> null
                 }
                 val time = item.time?.let { "%02d:%02d".format(it.hour, it.minute) }
-                val subtitle = when (item.kind) {
-                    ScheduleEngine.ItemKind.EXERCISE -> item.subtitle
-                    ScheduleEngine.ItemKind.WEDGE_CHANGE -> "Only with your clinic's agreement"
-                    else -> ""
-                }
+                val subtitle = if (item.kind == ScheduleEngine.ItemKind.WEDGE_CHANGE)
+                    "Only with your clinic's agreement" else ""
                 col.addView(Ui.checkRow(a, item.title, subtitle, time, item.isDone, statusLabel) {
                     onItemTapped(a, item)
                 })
             }
         }
+        // repeated tasks/exercise sessions collapse to ONE row with a counter,
+        // so a day is a handful of rows instead of ~two dozen
+        fun addCollapsedGroup(label: String, kind: ScheduleEngine.ItemKind) {
+            val group = items.filter { it.kind == kind }
+            if (group.isEmpty()) return
+            col.addView(Ui.section(a, label))
+            val byRef = LinkedHashMap<String, MutableList<ScheduleEngine.ChecklistItem>>()
+            for (it in group) byRef.getOrPut(it.refId) { ArrayList() }.add(it)
+            for ((_, sessions) in byRef) {
+                val first = sessions.first()
+                val total = sessions.size
+                val done = sessions.count { it.isDone }
+                val baseTitle = first.title.substringBefore("  (").trim()
+                val subtitle = first.subtitle + if (total > 1) " · $done/$total done today" else ""
+                col.addView(Ui.checkRow(a, baseTitle, subtitle, null, done == total, null) {
+                    // act on the next not-done session; if all are done, undo the last
+                    onItemTapped(a, sessions.firstOrNull { !it.isDone } ?: sessions.last())
+                })
+            }
+        }
         addGroup("Medication", setOf(ScheduleEngine.ItemKind.MEDICATION))
-        addGroup("Daily care", setOf(ScheduleEngine.ItemKind.TASK, ScheduleEngine.ItemKind.WEDGE_CHANGE))
-        addGroup("Exercises · tap for demo", setOf(ScheduleEngine.ItemKind.EXERCISE))
+        addCollapsedGroup("Daily care", ScheduleEngine.ItemKind.TASK)
+        addCollapsedGroup("Exercises · tap for demo", ScheduleEngine.ItemKind.EXERCISE)
+        // boot changes are scheduled (~weekly), not daily - their own section,
+        // shown only on the day one is due
+        addGroup("Scheduled today", setOf(ScheduleEngine.ItemKind.WEDGE_CHANGE))
 
         if (gate.nextPhase != null && !gate.dateEligible) {
             col.addView(Ui.spacer(a, 8))
@@ -353,70 +379,65 @@ object TodayScreen {
         a.refresh()
     }
 
-    /** Whether the quick check-in is showing its expanded fields in place. */
+    /** Whether the Today check-in is showing its expanded fields in place. */
     private var checkInExpanded = false
 
-    /** 10-second daily log right on Today; "Add more detail" expands it in place. */
-    private fun quickCheckInCard(a: MainActivity, today: LocalDate): View {
-        val log = a.store.dailyLog(today)
+    /** Compact confirmation shown on Today once the day is logged. */
+    private fun checkInSummary(a: MainActivity, log: com.recoverwell.core.model.DailyLog): View {
         val card = Ui.card(a)
-        if (log.pain != null) {
-            val row = Ui.row(a)
-            row.gravity = Gravity.CENTER_VERTICAL
-            row.addView(Ui.icon(a, "ic_check", 20, Ui.DONE))
-            val t = Ui.text(a, "Checked in today · pain ${log.pain}/10" +
-                (log.mood?.let { " · mood $it/5" } ?: ""), 14.5f, Ui.TEXT, bold = true)
-            t.setPadding(Ui.dp(a, 10), 0, Ui.dp(a, 8), 0)
-            row.addView(Ui.weight(t, 1f))
-            row.addView(Ui.textButton(a, "Update") { a.show(MainActivity.Tab.TRACKER) })
-            card.addView(row)
-            return card
-        }
-        card.addView(Ui.text(a, "How's it feeling today?", 16f, Ui.TEXT, bold = true))
-        card.addView(Ui.caption(a, "A 10-second check-in keeps your trends and insights sharp."))
-        card.addView(Ui.spacer(a, 4))
-        // start the slider at yesterday's pain so most days are a single tap of Save
-        var pain = a.store.dailyLog(today.minusDays(1)).pain ?: 0
-        card.addView(Forms.scaleSlider(a, 10, pain, "0 · None", "10 · Worst") { pain = it })
-        var mood: Int? = null
-        card.addView(Forms.label(a, "Mood · optional"))
-        card.addView(Forms.choiceRow(a, (1..5).toList(), { "$it" }, null) { mood = it })
+        val row = Ui.row(a)
+        row.gravity = Gravity.CENTER_VERTICAL
+        row.addView(Ui.icon(a, "ic_check", 20, Ui.DONE))
+        val t = Ui.text(a, "Checked in today · pain ${log.pain}/10" +
+            (log.mood?.let { " · mood $it/5" } ?: ""), 14.5f, Ui.TEXT, bold = true)
+        t.setPadding(Ui.dp(a, 10), 0, Ui.dp(a, 8), 0)
+        row.addView(Ui.weight(t, 1f))
+        row.addView(Ui.textButton(a, "Update") { checkInExpanded = true; a.refresh() })
+        card.addView(row)
+        return card
+    }
 
-        // progressive disclosure: the same record, expanded in place - no jump to
-        // a second, differently-shaped form (one canonical daily-log shape)
-        var swelling: Swelling? = null
-        var energy: Int? = null
-        var romEdit: android.widget.EditText? = null
+    /**
+     * The single daily check-in form, shared by Today and Progress. Pain is all
+     * that's needed; mood/swelling/energy/notes are optional behind a disclosure.
+     * No boot/ROM here - boot is profile state, ROM is captured at physio visits.
+     */
+    fun checkInCard(a: MainActivity, date: LocalDate, expanded: Boolean, onSaved: () -> Unit): View {
+        val today = LocalDate.now()
+        val log = a.store.dailyLog(date)
+        val card = Ui.card(a)
+        card.addView(Ui.text(a, if (date == today) "How's it feeling today?" else "Log for $date",
+            16f, Ui.TEXT, bold = true))
+        card.addView(Ui.caption(a, "Pain is all that's needed - add detail if you like."))
+        card.addView(Ui.spacer(a, 4))
+        // start at the day's saved value, else yesterday's, so most days are one tap
+        var pain = log.pain ?: (a.store.dailyLog(date.minusDays(1)).pain ?: 0)
+        card.addView(Forms.scaleSlider(a, 10, pain, "0 · None", "10 · Worst") { pain = it })
+        var mood: Int? = log.mood
+        card.addView(Forms.label(a, "Mood · optional"))
+        card.addView(Forms.choiceRow(a, (1..5).toList(), { "$it" }, log.mood) { mood = it })
+
+        var swelling: Swelling? = log.swelling
+        var energy: Int? = log.energy
         var notesEdit: android.widget.EditText? = null
-        if (checkInExpanded) {
+        if (expanded) {
             card.addView(Forms.label(a, "Swelling"))
-            card.addView(Forms.choiceRow(a, Swelling.values().toList(), { it.label }, null) { swelling = it })
+            card.addView(Forms.choiceRow(a, Swelling.values().toList(), { it.label }, log.swelling) { swelling = it })
             card.addView(Forms.label(a, "Energy"))
-            card.addView(Forms.choiceRow(a, (1..5).toList(), { "$it" }, null) { energy = it })
-            card.addView(Forms.label(a, "Range of movement · only if your physio measured it"))
-            romEdit = Forms.editText(a, "", "e.g. plantarflexion 30°")
-            card.addView(romEdit)
+            card.addView(Forms.choiceRow(a, (1..5).toList(), { "$it" }, log.energy) { energy = it })
             card.addView(Forms.label(a, "Notes"))
-            notesEdit = Forms.editText(a, "", "Anything worth remembering", multiline = true)
+            notesEdit = Forms.editText(a, log.notes ?: "", "Anything worth remembering", multiline = true)
             card.addView(notesEdit)
         }
 
-        card.addView(Ui.fullWidth(Ui.button(a, "Save check-in") {
-            val p = a.store.profile()
-            // carry forward the boot/weight-bearing state so the day's record is complete
+        card.addView(Ui.fullWidth(Ui.button(a, if (date == today) "Save check-in" else "Save log for $date") {
             a.store.saveDailyLog(log.copy(
-                pain = pain, mood = mood ?: log.mood,
-                swelling = swelling ?: log.swelling,
-                energy = energy ?: log.energy,
-                romNote = romEdit?.text?.toString()?.ifBlank { null } ?: log.romNote,
-                notes = notesEdit?.text?.toString()?.ifBlank { null } ?: log.notes,
-                wedges = log.wedges ?: p.currentWedges,
-                weightBearing = log.weightBearing ?: p.weightBearing))
-            checkInExpanded = false
-            a.refresh()
+                pain = pain, mood = mood, swelling = swelling, energy = energy,
+                notes = notesEdit?.text?.toString()?.ifBlank { null } ?: log.notes))
+            onSaved()
         }, a))
-        if (!checkInExpanded) {
-            card.addView(Ui.fullWidth(Ui.textButton(a, "Add more detail (swelling, energy, ROM, notes)") {
+        if (!expanded) {
+            card.addView(Ui.fullWidth(Ui.textButton(a, "Add more detail (swelling, energy, notes)") {
                 checkInExpanded = true
                 a.refresh()
             }, a, 2))

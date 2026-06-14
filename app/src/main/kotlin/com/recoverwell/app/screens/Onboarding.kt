@@ -111,6 +111,24 @@ object Onboarding {
                 banner.addView(card)
             }
         }
+        // pick-at-setup: let the user choose which daily-care reminders apply,
+        // so the daily list is theirs rather than a wall of defaults
+        val careTasks = a.store.tasks()
+        if (careTasks.isNotEmpty()) {
+            val careCard = Ui.card(a)
+            careCard.addView(Ui.text(a, "Daily care reminders", 15.5f, Ui.TEXT, bold = true))
+            careCard.addView(Ui.caption(a, "Turn off any that don't apply - you can change these any time " +
+                "in More › Reminders."))
+            for (task in careTasks) {
+                careCard.addView(Forms.label(a, task.title))
+                careCard.addView(Forms.choiceRow(a, listOf(true, false),
+                    { if (it) "On" else "Off" }, task.active) { on ->
+                    a.store.saveTasks(a.store.tasks().map { if (it.id == task.id) it.copy(active = on) else it })
+                    Reminders.reschedule(a)
+                })
+            }
+            banner.addView(careCard)
+        }
         col.addView(banner)
         col.addView(MoreScreen.medsEditor(a) {
             a.store.saveProfile(a.store.profile().copy(onboardingComplete = true))
