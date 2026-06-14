@@ -415,6 +415,86 @@ object Ui {
         return rowView
     }
 
+    /**
+     * Progressive checklist row drawn as a bullet chart: the pill is shaded from
+     * the left to [done]/[total] complete, with the count on the right. Tapping
+     * advances the next step. Used for repeated tasks / exercise sessions.
+     */
+    fun progressRow(
+        context: Context,
+        titleText: String,
+        subtitleText: String,
+        done: Int,
+        total: Int,
+        onClick: () -> Unit
+    ): View {
+        val frac = if (total <= 0) 0f else (done.toFloat() / total).coerceIn(0f, 1f)
+        val complete = done >= total && total > 0
+        val pill = FrameLayout(context)
+        pill.background = rounded(if (complete) DONE_BG else CARD)
+        if (!complete) elevate(pill, context)
+        pill.clipToOutline = true
+        pill.isClickable = true
+        pill.isFocusable = true
+        pill.contentDescription = (if (complete) "Done: " else "$done of $total done: ") + titleText
+        pill.minimumHeight = dp(context, 60)
+        val plp = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        plp.setMargins(0, dp(context, 4), 0, dp(context, 4))
+        pill.layoutParams = plp
+        pill.foreground = RippleDrawable(ColorStateList.valueOf(0x1F2F6B4F), null,
+            rounded(0xFF000000.toInt(), RADIUS))
+        pill.setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
+            onClick()
+        }
+
+        // bullet-chart fill behind the content: left portion = fraction complete
+        if (!complete && frac > 0f) {
+            val fillRow = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
+            fillRow.addView(View(context).apply { setBackgroundColor(Palette.withAlpha(DONE, 0x30)) },
+                LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, frac))
+            fillRow.addView(View(context),
+                LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f - frac))
+            pill.addView(fillRow, FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        }
+
+        val rowView = row(context)
+        rowView.setPadding(dp(context, 14), dp(context, 10), dp(context, 14), dp(context, 10))
+        val ring = FrameLayout(context).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                if (complete) setColor(DONE) else {
+                    setColor(CARD); setStroke(dp(context, 2), Palette.withAlpha(TEXT_DIM, 0x66))
+                }
+            }
+            layoutParams = LinearLayout.LayoutParams(dp(context, 26), dp(context, 26))
+            if (complete) {
+                val iv = icon(context, "ic_check", 16, 0xFFFFFFFF.toInt())
+                val lp = FrameLayout.LayoutParams(dp(context, 16), dp(context, 16))
+                lp.gravity = Gravity.CENTER
+                addView(iv, lp)
+            }
+        }
+        rowView.addView(ring)
+        val texts = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+        texts.setPadding(dp(context, 13), 0, dp(context, 8), 0)
+        texts.addView(text(context, titleText, 15.5f, if (complete) TEXT_DIM else TEXT, bold = true))
+        if (subtitleText.isNotBlank()) {
+            val sub = caption(context, subtitleText)
+            sub.maxLines = 2
+            texts.addView(sub)
+        }
+        rowView.addView(weight(texts, 1f))
+        rowView.addView(pillBadge(context, "$done/$total",
+            if (complete) DONE else ON_PRIMARY_CONTAINER,
+            if (complete) DONE_BG else PRIMARY_CONTAINER))
+        pill.addView(rowView, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        return pill
+    }
+
     fun pillBadge(context: Context, label: String, fg: Int, bg: Int): TextView =
         text(context, label, 12.5f, fg, bold = true).apply {
             background = rounded(bg, 14f)
