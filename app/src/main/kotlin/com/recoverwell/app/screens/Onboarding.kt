@@ -9,10 +9,10 @@ import com.recoverwell.core.protocol.ProtocolRegistry
 import com.recoverwell.core.protocol.RehabFramework
 
 /**
- * First-run flow, pre-filled with the user's real data (injury 2 June 2026,
- * left side, conservative pathway, consultant seen 7 June 2026, anticoagulant
- * 2.5 mg twice daily, goal: return to padel). Every field is editable here
- * and later under Settings.
+ * First-run flow. Captures the user's own details (injury date, side, goal,
+ * device) rather than assuming them; medications are added by explicit opt-in.
+ * Defaults are neutral (today's date, blank goal) so the flow works for any
+ * user. Every field is also editable later under More.
  */
 object Onboarding {
 
@@ -70,8 +70,8 @@ object Onboarding {
         banner.addView(Ui.spacer(a, 6))
         banner.addView(Ui.headline(a, "Check your details"))
         banner.addView(Ui.caption(
-            a, "Pre-filled from what you told us - injury 2 June 2026, left side, " +
-                "conservative pathway, consultant seen 7 June. Fix anything that is wrong."))
+            a, "Tell us about your injury and what you're working back to. Pick your " +
+                "side and injury date - everything else can be adjusted later in More."))
         col.addView(banner)
         col.addView(MoreScreen.profileEditor(a) {
             a.popOverlay()
@@ -87,8 +87,27 @@ object Onboarding {
         banner.addView(Ui.spacer(a, 6))
         banner.addView(Ui.headline(a, "Medication reminders"))
         banner.addView(Ui.caption(
-            a, "Anticoagulant 2.5 mg is pre-loaded with reminders at 08:00 and 20:00. " +
-                "Adjust the times to fit your routine."))
+            a, "Add any medication you take and it gets a reminder with one-tap taken/missed " +
+                "logging. You can skip this and add medications later."))
+        // explicit opt-in for the protocol's typical medication, instead of
+        // pre-loading a prescription nobody confirmed
+        if (a.store.medications().isEmpty()) {
+            val proto = com.recoverwell.core.protocol.ProtocolRegistry.default
+            if (proto.prefillMedications.isNotEmpty()) {
+                val card = Ui.card(a, Ui.INFO_BG)
+                card.addView(Ui.text(a, "On a blood thinner?", 15.5f, Ui.ON_INFO_BG, bold = true))
+                card.addView(Ui.spacer(a, 2))
+                card.addView(Ui.text(a, "Some people on a conservative Achilles pathway are prescribed " +
+                    "an anticoagulant. Add it if that's you, then adjust the dose and times to match " +
+                    "your prescription.", 14f, Ui.ON_INFO_BG))
+                card.addView(Ui.fullWidth(Ui.tonalButton(a, "Add an anticoagulant reminder") {
+                    a.store.saveMedications(a.store.medications() + proto.prefillMedications)
+                    Reminders.reschedule(a)
+                    a.refresh()
+                }, a))
+                banner.addView(card)
+            }
+        }
         col.addView(banner)
         col.addView(MoreScreen.medsEditor(a) {
             a.store.saveProfile(a.store.profile().copy(onboardingComplete = true))

@@ -14,7 +14,7 @@ class RtsTest {
     private val injury = LocalDate.of(2026, 1, 1)
     private val today = injury.plusWeeks(30) // past phase-5 start week (24)
 
-    private fun profileAtPhase(n: Int) = Defaults.profile().copy(
+    private fun profileAtPhase(n: Int) = Fixtures.profile().copy(
         injuryDate = injury, physioConfirmedPhase = n
     )
 
@@ -105,7 +105,7 @@ class RtsTest {
     @Test
     fun selfTestResultsSurviveBackupRoundTrip() {
         val state = com.recoverwell.core.export.AppState(
-            Defaults.profile(), Defaults.medications(), Defaults.tasks(), emptyMap(), emptyList(), emptyList(),
+            Fixtures.profile(), Fixtures.medications(), Fixtures.tasks(), emptyMap(), emptyList(), emptyList(),
             selfTestResults = strengthPasses, rtsSignoffs = listOf("rts_jog")
         )
         val decoded = com.recoverwell.core.export.BackupCodec.decode(

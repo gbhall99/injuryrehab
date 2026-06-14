@@ -10,14 +10,14 @@ class SportTextTest {
 
     @Test
     fun defaultResolvesToPadel() {
-        val p = ProtocolRegistry.forProfile(Defaults.profile())
+        val p = ProtocolRegistry.forProfile(Fixtures.profile())
         assertTrue(p.movementChecks.any { it.movement == "Play padel" })
         assertTrue(p.milestones.any { it.title == "Return to padel" })
     }
 
     @Test
     fun chosenSportReshapesTheCopy() {
-        val p = ProtocolRegistry.forProfile(Defaults.profile().copy(sportId = "running"))
+        val p = ProtocolRegistry.forProfile(Fixtures.profile().copy(sportId = "running"))
         assertTrue(p.movementChecks.any { it.movement == "Play running" })
         assertTrue(p.milestones.any { it.title == "Return to running" })
         assertFalse(p.milestones.any { it.title.contains("padel", ignoreCase = true) })
@@ -32,7 +32,7 @@ class SportTextTest {
     @Test
     fun noSportTokenSurvivesResolutionForAnySupportedSport() {
         for (sportId in ProtocolRegistry.default.supportedSportIds) {
-            val p = ProtocolRegistry.forProfile(Defaults.profile().copy(sportId = sportId))
+            val p = ProtocolRegistry.forProfile(Fixtures.profile().copy(sportId = sportId))
             val all = buildString {
                 p.phases.forEach { ph ->
                     append(ph.subtitle).append(' ')

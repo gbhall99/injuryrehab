@@ -15,9 +15,9 @@ import java.time.LocalTime
 class ScheduleEngineTest {
 
     private val injury = LocalDate.of(2026, 6, 2)
-    private val profile = Defaults.profile()
-    private val meds = Defaults.medications()
-    private val tasks = Defaults.tasks()
+    private val profile = Fixtures.profile()
+    private val meds = Fixtures.medications()
+    private val tasks = Fixtures.tasks()
 
     @Test
     fun checklistHasTwoMedicationSlots() {

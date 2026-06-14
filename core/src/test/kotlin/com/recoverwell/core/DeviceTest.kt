@@ -16,7 +16,7 @@ class DeviceTest {
 
     @Test
     fun defaultDeviceIsTheVacoped() {
-        val device = ProtocolRegistry.forProfile(Defaults.profile()).supportDevice
+        val device = ProtocolRegistry.forProfile(Fixtures.profile()).supportDevice
         assertEquals("vacoped", device?.id)
         assertEquals(DeviceKind.BOOT_DIAL, device?.kind)
         assertEquals("°", device?.unitSymbol)
@@ -25,7 +25,7 @@ class DeviceTest {
 
     @Test
     fun switchingToAircastChangesUnitsAndPlan() {
-        val p = Defaults.profile().copy(deviceId = "aircast_wedges")
+        val p = Fixtures.profile().copy(deviceId = "aircast_wedges")
         val device = ProtocolRegistry.forProfile(p).supportDevice
         assertEquals("Aircast walker", device?.name)
         assertEquals(DeviceKind.BOOT_WEDGES, device?.kind)
@@ -37,7 +37,7 @@ class DeviceTest {
     @Test
     fun castHasNoSelfAdjustSchedule() {
         // settings resets the plan to the device's when switching; mirror that here
-        val p = Defaults.profile().copy(
+        val p = Fixtures.profile().copy(
             injuryDate = injury, deviceId = "cast", wedgePlan = DeviceRegistry.CAST.plan)
         // no scheduled boot changes anywhere in the first months
         for (w in 0..12) {
@@ -48,9 +48,9 @@ class DeviceTest {
 
     @Test
     fun deviceIdSurvivesBackupRoundTrip() {
-        val p = Defaults.profile().copy(deviceId = "aircast_wedges")
+        val p = Fixtures.profile().copy(deviceId = "aircast_wedges")
         val state = com.recoverwell.core.export.AppState(
-            p, Defaults.medications(), Defaults.tasks(), emptyMap(), emptyList(), emptyList())
+            p, Fixtures.medications(), Fixtures.tasks(), emptyMap(), emptyList(), emptyList())
         val decoded = com.recoverwell.core.export.BackupCodec.decode(
             com.recoverwell.core.export.BackupCodec.encode(state))
         assertEquals("aircast_wedges", decoded.profile.deviceId)
