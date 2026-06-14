@@ -32,6 +32,20 @@ class WellbeingTest {
     }
 
     @Test
+    fun expectationBandMatchesCurrentWeekAndResolvesSport() {
+        val profile = Defaults.profile().copy(injuryDate = injury) // padel by default
+        val exp = Wellbeing.expectationFor(profile, injury.plusWeeks(14)) // strengthening band 12-24
+        assertNotNull(exp)
+        assertTrue(14 >= exp!!.weekFrom && 14 < exp.weekTo)
+        assertTrue("sport token resolved to padel", exp.reassure.contains("padel"))
+
+        val running = Wellbeing.expectationFor(profile.copy(sportId = "running"), injury.plusWeeks(30))
+        assertNotNull(running)
+        assertTrue(running!!.title.contains("running") || running.reassure.contains("running"))
+        assertFalse(running.title.contains("padel"))
+    }
+
+    @Test
     fun moodDipSurfacesAsupportiveInsight() {
         val today = injury.plusDays(40)
         val logs = (0..13).map { i ->

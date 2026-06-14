@@ -57,10 +57,12 @@ object Reminders {
         ensureChannels(context)
         val store = Store.get(context)
         val exerciseTime = parseTime(store.setting("exercise_reminder", "10:00"))
+        val checkInTime = parseTime(store.setting("checkin_reminder", "off"))
         val reminders = ScheduleEngine.upcomingReminders(
             store.profile(), store.medications(), store.tasks(), LocalDateTime.now(),
             exerciseReminderTime = exerciseTime,
-            overrides = store.exerciseOverrides()
+            overrides = store.exerciseOverrides(),
+            checkInTime = checkInTime
         ).take(MAX_SCHEDULED)
 
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -147,6 +149,29 @@ object Reminders {
             .setContentIntent(openApp)
             .setAutoCancel(true)
 
+        // one-tap pain logging straight from the daily check-in notification
+        fun painAction(label: String, pain: Int): Notification.Action {
+            val intent = Intent(context, ActionReceiver::class.java).apply {
+                action = "com.recoverwell.CHECKIN_${pain}_$notifId"
+                putExtra("status", "CHECKIN")
+                putExtra("pain", pain)
+                putExtra("notifId", notifId)
+            }
+            val pi = PendingIntent.getBroadcast(
+                context, notifId + 20 + pain, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            return Notification.Action.Builder(null, label, pi).build()
+        }
+
+        if (kind == ScheduleEngine.ItemKind.CHECKIN) {
+            builder.addAction(painAction("Good (low)", 2))
+            builder.addAction(painAction("Manageable", 5))
+            builder.addAction(painAction("Sore (high)", 8))
+            nm.notify(notifId, builder.build())
+            return
+        }
+
         if (kind == ScheduleEngine.ItemKind.MEDICATION) {
             builder.addAction(action("Taken", EventStatus.TAKEN))
             builder.addAction(action("Missed", EventStatus.MISSED))
@@ -226,6 +251,22 @@ object Reminders {
         nm.notify("test".hashCode(), builder.build())
     }
 
+    /** One-tap pain log from the check-in notification; carries forward boot/weight-bearing. */
+    fun recordCheckIn(context: Context, pain: Int) {
+        val store = Store.get(context)
+        val today = LocalDate.now()
+        val log = store.dailyLog(today)
+        val p = store.profile()
+        store.saveDailyLog(
+            log.copy(
+                pain = pain,
+                wedges = log.wedges ?: p.currentWedges,
+                weightBearing = log.weightBearing ?: p.weightBearing
+            )
+        )
+        com.recoverwell.app.widget.TodayWidget.update(context)
+    }
+
     fun recordEvent(
         context: Context,
         kind: ScheduleEngine.ItemKind,
@@ -269,8 +310,15 @@ class ReminderReceiver : BroadcastReceiver() {
 
 class ActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val kind = intent.getStringExtra("kind")?.let { ScheduleEngine.ItemKind.valueOf(it) } ?: return
         val notifId = intent.getIntExtra("notifId", 0)
+        // one-tap pain log from the check-in notification (no "kind" needed)
+        if (intent.getStringExtra("status") == "CHECKIN") {
+            Reminders.recordCheckIn(context, intent.getIntExtra("pain", 5))
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            nm.cancel(notifId)
+            return
+        }
+        val kind = intent.getStringExtra("kind")?.let { ScheduleEngine.ItemKind.valueOf(it) } ?: return
         if (intent.getStringExtra("status") == "SNOOZE") {
             Reminders.scheduleSnooze(
                 context, kind,

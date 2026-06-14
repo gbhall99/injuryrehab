@@ -13,7 +13,7 @@ import java.time.LocalTime
  */
 object ScheduleEngine {
 
-    enum class ItemKind { MEDICATION, TASK, WEDGE_CHANGE, EXERCISE }
+    enum class ItemKind { MEDICATION, TASK, WEDGE_CHANGE, EXERCISE, CHECKIN }
 
     data class ChecklistItem(
         val kind: ItemKind,
@@ -183,6 +183,9 @@ object ScheduleEngine {
     /** Stable id used for the once-daily "do your exercises" engagement nudge. */
     const val EXERCISE_SESSION_REF = "session_reminder"
 
+    /** Stable id used for the once-daily "how's it feeling?" check-in nudge. */
+    const val DAILY_CHECKIN_REF = "daily_checkin"
+
     /**
      * All reminders in (now, now+horizonDays]: medication times, task times,
      * dated wedge changes and - when [exerciseReminderTime] is set - one daily
@@ -196,12 +199,24 @@ object ScheduleEngine {
         now: LocalDateTime,
         horizonDays: Int = 3,
         exerciseReminderTime: LocalTime? = null,
-        overrides: Map<String, ExerciseOverride> = emptyMap()
+        overrides: Map<String, ExerciseOverride> = emptyMap(),
+        checkInTime: LocalTime? = null
     ): List<Reminder> {
         val out = ArrayList<Reminder>()
         for (offset in 0..horizonDays) {
             val date = now.toLocalDate().plusDays(offset.toLong())
             val phase = PhaseEngine.currentPhase(profile, date)
+
+            if (checkInTime != null) {
+                val at = LocalDateTime.of(date, checkInTime)
+                if (at.isAfter(now)) out.add(
+                    Reminder(
+                        at, ItemKind.CHECKIN, DAILY_CHECKIN_REF, DAILY_CHECKIN_REF,
+                        "How's it feeling today?",
+                        "A 10-second check-in keeps your recovery trends accurate. How's the pain right now?"
+                    )
+                )
+            }
 
             if (exerciseReminderTime != null) {
                 val exercises = mergedExercises(phase.exercises, overrides)

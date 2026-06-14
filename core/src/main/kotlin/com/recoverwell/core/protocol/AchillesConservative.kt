@@ -907,6 +907,61 @@ object AchillesConservative {
     )
 
     // ------------------------------------------------------------------
+    // What to expect (week-banded; proactive reassurance)
+    // ------------------------------------------------------------------
+
+    private val expectations: List<WeekExpectation> = listOf(
+        WeekExpectation(0, 2, "The first two weeks",
+            "Protect the tendon and settle the swelling. This is the most cautious stretch.",
+            listOf(
+                "Bruising and swelling down the calf, ankle and foot - normal as it settles",
+                "The boot feeling heavy and awkward; sleep can be disrupted",
+                "Throbbing when the leg hangs down - elevate above heart level to ease it"
+            ),
+            "You're not being overcautious - early protection is exactly what gives the tendon the best result."),
+        WeekExpectation(2, 8, "Weeks 2-8: weight-bearing & heel-angle reduction",
+            "Build confidence on the leg as the heel angle steps down toward neutral.",
+            listOf(
+                "Walking further in the boot, often off crutches by around week 6",
+                "Each heel-angle reduction feeling odd for a day or two - that settles",
+                "Calf looking thinner than the other side - muscle wasting is expected and reversible"
+            ),
+            "Slow, steady weeks are good weeks; the tendon is healing on schedule even when nothing feels dramatic."),
+        WeekExpectation(8, 12, "Weeks 8-12: out of the boot",
+            "Wean out of the boot and re-learn a normal, even walking pattern.",
+            listOf(
+                "First steps out of the boot feeling wobbly and the ankle very stiff",
+                "A limp at first - a heel raise in the shoe helps while strength returns",
+                "Re-rupture anxiety peaking around now; that's normal as protection comes off"
+            ),
+            "Nerves out of the boot are universal. Progress at your physio's pace and confidence follows strength."),
+        WeekExpectation(12, 24, "Weeks 12-24: strengthening",
+            "The rebuild: calf strength, balance and gait, working toward single-leg strength.",
+            listOf(
+                "Steady strength gains - double-leg, then eventually single-leg heel raises",
+                "Mild ache after sessions is fine; sharp tendon pain is not",
+                "Frustration that strength lags expectations - it takes months, not weeks"
+            ),
+            "This phase does the real work. Consistency now is what gets you back to {sport}."),
+        WeekExpectation(24, 52, "6-12 months: return to {sport}",
+            "Earn impact back in stages - jogging, hopping, change of direction, then your sport.",
+            listOf(
+                "Returning to jogging, then graded running and hopping once cleared",
+                "The tendon often staying slightly thicker than the other side - that's normal",
+                "Morning stiffness that eases as you warm up"
+            ),
+            "Most people return to {sport} around 9-12 months. Respect each step-up and the court will still be there."),
+        WeekExpectation(52, 520, "Beyond a year",
+            "Most function is back; keep the calf strong to protect against re-injury.",
+            listOf(
+                "Near-symmetrical strength and confidence in most activities",
+                "Occasional stiffness after a hard session - usually nothing to worry about",
+                "Keeping up calf strengthening long-term lowers re-injury risk"
+            ),
+            "You've done the hard part. Maintenance strength work keeps the gains for good.")
+    )
+
+    // ------------------------------------------------------------------
     // The registry entry: everything above, wired as framework data
     // ------------------------------------------------------------------
 
@@ -952,6 +1007,7 @@ object AchillesConservative {
         defaultSportId = "padel",
         mindset = mindset,
         reassurance = reassurance,
+        expectations = expectations,
         bodySceneId = "lower_leg",
         welcomeBlurb = "Your daily coach through a conservative (non-surgical) Achilles " +
             "rupture - exercises, reminders and progress tracking.",

@@ -53,6 +53,10 @@ class ContentQualityTest {
             m.normalToFeel.forEach { sb.append(it).append('\n') }
             sb.append(m.encouragement).append('\n')
         }
+        achilles.expectations.forEach { e ->
+            sb.append(e.title).append('\n').append(e.summary).append('\n').append(e.reassure).append('\n')
+            e.likely.forEach { sb.append(it).append('\n') }
+        }
         achilles.redFlags.forEach { rf ->
             sb.append(rf.title).append('\n').append(rf.action).append('\n')
             rf.symptoms.forEach { sb.append(it).append('\n') }

@@ -160,6 +160,18 @@ class SmartTest {
     }
 
     @Test
+    fun dailyCheckInSchedulesANudgeWhenEnabled() {
+        val now = LocalDateTime.of(today, LocalTime.of(6, 0))
+        val withNudge = ScheduleEngine.upcomingReminders(
+            profile, meds, tasks, now, checkInTime = LocalTime.of(20, 0))
+        assertTrue(withNudge.any {
+            it.kind == ScheduleEngine.ItemKind.CHECKIN && it.refId == ScheduleEngine.DAILY_CHECKIN_REF
+        })
+        val without = ScheduleEngine.upcomingReminders(profile, meds, tasks, now)
+        assertFalse(without.any { it.kind == ScheduleEngine.ItemKind.CHECKIN })
+    }
+
+    @Test
     fun phaseConfirmedDatesSurviveBackupRoundTrip() {
         val p = profile.copy(phaseConfirmedDates = mapOf(2 to injury.plusDays(15)))
         val state = com.recoverwell.core.export.AppState(p, meds, tasks, emptyMap(), emptyList(), emptyList())

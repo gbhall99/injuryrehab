@@ -4,6 +4,7 @@ import com.recoverwell.core.model.Milestone
 import com.recoverwell.core.model.Profile
 import com.recoverwell.core.protocol.PhaseMindset
 import com.recoverwell.core.protocol.ProtocolRegistry
+import com.recoverwell.core.protocol.WeekExpectation
 import java.time.LocalDate
 
 /**
@@ -17,6 +18,13 @@ object Wellbeing {
     fun currentMindset(profile: Profile, today: LocalDate): PhaseMindset? {
         val phase = PhaseEngine.currentPhase(profile, today).number
         return ProtocolRegistry.forProfile(profile).mindset.firstOrNull { it.phase == phase }
+    }
+
+    /** The "what to expect" band covering the current week since injury. */
+    fun expectationFor(profile: Profile, today: LocalDate): WeekExpectation? {
+        val week = PhaseEngine.weeksSinceInjury(profile, today).toInt()
+        return ProtocolRegistry.forProfile(profile).expectations
+            .firstOrNull { week >= it.weekFrom && week < it.weekTo }
     }
 
     /**

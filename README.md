@@ -95,6 +95,18 @@ progressive wedge reduction — built around a real recovery that started on
   graphics skipped by TalkBack while charts and the leg model carry spoken
   descriptions, labelled icon controls throughout, ≥48dp targets and
   system-font scaling. Guarded by tests.
+- **Calm, low-friction daily experience** — the home screen is a *prioritized*
+  surface: safety items always show, the single most important prompt becomes
+  the focus, and the rest collapse into a tidy "More for you" so the checklist
+  is never buried. A **10-second check-in** logs how today feels right on Today
+  (carrying forward boot/weight-bearing), and an optional **daily check-in
+  reminder** lets you log pain in one tap straight from the notification.
+- **"What to expect this week"** — week-banded, plain-language guidance for the
+  stage you're actually in (what's common now, what's coming, what's
+  reassuring), surfaced at the right moment to answer the anxious questions
+  proactively. Sport-aware via the same `{sport}` resolution.
+- **Home-screen widget** — week/phase, today's progress, your check-in status,
+  the next reminder, and a one-tap way back in.
 
 ## Rehab protocol (conservative / non-surgical only)
 

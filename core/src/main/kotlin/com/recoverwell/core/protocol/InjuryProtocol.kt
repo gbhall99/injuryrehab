@@ -49,6 +49,8 @@ data class InjuryProtocol(
     val mindset: List<PhaseMindset> = emptyList(),
     /** Reassurance about the injury's signature fear (e.g. re-rupture). */
     val reassurance: Reassurance? = null,
+    /** Week-banded "what to expect" content, surfaced at the right time. */
+    val expectations: List<WeekExpectation> = emptyList(),
     /** Which drawn body visual the twin screen uses (registry key). */
     val bodySceneId: String,
     // ---- copy that would otherwise be hard-coded in screens (scalable) ----
@@ -154,6 +156,22 @@ data class Reassurance(
     val body: String,
     /** How to tell ordinary recovery sensations from genuine warning signs. */
     val normalVsFlag: List<Pair<String, String>>
+)
+
+/**
+ * Plain-language "what to expect" for a span of weeks - the proactive answers to
+ * the anxious questions people otherwise Google at 2am. Advisory, not a forecast.
+ */
+data class WeekExpectation(
+    val weekFrom: Int,
+    /** Exclusive upper bound; the last period can use a large number. */
+    val weekTo: Int,
+    val title: String,
+    val summary: String,
+    /** What's commonly happening around now. */
+    val likely: List<String>,
+    /** One reassuring line. */
+    val reassure: String
 )
 
 data class MovementCheckSpec(

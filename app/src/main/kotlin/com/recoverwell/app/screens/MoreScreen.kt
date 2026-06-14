@@ -26,6 +26,8 @@ object MoreScreen {
             "Dates, side, boot plan, appointments") { a.pushOverlay { profileEditor(a) } })
         col.addView(Ui.listRow(a, "ic_heart", "How you're doing",
             "What's normal to feel, reassurance, milestones") { a.pushOverlay { WellbeingScreen.build(a) } })
+        col.addView(Ui.listRow(a, "ic_info", "What to expect",
+            "Plain-language guidance for this stage") { a.pushOverlay { WhatToExpectScreen.build(a) } })
         col.addView(Ui.listRow(a, "ic_calendar", "Phase dates",
             "Adjust timings agreed with your physio") { a.pushOverlay { phaseDatesEditor(a) } })
         col.addView(Ui.listRow(a, "ic_edit", "Physio visits",
@@ -39,6 +41,12 @@ object MoreScreen {
             if (exTime == null) "Off"
             else "Daily nudge at %02d:%02d".format(exTime.hour, exTime.minute)) {
             a.pushOverlay { exerciseReminderEditor(a) }
+        })
+        val ciTime = Reminders.parseTime(a.store.setting("checkin_reminder", "off"))
+        col.addView(Ui.listRow(a, "ic_pulse", "Daily check-in reminder",
+            if (ciTime == null) "Off"
+            else "Log how you feel at %02d:%02d".format(ciTime.hour, ciTime.minute)) {
+            a.pushOverlay { checkInReminderEditor(a) }
         })
 
         col.addView(Ui.section(a, "Appearance"))
@@ -575,6 +583,42 @@ object MoreScreen {
 
         col.addView(Ui.caption(a, "The nudge appears only on days your current phase has exercises, " +
             "and never replaces medication reminders."))
+        col.addView(Ui.spacer(a, 24))
+        return Ui.scroll(a, col)
+    }
+
+    private fun checkInReminderEditor(a: MainActivity): View {
+        val col = Ui.column(a)
+        col.addView(Ui.backRow(a, "Daily check-in reminder") { a.popOverlay() })
+        col.addView(Ui.caption(a, "A gentle once-a-day nudge to log how it feels. You can log your pain " +
+            "in one tap straight from the notification - no need to open the app."))
+        col.addView(Ui.spacer(a, 4))
+
+        var time = Reminders.parseTime(a.store.setting("checkin_reminder", "off")) ?: LocalTime.of(20, 0)
+        var enabled = Reminders.parseTime(a.store.setting("checkin_reminder", "off")) != null
+
+        val card = Ui.card(a)
+        card.addView(Forms.label(a, "Daily check-in reminder"))
+        val timeCard = Ui.card(a)
+        fun persist() {
+            a.store.saveSetting("checkin_reminder", if (enabled)
+                "%02d:%02d".format(time.hour, time.minute) else "off")
+            Reminders.reschedule(a)
+        }
+        fun rebuild() {
+            timeCard.removeAllViews()
+            if (enabled) timeCard.addView(Forms.timeButton(a, time) { t -> time = t; persist() })
+            else timeCard.addView(Ui.caption(a, "Reminder is off. Turn it on to pick a time."))
+        }
+        card.addView(Forms.choiceRow(a, listOf(true, false), { if (it) "On" else "Off" }, enabled) {
+            enabled = it; persist(); rebuild()
+        })
+        rebuild()
+        card.addView(timeCard)
+        col.addView(card)
+
+        col.addView(Ui.caption(a, "The notification offers Good / Manageable / Sore for a one-tap pain log; " +
+            "tap the notification itself to add more detail."))
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
     }

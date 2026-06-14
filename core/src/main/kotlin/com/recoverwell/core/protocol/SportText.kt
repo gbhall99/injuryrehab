@@ -55,6 +55,10 @@ object SportText {
             returnToSport = p.returnToSport.map {
                 it.copy(title = resolve(it.title, n), summary = resolve(it.summary, n), guidance = it.guidance.resolved(n))
             },
+            expectations = p.expectations.map {
+                it.copy(title = resolve(it.title, n), summary = resolve(it.summary, n),
+                    likely = it.likely.resolved(n), reassure = resolve(it.reassure, n))
+            },
             mindset = p.mindset.map { it.copy(normalToFeel = it.normalToFeel.resolved(n), encouragement = resolve(it.encouragement, n)) },
             reassurance = p.reassurance?.let { r ->
                 r.copy(

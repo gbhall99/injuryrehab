@@ -96,207 +96,137 @@ object TodayScreen {
             ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         col.addView(hero)
 
-        // ---- return to sport (once the strengthening phase is reached) ----
-        run {
-            val rts = com.recoverwell.core.logic.ReturnToSport.progress(
-                profile, a.store.selfTestResults(), a.store.rtsSignoffs(), today)
-            if (rts.available) {
-                val sub = (rts.currentRung?.let { "Stage: ${it.title}" } ?: "Keep building strength") +
-                    " · ${rts.readinessPct}% ready"
-                col.addView(Ui.spacer(a, 2))
-                col.addView(Ui.listRow(a, "ic_flag", rts.returnPhrase, sub) {
-                    a.pushOverlay { ReturnToSportScreen.build(a) }
-                })
-            }
-        }
-
-        // ---- urgent / warning cards ------------------------------------
+        // ---- prioritized attention surface ("calm Today") -------------------
+        // Everything that wants attention is ranked. Safety items always show as
+        // full cards; the single most important of the rest becomes the focus
+        // card; everything else collapses into a tidy "More for you" list so the
+        // daily checklist below is never buried.
         val recentLogs = a.store.allLogs().filter { !it.date.isBefore(today.minusDays(7)) }
-        for (w in Capability.warnings(profile, recentLogs, today)
-            .filter { it.severity != Capability.Severity.INFO }) {
-            val urgent = w.severity == Capability.Severity.URGENT
-            val card = Ui.card(a, if (urgent) Ui.DANGER_BG else Ui.WARN_BG)
+        val allEvents = a.store.allEvents()
+        val gate = PhaseEngine.nextPhaseGate(profile, today)
+        val warnings = Capability.warnings(profile, recentLogs, today)
+
+        // urgent (red-flag) warnings are never collapsed - their own danger cards
+        for (w in warnings.filter { it.severity == Capability.Severity.URGENT }) {
+            val card = Ui.card(a, Ui.DANGER_BG)
             val headRow = Ui.row(a)
-            headRow.addView(Ui.icon(a, "ic_alert", 20, if (urgent) Ui.DANGER else Ui.WARN))
-            val ht = Ui.text(a, w.title, 15.5f, if (urgent) Ui.ON_DANGER_BG else Ui.WARN, bold = true)
+            headRow.addView(Ui.icon(a, "ic_alert", 20, Ui.DANGER))
+            val ht = Ui.text(a, w.title, 15.5f, Ui.ON_DANGER_BG, bold = true)
             ht.setPadding(Ui.dp(a, 10), 0, 0, 0)
             headRow.addView(Ui.weight(ht, 1f))
             card.addView(headRow)
             card.addView(Ui.spacer(a, 4))
-            card.addView(Ui.text(a, w.detail, 14f, if (urgent) Ui.ON_DANGER_BG else Ui.TEXT))
-            if (urgent) {
-                card.addView(Ui.fullWidth(Ui.dangerButton(a, "Open red flag guidance") {
-                    a.pushOverlay { RedFlagsScreen.build(a) }
-                }, a))
-            }
+            card.addView(Ui.text(a, w.detail, 14f, Ui.ON_DANGER_BG))
+            card.addView(Ui.fullWidth(Ui.dangerButton(a, "Open red flag guidance") {
+                a.pushOverlay { RedFlagsScreen.build(a) }
+            }, a))
             col.addView(card)
         }
 
-        // ---- backup nudge (review-mined: data loss is the #1 trust killer) ----
-        if (a.store.setting("last_backup", "").isBlank() && a.store.allLogs().size >= 7) {
-            val card = Ui.card(a, Ui.INFO_BG)
-            card.addView(Ui.text(a, "Protect your progress", 15.5f, Ui.ON_INFO_BG, bold = true))
-            card.addView(Ui.spacer(a, 2))
-            card.addView(Ui.text(a, "You have a week of recovery data and no backup yet. " +
-                "One tap saves everything to a file you control.", 14f, Ui.ON_INFO_BG))
-            card.addView(Ui.fullWidth(Ui.tonalButton(a, "Back up now") { a.exportBackup() }, a))
-            col.addView(card)
-        }
+        // ---- quick check-in: log how today feels without leaving Today ----
+        col.addView(quickCheckInCard(a, today))
 
-        // ---- reminder delivery blocked (notifications/exact alarms off) ----
+        val prompts = ArrayList<Prompt>()
+
+        // safety-class prompts (anticoagulant schedule, off-plan health warnings)
         if (com.recoverwell.app.notify.ReminderHealth.deliveryBlocked(a)) {
-            val card = Ui.card(a, Ui.WARN_BG)
-            val r = Ui.row(a)
-            r.addView(Ui.icon(a, "ic_alert", 20, Ui.WARN))
-            val t = Ui.text(a, "Reminders may not reach you", 15.5f, Ui.WARN, bold = true)
-            t.setPadding(Ui.dp(a, 10), 0, 0, 0)
-            r.addView(Ui.weight(t, 1f))
-            card.addView(r)
-            card.addView(Ui.spacer(a, 2))
-            card.addView(Ui.text(a, "A phone setting is blocking notifications. For an anticoagulant " +
-                "schedule that matters - it takes a few seconds to fix.", 14f, Ui.TEXT))
-            card.addView(Ui.fullWidth(Ui.button(a, "Check reminder settings") {
-                a.show(MainActivity.Tab.MORE)
-            }, a))
-            col.addView(card)
+            prompts.add(Prompt(2, "ic_alert", "Reminders may not reach you",
+                "A phone setting is blocking notifications - for an anticoagulant schedule that matters.",
+                "Check reminder settings", TONE_WARN, safety = true) { a.show(MainActivity.Tab.MORE) })
+        }
+        for (w in warnings.filter { it.severity == Capability.Severity.WARNING }) {
+            prompts.add(Prompt(3, "ic_alert", w.title, w.detail, "Open red flags", TONE_WARN, safety = true) {
+                a.pushOverlay { RedFlagsScreen.build(a) }
+            })
         }
 
-        // ---- physio appointment prep / capture --------------------------
-        run {
-            val appts = profile.appointments
-            val soon = appts.filter { !it.completed && !it.date.isBefore(today) &&
-                it.date.isBefore(today.plusDays(4)) }.minByOrNull { it.date }
-            val toCapture = appts.filter { !it.completed && it.date.isBefore(today) }.maxByOrNull { it.date }
-            if (soon != null) {
-                val card = Ui.card(a, Ui.INFO_BG)
-                val r = Ui.row(a)
-                r.addView(Ui.icon(a, "ic_calendar", 20, Ui.ON_INFO_BG))
-                val days = java.time.temporal.ChronoUnit.DAYS.between(today, soon.date)
-                val t = Ui.text(a, if (days == 0L) "${soon.label} today" else "${soon.label} in $days day${if (days==1L) "" else "s"}",
-                    15.5f, Ui.ON_INFO_BG, bold = true)
-                t.setPadding(Ui.dp(a, 10), 0, 0, 0)
-                r.addView(Ui.weight(t, 1f))
-                card.addView(r)
-                card.addView(Ui.spacer(a, 2))
-                card.addView(Ui.text(a, "Prep your questions and current numbers to make the most of it.", 14f, Ui.ON_INFO_BG))
-                card.addView(Ui.fullWidth(Ui.tonalButton(a, "Open appointment pack") {
-                    a.pushOverlay { PhysioScreen.build(a) }
-                }, a))
-                col.addView(card)
-            } else if (toCapture != null) {
-                val card = Ui.card(a, Ui.INFO_BG)
-                val r = Ui.row(a)
-                r.addView(Ui.icon(a, "ic_edit", 20, Ui.ON_INFO_BG))
-                val t = Ui.text(a, "How did your appointment go?", 15.5f, Ui.ON_INFO_BG, bold = true)
-                t.setPadding(Ui.dp(a, 10), 0, 0, 0)
-                r.addView(Ui.weight(t, 1f))
-                card.addView(r)
-                card.addView(Ui.spacer(a, 2))
-                card.addView(Ui.text(a, "Capture what your physio said so your plan stays in sync.", 14f, Ui.ON_INFO_BG))
-                card.addView(Ui.fullWidth(Ui.tonalButton(a, "Capture the visit") {
-                    a.pushOverlay { PhysioScreen.build(a) }
-                }, a))
-                col.addView(card)
-            }
-        }
-
-        // ---- weekly digest nudge (Mondays) ------------------------------
-        if (today.dayOfWeek == java.time.DayOfWeek.MONDAY && a.store.allLogs().size >= 5) {
-            val card = Ui.card(a, Ui.INFO_BG)
-            val r = Ui.row(a)
-            r.addView(Ui.icon(a, "ic_progress", 20, Ui.ON_INFO_BG))
-            val t = Ui.text(a, "Your week in review is ready", 15.5f, Ui.ON_INFO_BG, bold = true)
-            t.setPadding(Ui.dp(a, 10), 0, 0, 0)
-            r.addView(Ui.weight(t, 1f))
-            card.addView(r)
-            card.addView(Ui.spacer(a, 2))
-            card.addView(Ui.text(a, "See last week's adherence, pain trend and what to focus on next.",
-                14f, Ui.ON_INFO_BG))
-            card.addView(Ui.fullWidth(Ui.tonalButton(a, "Open this week") {
-                a.show(MainActivity.Tab.TRACKER)
-            }, a))
-            col.addView(card)
-        }
-
-        // ---- milestone celebration --------------------------------------
-        com.recoverwell.core.logic.Wellbeing.recentlyReachedMilestone(profile, today)?.let { m ->
-            val card = Ui.card(a, Ui.DONE_BG)
-            val r = Ui.row(a)
-            r.addView(Ui.icon(a, "ic_flag", 20, Ui.DONE))
-            val t = Ui.text(a, "Milestone reached: ${m.title}", 15.5f, Ui.DONE, bold = true)
-            t.setPadding(Ui.dp(a, 10), 0, 0, 0)
-            r.addView(Ui.weight(t, 1f))
-            card.addView(r)
-            card.addView(Ui.spacer(a, 2))
-            card.addView(Ui.text(a, m.detail, 14f, Ui.TEXT))
-            card.addView(Ui.fullWidth(Ui.tonalButton(a, "See how far you've come") {
-                a.pushOverlay { WellbeingScreen.build(a) }
-            }, a))
-            col.addView(card)
-        }
-
-        // ---- progression gate -------------------------------------------
-        val gate = PhaseEngine.nextPhaseGate(profile, today)
+        // progression gate
         if (gate.nextPhase != null && gate.readyToConfirm) {
-            val gateCard = Ui.card(a, Ui.INFO_BG)
-            gateCard.addView(Ui.text(a, "Ready for phase ${gate.nextPhase!!.number}?", 16f, Ui.ON_INFO_BG, bold = true))
-            gateCard.addView(Ui.spacer(a, 2))
-            gateCard.addView(Ui.text(
-                a, "The typical timeline reaches \"${gate.nextPhase!!.title}\" on ${gate.startDate}. " +
-                    "Only your physio can confirm you are ready.", 14f, Ui.ON_INFO_BG))
-            gateCard.addView(Ui.fullWidth(Ui.button(a, "My physio confirmed it") {
-                Forms.confirm(
-                    a, "Confirm progression",
-                    "Has your physiotherapist explicitly confirmed phase " +
-                        "${gate.nextPhase!!.number} (${gate.nextPhase!!.title})?"
-                ) {
-                    val pp = a.store.profile()
-                    a.store.saveProfile(pp.copy(
-                        physioConfirmedPhase = gate.nextPhase!!.number,
-                        phaseConfirmedDates = pp.phaseConfirmedDates + (gate.nextPhase!!.number to today)
-                    ))
-                    Reminders.reschedule(a)
-                    a.refresh()
-                }
-            }, a))
-            col.addView(gateCard)
+            prompts.add(Prompt(10, "ic_calendar", "Ready for phase ${gate.nextPhase!!.number}?",
+                "The typical timeline reaches \"${gate.nextPhase!!.title}\" on ${gate.startDate}. " +
+                    "Only your physio can confirm you're ready.", "My physio confirmed it", TONE_INFO) {
+                confirmGate(a, gate.nextPhase!!.number, gate.nextPhase!!.title, today)
+            })
         }
-
-        // ---- smart reminder suggestion (learned from when you log doses) ----
-        val allEvents = a.store.allEvents()
+        // backup nudge
+        if (a.store.setting("last_backup", "").isBlank() && a.store.allLogs().size >= 7) {
+            prompts.add(Prompt(11, "ic_restore", "Protect your progress",
+                "A week of recovery data and no backup yet. One tap saves it to a file you control.",
+                "Back up now", TONE_INFO) { a.exportBackup() })
+        }
+        // physio appointment prep / capture
+        run {
+            val soon = profile.appointments.filter { !it.completed && !it.date.isBefore(today) &&
+                it.date.isBefore(today.plusDays(4)) }.minByOrNull { it.date }
+            val toCapture = profile.appointments.filter { !it.completed && it.date.isBefore(today) }.maxByOrNull { it.date }
+            if (soon != null) {
+                val days = java.time.temporal.ChronoUnit.DAYS.between(today, soon.date)
+                prompts.add(Prompt(12, "ic_calendar",
+                    if (days == 0L) "${soon.label} today" else "${soon.label} in $days day${if (days == 1L) "" else "s"}",
+                    "Prep your questions and current numbers to make the most of it.",
+                    "Open appointment pack", TONE_INFO) { a.pushOverlay { PhysioScreen.build(a) } })
+            } else if (toCapture != null) {
+                prompts.add(Prompt(13, "ic_edit", "How did your appointment go?",
+                    "Capture what your physio said so your plan stays in sync.",
+                    "Capture the visit", TONE_INFO) { a.pushOverlay { PhysioScreen.build(a) } })
+            }
+            Unit
+        }
+        // milestone celebration
+        com.recoverwell.core.logic.Wellbeing.recentlyReachedMilestone(profile, today)?.let { m ->
+            prompts.add(Prompt(15, "ic_flag", "Milestone reached: ${m.title}", m.detail,
+                "See how far you've come", TONE_DONE) { a.pushOverlay { WellbeingScreen.build(a) } })
+        }
+        // a single caution insight (positive/neutral insights live on Progress)
+        val insights = com.recoverwell.core.logic.Insights.generate(
+            profile, a.store.allLogs(), allEvents, a.store.medications(), a.store.tasks(), today)
+        insights.firstOrNull { it.tone == com.recoverwell.core.logic.Insights.Tone.CAUTION }?.let { ins ->
+            prompts.add(Prompt(16, "ic_alert", ins.title, ins.detail, "See trends", TONE_WARN) {
+                a.show(MainActivity.Tab.TRACKER)
+            })
+        }
+        // weekly review on Mondays
+        if (today.dayOfWeek == java.time.DayOfWeek.MONDAY && a.store.allLogs().size >= 5) {
+            prompts.add(Prompt(18, "ic_progress", "Your week in review is ready",
+                "Last week's adherence, pain trend and what to focus on next.",
+                "Open this week", TONE_INFO) { a.show(MainActivity.Tab.TRACKER) })
+        }
+        // adaptive reminder suggestion
         com.recoverwell.core.logic.AdaptiveReminders
             .timeSuggestions(a.store.medications(), allEvents, today).firstOrNull()?.let { sug ->
-            val card = Ui.card(a, Ui.INFO_BG)
-            val r = Ui.row(a)
-            r.addView(Ui.icon(a, "ic_clock", 20, Ui.ON_INFO_BG))
-            val t = Ui.text(a, "Smarter reminder time", 15.5f, Ui.ON_INFO_BG, bold = true)
-            t.setPadding(Ui.dp(a, 10), 0, 0, 0)
-            r.addView(Ui.weight(t, 1f))
-            card.addView(r)
-            card.addView(Ui.spacer(a, 2))
-            card.addView(Ui.text(a, "You usually take ${sug.medName} around " +
-                "${com.recoverwell.core.logic.Insights.minuteLabel(sug.typicalMinute)}, but its reminder is " +
-                "set for ${com.recoverwell.core.logic.Insights.minuteLabel(sug.scheduledMinute)}.", 14f, Ui.ON_INFO_BG))
-            card.addView(Ui.fullWidth(Ui.button(a, "Move reminder to " +
-                com.recoverwell.core.logic.Insights.minuteLabel(sug.typicalMinute)) {
+            val to = com.recoverwell.core.logic.Insights.minuteLabel(sug.typicalMinute)
+            prompts.add(Prompt(20, "ic_clock", "Smarter reminder time",
+                "You usually take ${sug.medName} around $to, but its reminder is set for " +
+                    "${com.recoverwell.core.logic.Insights.minuteLabel(sug.scheduledMinute)}.",
+                "Move reminder to $to", TONE_INFO) {
                 a.store.saveMedications(com.recoverwell.core.logic.AdaptiveReminders
                     .applySuggestion(a.store.medications(), sug))
                 Reminders.reschedule(a)
                 a.refresh()
-            }, a))
-            col.addView(card)
+            })
         }
 
-        // ---- insights (on-device analysis of your own data) ----
-        val insights = com.recoverwell.core.logic.Insights.generate(
-            profile, a.store.allLogs(), allEvents, a.store.medications(), a.store.tasks(), today)
-        if (insights.isNotEmpty()) {
-            col.addView(Ui.section(a, "Insights"))
-            for (ins in insights.take(3)) col.addView(insightCard(a, ins))
-        }
+        val sorted = prompts.sortedBy { it.priority }
+        // all safety prompts as full cards, then the single top non-safety as the focus
+        for (p in sorted.filter { it.safety }) col.addView(focusCard(a, p))
+        val rest = sorted.filterNot { it.safety }
+        rest.firstOrNull()?.let { col.addView(focusCard(a, it)) }
 
-        // ---- ask my recovery ----
-        col.addView(Ui.spacer(a, 6))
+        // ---- more for you (collapsed) + standing shortcuts ----
+        val rts = com.recoverwell.core.logic.ReturnToSport.progress(
+            profile, a.store.selfTestResults(), a.store.rtsSignoffs(), today)
+        col.addView(Ui.section(a, "More for you"))
+        for (p in rest.drop(1).take(3)) col.addView(promptRow(a, p))
+        if (rts.available) {
+            col.addView(Ui.listRow(a, "ic_flag", rts.returnPhrase,
+                (rts.currentRung?.let { "Stage: ${it.title}" } ?: "Keep building strength") +
+                    " · ${rts.readinessPct}% ready") { a.pushOverlay { ReturnToSportScreen.build(a) } })
+        }
+        com.recoverwell.core.logic.Wellbeing.expectationFor(profile, today)?.let { exp ->
+            col.addView(Ui.listRow(a, "ic_info", "What to expect this week", exp.title) {
+                a.pushOverlay { WhatToExpectScreen.build(a) }
+            })
+        }
         col.addView(Ui.listRow(a, "ic_info", "Ask my recovery",
             "Can I drive yet? What's next? - answered offline") { a.pushOverlay { AskScreen.build(a) } })
         col.addView(Ui.listRow(a, "ic_heart", "How you're doing",
@@ -415,6 +345,91 @@ object TodayScreen {
     fun record(a: MainActivity, item: ScheduleEngine.ChecklistItem, status: EventStatus) {
         Reminders.recordEvent(a, item.kind, item.refId, item.slotKey, status)
         a.refresh()
+    }
+
+    /** 10-second daily log right on Today; full form is one tap away. */
+    private fun quickCheckInCard(a: MainActivity, today: LocalDate): View {
+        val log = a.store.dailyLog(today)
+        val card = Ui.card(a)
+        if (log.pain != null) {
+            val row = Ui.row(a)
+            row.gravity = Gravity.CENTER_VERTICAL
+            row.addView(Ui.icon(a, "ic_check", 20, Ui.DONE))
+            val t = Ui.text(a, "Checked in today · pain ${log.pain}/10" +
+                (log.mood?.let { " · mood $it/5" } ?: ""), 14.5f, Ui.TEXT, bold = true)
+            t.setPadding(Ui.dp(a, 10), 0, Ui.dp(a, 8), 0)
+            row.addView(Ui.weight(t, 1f))
+            row.addView(Ui.textButton(a, "Update") { a.show(MainActivity.Tab.TRACKER) })
+            card.addView(row)
+            return card
+        }
+        card.addView(Ui.text(a, "How's it feeling today?", 16f, Ui.TEXT, bold = true))
+        card.addView(Ui.caption(a, "A 10-second check-in keeps your trends and insights sharp."))
+        card.addView(Ui.spacer(a, 4))
+        // start the slider at yesterday's pain so most days are a single tap of Save
+        var pain = a.store.dailyLog(today.minusDays(1)).pain ?: 0
+        card.addView(Forms.scaleSlider(a, 10, pain, "0 · None", "10 · Worst") { pain = it })
+        var mood: Int? = null
+        card.addView(Forms.label(a, "Mood · optional"))
+        card.addView(Forms.choiceRow(a, (1..5).toList(), { "$it" }, null) { mood = it })
+        card.addView(Ui.fullWidth(Ui.button(a, "Save check-in") {
+            val p = a.store.profile()
+            // carry forward the boot/weight-bearing state so the day's record is complete
+            a.store.saveDailyLog(log.copy(
+                pain = pain, mood = mood ?: log.mood,
+                wedges = log.wedges ?: p.currentWedges,
+                weightBearing = log.weightBearing ?: p.weightBearing))
+            a.refresh()
+        }, a))
+        card.addView(Ui.fullWidth(Ui.textButton(a, "Add more detail (swelling, ROM, notes)") {
+            a.show(MainActivity.Tab.TRACKER)
+        }, a, 2))
+        return card
+    }
+
+    // ---- calm-Today prompt model -------------------------------------------
+
+    private const val TONE_INFO = 0
+    private const val TONE_WARN = 1
+    private const val TONE_DONE = 2
+
+    private class Prompt(
+        val priority: Int, val icon: String, val title: String, val body: String,
+        val action: String, val tone: Int, val safety: Boolean = false, val onTap: () -> Unit
+    )
+
+    private fun toneBg(tone: Int) = when (tone) { TONE_WARN -> Ui.WARN_BG; TONE_DONE -> Ui.DONE_BG; else -> Ui.INFO_BG }
+    private fun toneFg(tone: Int) = when (tone) { TONE_WARN -> Ui.WARN; TONE_DONE -> Ui.DONE; else -> Ui.ON_INFO_BG }
+    private fun toneBody(tone: Int) = if (tone == TONE_INFO) Ui.ON_INFO_BG else Ui.TEXT
+
+    private fun focusCard(a: MainActivity, p: Prompt): View {
+        val card = Ui.card(a, toneBg(p.tone))
+        val r = Ui.row(a)
+        r.gravity = Gravity.TOP
+        r.addView(Ui.icon(a, p.icon, 20, toneFg(p.tone)))
+        val t = Ui.text(a, p.title, 15.5f, toneFg(p.tone), bold = true)
+        t.setPadding(Ui.dp(a, 10), 0, 0, 0)
+        r.addView(Ui.weight(t, 1f))
+        card.addView(r)
+        card.addView(Ui.spacer(a, 3))
+        card.addView(Ui.text(a, p.body, 14f, toneBody(p.tone)))
+        card.addView(Ui.fullWidth(Ui.button(a, p.action) { p.onTap() }, a))
+        return card
+    }
+
+    private fun promptRow(a: MainActivity, p: Prompt): View =
+        Ui.listRow(a, p.icon, p.title, p.body, iconTint = toneFg(p.tone), iconBg = toneBg(p.tone)) { p.onTap() }
+
+    private fun confirmGate(a: MainActivity, number: Int, title: String, today: LocalDate) {
+        Forms.confirm(a, "Confirm progression",
+            "Has your physiotherapist explicitly confirmed phase $number ($title)?") {
+            val pp = a.store.profile()
+            a.store.saveProfile(pp.copy(
+                physioConfirmedPhase = number,
+                phaseConfirmedDates = pp.phaseConfirmedDates + (number to today)))
+            Reminders.reschedule(a)
+            a.refresh()
+        }
     }
 
     fun phaseDetail(a: MainActivity, phaseNumber: Int): View {
