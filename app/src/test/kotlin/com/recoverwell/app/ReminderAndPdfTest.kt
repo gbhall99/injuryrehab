@@ -72,6 +72,12 @@ class PdfReportTest {
     @Test
     fun reportContainsProfileMedsMilestonesAndLogs() {
         val activity = Robolectric.setupActivity(MainActivity::class.java)
+        // personal facts are no longer pre-seeded: set the injury date and add the
+        // (now opt-in) medication so the report has them to render
+        activity.store.saveProfile(
+            activity.store.profile().copy(injuryDate = java.time.LocalDate.of(2026, 6, 2))
+        )
+        activity.store.saveMedications(com.recoverwell.core.protocol.ProtocolRegistry.default.prefillMedications)
         activity.store.saveDailyLog(
             com.recoverwell.core.model.DailyLog.empty(java.time.LocalDate.now())
                 .copy(pain = 3, notes = "first padel-free week done")

@@ -15,15 +15,15 @@ class BackupAndCsvTest {
     private fun sampleState(): AppState {
         val injury = LocalDate.of(2026, 6, 2)
         return AppState(
-            profile = Defaults.profile().copy(
+            profile = Fixtures.profile().copy(
                 name = "G",
                 physioConfirmedPhase = 2,
                 phaseStartOverrides = mapOf(3 to injury.plusWeeks(9)),
                 onboardingComplete = true,
                 disclaimerAcknowledged = true
             ),
-            medications = Defaults.medications(),
-            tasks = Defaults.tasks(),
+            medications = Fixtures.medications(),
+            tasks = Fixtures.tasks(),
             exerciseOverrides = mapOf(
                 "p1_slr" to ExerciseOverride("p1_slr", 4, null, 3, null, true)
             ),

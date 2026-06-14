@@ -11,12 +11,12 @@ import java.time.LocalDate
 class WellbeingTest {
 
     private val injury = LocalDate.of(2026, 1, 1)
-    private val meds = Defaults.medications()
-    private val tasks = Defaults.tasks()
+    private val meds = Fixtures.medications()
+    private val tasks = Fixtures.tasks()
 
     @Test
     fun currentPhaseHasMindsetContent() {
-        val profile = Defaults.profile().copy(injuryDate = injury)
+        val profile = Fixtures.profile().copy(injuryDate = injury)
         val mind = Wellbeing.currentMindset(profile, injury.plusDays(3))
         assertNotNull(mind)
         assertTrue(mind!!.normalToFeel.isNotEmpty())
@@ -25,7 +25,7 @@ class WellbeingTest {
 
     @Test
     fun recentlyReachedMilestoneIsTheMostRecentWithinAWeek() {
-        val profile = Defaults.profile().copy(injuryDate = injury)
+        val profile = Fixtures.profile().copy(injuryDate = injury)
         val m = Wellbeing.recentlyReachedMilestone(profile, injury.plusDays(15))
         assertNotNull(m)
         assertEquals(2, m!!.week) // "Settled in the boot" at week 2
@@ -33,7 +33,7 @@ class WellbeingTest {
 
     @Test
     fun expectationBandMatchesCurrentWeekAndResolvesSport() {
-        val profile = Defaults.profile().copy(injuryDate = injury) // padel by default
+        val profile = Fixtures.profile().copy(injuryDate = injury) // padel by default
         val exp = Wellbeing.expectationFor(profile, injury.plusWeeks(14)) // strengthening band 12-24
         assertNotNull(exp)
         assertTrue(14 >= exp!!.weekFrom && 14 < exp.weekTo)
@@ -51,7 +51,7 @@ class WellbeingTest {
         val logs = (0..13).map { i ->
             DailyLog.empty(today.minusDays(i.toLong())).copy(mood = if (i <= 6) 2 else 5)
         }
-        val ins = Insights.generate(Defaults.profile(), logs, emptyList(), meds, tasks, today)
+        val ins = Insights.generate(Fixtures.profile(), logs, emptyList(), meds, tasks, today)
         assertTrue(ins.any { it.tone == Insights.Tone.CAUTION && it.title.contains("mood", ignoreCase = true) })
     }
 }

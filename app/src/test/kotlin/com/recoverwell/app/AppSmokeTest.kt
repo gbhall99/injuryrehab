@@ -56,6 +56,8 @@ class ScreensSmokeTest : SmokeBase() {
         activity.store.saveProfile(
             activity.store.profile().copy(onboardingComplete = true, disclaimerAcknowledged = true)
         )
+        // medications are now opt-in, so seed the protocol's typical one explicitly
+        activity.store.saveMedications(com.recoverwell.core.protocol.ProtocolRegistry.default.prefillMedications)
         activity.show(MainActivity.Tab.TODAY)
         var texts = allText(activity.window.decorView).joinToString("\n")
         assertTrue(texts.has("done today"))

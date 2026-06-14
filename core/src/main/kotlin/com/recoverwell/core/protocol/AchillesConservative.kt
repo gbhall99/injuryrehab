@@ -1055,8 +1055,11 @@ object AchillesConservative {
 }
 
 /**
- * Personal first-run seed for THIS build's user, layered over the protocol
- * prefills. Every field is editable in-app.
+ * Neutral first-run seed. Personal facts (injury date, side, goal, medications,
+ * appointments) are NOT assumed - they start blank/today and are captured in
+ * onboarding, so a fresh install is correct for any user. Clinical scaffolding
+ * that genuinely generalises (boot plan, phases, care tasks) still comes from
+ * the selected protocol, anchored to the user's own injury date.
  */
 object Defaults {
     fun profile(): Profile {
@@ -1064,12 +1067,12 @@ object Defaults {
         return Profile(
             protocolId = p.id,
             name = "",
-            injuryDate = LocalDate.of(2026, 6, 2),
+            injuryDate = LocalDate.now(),
             side = Side.LEFT,
             pathway = Pathway.CONSERVATIVE_NON_SURGICAL,
-            injuryDescription = p.prefillDescription,
-            goal = p.prefillGoal,
-            appointments = p.prefillAppointments,
+            injuryDescription = "",
+            goal = "",
+            appointments = emptyList(),
             wedgePlan = p.supportDevice?.plan ?: WedgePlan(0, 1, 7),
             currentWedges = p.supportDevice?.plan?.initialWedges ?: 0,
             weightBearing = WeightBearing.AS_TOLERATED,
@@ -1082,6 +1085,8 @@ object Defaults {
         )
     }
 
-    fun medications(): List<Medication> = ProtocolRegistry.default.prefillMedications
+    // Medications are personal/prescribed: none are assumed. Onboarding offers the
+    // protocol's typical medication (e.g. an anticoagulant) as an explicit opt-in.
+    fun medications(): List<Medication> = emptyList()
     fun tasks(): List<RehabTask> = ProtocolRegistry.default.prefillTasks
 }

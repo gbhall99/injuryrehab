@@ -13,7 +13,7 @@ import java.time.LocalDate
 class CapabilityAndMilestoneTest {
 
     private val injury = LocalDate.of(2026, 6, 2)
-    private val profile = Defaults.profile()
+    private val profile = Fixtures.profile()
 
     @Test
     fun snapshotReflectsPhase1() {
