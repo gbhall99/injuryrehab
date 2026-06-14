@@ -33,8 +33,9 @@ class ScheduleEngineTest {
         val items = ScheduleEngine.dailyChecklist(profile, meds, tasks, emptyMap(), emptyList(), date)
         // 3 task defs with 3+1+2 = 6 time slots
         assertEquals(6, items.count { it.kind == ScheduleEngine.ItemKind.TASK })
-        // phase 1: 5 exercises with 4+3+2+2+2 = 13 sessions
-        assertEquals(13, items.count { it.kind == ScheduleEngine.ItemKind.EXERCISE })
+        // phase 1: 5 exercises done over a uniform 3 sessions/day = 15 items
+        assertEquals(5 * ScheduleEngine.EXERCISE_SESSIONS_PER_DAY,
+            items.count { it.kind == ScheduleEngine.ItemKind.EXERCISE })
     }
 
     @Test

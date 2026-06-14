@@ -71,7 +71,7 @@ object ExercisesScreen {
             val o = overrides[spec.id]
             val effective = ScheduleEngine.mergedExercises(listOf(spec), overrides).firstOrNull()
             val meta = if (effective != null)
-                ScheduleEngine.exercisePrescription(effective) + " · ${effective.sessionsPerDay}×/day"
+                ScheduleEngine.exercisePrescription(effective) + " · each session"
             else "off"
             val row = Ui.listRow(
                 a, iconFor(spec.demoId), spec.name,
@@ -169,7 +169,7 @@ object ExercisesScreen {
         if (effective.holdSeconds > 0) {
             tile(if (effective.holdSeconds >= 60) "${effective.holdSeconds / 60}m" else "${effective.holdSeconds}s", "hold")
         }
-        tile("${effective.sessionsPerDay}×", "per day")
+        tile("${ScheduleEngine.EXERCISE_SESSIONS_PER_DAY}×", "per day")
         col.addView(stats)
         col.addView(Ui.fullWidth(Ui.textButton(a, "Adjust prescription") {
             a.pushOverlay { editOverride(a, spec) }
@@ -211,7 +211,7 @@ object ExercisesScreen {
             }, a))
             col.addView(Ui.section(a, "Today's sessions"))
             val events = a.store.eventsOn(today)
-            for (session in 1..effective.sessionsPerDay) {
+            for (session in 1..ScheduleEngine.EXERCISE_SESSIONS_PER_DAY) {
                 val slot = "session$session"
                 val done = events.lastOrNull {
                     it.refId == spec.id && it.slotKey == slot
@@ -307,7 +307,7 @@ object ExercisesScreen {
         fun finish() {
             // log into the first session slot not yet done today
             val events = a.store.eventsOn(LocalDate.now())
-            val slot = (1..effective.sessionsPerDay).map { "session$it" }.firstOrNull { sl ->
+            val slot = (1..ScheduleEngine.EXERCISE_SESSIONS_PER_DAY).map { "session$it" }.firstOrNull { sl ->
                 events.lastOrNull { it.refId == spec.id && it.slotKey == sl }?.status != EventStatus.DONE
             } ?: "session1"
             Reminders.recordEvent(a, ScheduleEngine.ItemKind.EXERCISE, spec.id, slot, EventStatus.DONE)
@@ -387,7 +387,6 @@ object ExercisesScreen {
         var sets = effective.sets
         var reps = effective.reps
         var hold = effective.holdSeconds
-        var perDay = effective.sessionsPerDay
         var enabled = existing?.enabled ?: true
 
         val col = Ui.column(a)
@@ -395,15 +394,14 @@ object ExercisesScreen {
         col.addView(Ui.title(a, spec.name))
         col.addView(Ui.spacer(a, 4))
         col.addView(Ui.caption(
-            a, "Protocol default: ${ScheduleEngine.exercisePrescription(spec)} · " +
-                "${spec.sessionsPerDay}×/day. Change only as your physio advises."))
+            a, "Protocol default: ${ScheduleEngine.exercisePrescription(spec)} · done in each of " +
+                "${ScheduleEngine.EXERCISE_SESSIONS_PER_DAY} daily sessions. Change only as your physio advises."))
         col.addView(Ui.spacer(a, 8))
         val card = Ui.card(a)
         card.addView(Forms.stepper(a, "Sets", sets, 1, 10) { sets = it })
         card.addView(Forms.stepper(a, "Reps", reps, 1, 50) { reps = it })
         val holdStep = if (spec.holdSeconds >= 120) 30 else if (spec.holdSeconds >= 30) 5 else 1
         card.addView(Forms.stepper(a, "Hold (seconds)", hold, 0, 1800, step = holdStep) { hold = it })
-        card.addView(Forms.stepper(a, "Sessions per day", perDay, 1, 8) { perDay = it })
         col.addView(card)
 
         col.addView(Ui.section(a, "Include in daily plan"))
@@ -413,7 +411,7 @@ object ExercisesScreen {
 
         col.addView(Ui.spacer(a, 12))
         col.addView(Ui.fullWidth(Ui.button(a, "Save changes") {
-            a.store.saveExerciseOverride(ExerciseOverride(spec.id, sets, reps, hold, perDay, enabled, existing?.videoId))
+            a.store.saveExerciseOverride(ExerciseOverride(spec.id, sets, reps, hold, null, enabled, existing?.videoId))
             a.popOverlay()
         }, a))
         col.addView(Ui.fullWidth(Ui.textButton(a, "Reset to protocol default") {

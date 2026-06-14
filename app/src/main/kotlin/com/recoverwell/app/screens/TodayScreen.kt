@@ -190,14 +190,14 @@ object TodayScreen {
             profile, a.store.allLogs(), allEvents, a.store.medications(), a.store.tasks(), today)
         insights.firstOrNull { it.tone == com.recoverwell.core.logic.Insights.Tone.CAUTION }?.let { ins ->
             prompts.add(Prompt(16, "ic_alert", ins.title, ins.detail, "See trends", TONE_WARN) {
-                TrackerScreen.openReview(); a.show(MainActivity.Tab.TRACKER)
+                a.show(MainActivity.Tab.TRACKER)
             })
         }
         // weekly review on Mondays
         if (today.dayOfWeek == java.time.DayOfWeek.MONDAY && a.store.allLogs().size >= 5) {
             prompts.add(Prompt(18, "ic_progress", "Your week in review is ready",
                 "Last week's adherence, pain trend and what to focus on next.",
-                "Open this week", TONE_INFO) { TrackerScreen.openReview(); a.show(MainActivity.Tab.TRACKER) })
+                "Open this week", TONE_INFO) { a.show(MainActivity.Tab.TRACKER) })
         }
         // adaptive reminder suggestion
         com.recoverwell.core.logic.AdaptiveReminders
@@ -241,31 +241,46 @@ object TodayScreen {
                 })
             }
         }
-        // repeated tasks/exercise sessions collapse to ONE row with a counter,
-        // so a day is a handful of rows instead of ~two dozen
+        // repeated care-task times collapse to ONE row per task with a counter
         fun addCollapsedGroup(label: String, kind: ScheduleEngine.ItemKind) {
             val group = items.filter { it.kind == kind }
             if (group.isEmpty()) return
             col.addView(Ui.section(a, label))
             val byRef = LinkedHashMap<String, MutableList<ScheduleEngine.ChecklistItem>>()
             for (it in group) byRef.getOrPut(it.refId) { ArrayList() }.add(it)
-            for ((_, sessions) in byRef) {
-                val first = sessions.first()
-                val total = sessions.size
-                val done = sessions.count { it.isDone }
-                val baseTitle = first.title.substringBefore("  (").trim()
-                val tap = { onItemTapped(a, sessions.firstOrNull { !it.isDone } ?: sessions.last()) }
+            for ((_, slots) in byRef) {
+                val first = slots.first()
+                val total = slots.size
+                val done = slots.count { it.isDone }
+                val tap = { onItemTapped(a, slots.firstOrNull { !it.isDone } ?: slots.last()) }
                 if (total > 1) {
-                    // bullet-chart pill shaded to % complete
-                    col.addView(Ui.progressRow(a, baseTitle, first.subtitle, done, total) { tap() })
+                    col.addView(Ui.progressRow(a, first.title, first.subtitle, done, total) { tap() })
                 } else {
-                    col.addView(Ui.checkRow(a, baseTitle, first.subtitle, null, done == total, null) { tap() })
+                    col.addView(Ui.checkRow(a, first.title, first.subtitle, null, done == total, null) { tap() })
                 }
+            }
+        }
+        // exercises are grouped into uniform daily SESSIONS - same routine each
+        // session - so they're clear and consistent, not 2x here / 4x there
+        fun addExerciseSessions() {
+            val exItems = items.filter { it.kind == ScheduleEngine.ItemKind.EXERCISE }
+            if (exItems.isEmpty()) return
+            col.addView(Ui.section(a, "Exercise sessions · tap to do"))
+            val bySession = LinkedHashMap<String, MutableList<ScheduleEngine.ChecklistItem>>()
+            for (it in exItems) bySession.getOrPut(it.slotKey) { ArrayList() }.add(it)
+            bySession.keys.sorted().forEachIndexed { idx, key ->
+                val sess = bySession[key]!!
+                val total = sess.size
+                val done = sess.count { it.isDone }
+                col.addView(Ui.progressRow(a, "Exercise session ${idx + 1}",
+                    "$total exercise${if (total == 1) "" else "s"}", done, total) {
+                    onItemTapped(a, sess.firstOrNull { !it.isDone } ?: sess.last())
+                })
             }
         }
         addGroup("Medication", setOf(ScheduleEngine.ItemKind.MEDICATION))
         addCollapsedGroup("Daily care", ScheduleEngine.ItemKind.TASK)
-        addCollapsedGroup("Exercises · tap for demo", ScheduleEngine.ItemKind.EXERCISE)
+        addExerciseSessions()
         // boot changes are scheduled (~weekly), not daily - their own section,
         // shown only on the day one is due
         addGroup("Scheduled today", setOf(ScheduleEngine.ItemKind.WEDGE_CHANGE))
