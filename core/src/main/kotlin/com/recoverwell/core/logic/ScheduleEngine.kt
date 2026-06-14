@@ -15,6 +15,9 @@ object ScheduleEngine {
 
     enum class ItemKind { MEDICATION, TASK, WEDGE_CHANGE, EXERCISE, CHECKIN }
 
+    /** Uniform number of daily exercise sessions; each session is the full routine. */
+    const val EXERCISE_SESSIONS_PER_DAY = 3
+
     data class ChecklistItem(
         val kind: ItemKind,
         val refId: String,
@@ -153,18 +156,22 @@ object ScheduleEngine {
             item.copy(status = statusOf(EventType.TASK, item.refId, item.slotKey))
         })
 
+        // Exercises are grouped into a uniform number of daily SESSIONS; each
+        // session is the same routine (all of the phase's exercises once), rather
+        // than each exercise carrying its own 2x/3x/4x count.
         val exercises = mergedExercises(phase.exercises, overrides)
-        for (ex in exercises) {
-            for (session in 1..ex.sessionsPerDay) {
+        if (exercises.isNotEmpty()) {
+            for (session in 1..EXERCISE_SESSIONS_PER_DAY) {
                 val slot = "session$session"
-                items.add(
-                    ChecklistItem(
-                        ItemKind.EXERCISE, ex.id, slot,
-                        ex.name + if (ex.sessionsPerDay > 1) "  ($session/${ex.sessionsPerDay})" else "",
-                        exercisePrescription(ex), null,
-                        statusOf(EventType.EXERCISE, ex.id, slot)
+                for (ex in exercises) {
+                    items.add(
+                        ChecklistItem(
+                            ItemKind.EXERCISE, ex.id, slot, ex.name,
+                            exercisePrescription(ex), null,
+                            statusOf(EventType.EXERCISE, ex.id, slot)
+                        )
                     )
-                )
+                }
             }
         }
 

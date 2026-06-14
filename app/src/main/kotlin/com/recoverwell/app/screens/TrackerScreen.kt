@@ -17,66 +17,43 @@ import com.recoverwell.draw.ChartScene
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-/** Daily log entry up front; trends, pace, insights and milestones under Review. */
+/** Progress is review-only: trends, pace, insights, milestones (+ backfill). */
 object TrackerScreen {
 
     private var chartMetric = "Pain"
-    private var selectedDate: LocalDate? = null
-    // "Log" (the daily task) is primary; "Review" holds the analytics so the
-    // screen is no longer one long wall of forms and charts
-    private var section = "Log"
-
-    /** Open the Progress tab straight onto the analytics view (e.g. from Today). */
-    fun openReview() { section = "Review" }
 
     fun build(a: MainActivity): View {
         val today = LocalDate.now()
-        val day = (selectedDate ?: today).coerceAtMost(today)
         val col = Ui.column(a)
 
-        col.addView(Forms.choiceRow(a, listOf("Log", "Review"), { it }, section) {
-            section = it; a.refresh()
+        // Logging today happens on Today; Progress reviews the trend and lets you
+        // backfill or edit any past day through the same shared check-in.
+        col.addView(Ui.listRow(a, "ic_edit", "Log or edit a past day",
+            "Backfill a missed check-in") {
+            android.app.DatePickerDialog(a, { _, y, m, d ->
+                val date = LocalDate.of(y, m + 1, d).coerceAtMost(today)
+                a.pushOverlay("Log for $date") { pastDayOverlay(a, date) }
+            }, today.year, today.monthValue - 1, today.dayOfMonth).apply {
+                datePicker.maxDate = System.currentTimeMillis()
+            }.show()
         })
-        col.addView(Ui.spacer(a, 6))
 
-        if (section == "Log") buildLog(a, today, day, col) else buildReview(a, today, col)
+        buildReview(a, today, col)
 
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
     }
 
-    /** The daily log: the primary, every-day task. */
-    private fun buildLog(a: MainActivity, today: LocalDate, day: LocalDate, col: LinearLayout) {
-        // ---- daily log: any day is editable (review-mined: backfill matters) ----
-        col.addView(Ui.section(a, if (day == today) "Today's log" else "Log · earlier day"))
-        val nav = Ui.row(a)
-        nav.addView(Ui.iconButton(a, "ic_back", Ui.TEXT, Ui.SURFACE_HIGH, desc = "Previous day") {
-            selectedDate = day.minusDays(1); a.refresh()
-        })
-        val dayLabel = Ui.tonalButton(a, if (day == today) "Today" else day.toString()) {
-            android.app.DatePickerDialog(a, { _, y, m, d ->
-                selectedDate = LocalDate.of(y, m + 1, d).coerceAtMost(today)
-                a.refresh()
-            }, day.year, day.monthValue - 1, day.dayOfMonth).apply {
-                datePicker.maxDate = System.currentTimeMillis()
-            }.show()
-        }
-        val lp = android.widget.LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        lp.setMargins(Ui.dp(a, 8), 0, Ui.dp(a, 8), 0)
-        dayLabel.layoutParams = lp
-        nav.addView(dayLabel)
-        val nextBtn = Ui.iconButton(a, "ic_chevron", if (day == today) Ui.OUTLINE else Ui.TEXT,
-            Ui.SURFACE_HIGH, desc = "Next day") {
-            if (day < today) { selectedDate = day.plusDays(1); a.refresh() }
-        }
-        nav.addView(nextBtn)
-        col.addView(nav)
-        col.addView(Ui.spacer(a, 6))
-        // exactly the same check-in form Today uses (fully expanded here for backfill)
-        col.addView(TodayScreen.checkInCard(a, day, expanded = true) {
+    /** Overlay: the shared check-in for a chosen past day. */
+    private fun pastDayOverlay(a: MainActivity, date: LocalDate): View {
+        val col = Ui.column(a)
+        col.addView(Ui.backRow(a, "Log for $date") { a.popOverlay() })
+        col.addView(TodayScreen.checkInCard(a, date, expanded = true) {
             Toast.makeText(a, "Log saved", Toast.LENGTH_SHORT).show()
-            a.refresh()
+            a.popOverlay()
         })
+        col.addView(Ui.spacer(a, 24))
+        return Ui.scroll(a, col)
     }
 
     /** The review surfaces: trends, pace, return-to-sport, insights, milestones. */

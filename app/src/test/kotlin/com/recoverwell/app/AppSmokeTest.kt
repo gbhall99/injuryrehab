@@ -70,11 +70,8 @@ class ScreensSmokeTest : SmokeBase() {
 
         activity.show(MainActivity.Tab.TRACKER)
         texts = allText(activity.window.decorView).joinToString("\n")
-        assertTrue(texts.has("Today's log"))
-        // analytics (milestones, trends, pace) now live under the Review toggle
-        com.recoverwell.app.screens.TrackerScreen.openReview()
-        activity.refresh()
-        texts = allText(activity.window.decorView).joinToString("\n")
+        // Progress is review-only now: trends + milestones, plus a backfill entry
+        assertTrue(texts.has("Trends"))
         assertTrue(texts.has("Milestones"))
 
         activity.show(MainActivity.Tab.TWIN)

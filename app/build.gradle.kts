@@ -158,8 +158,8 @@ val aaptPackage by tasks.registering(Exec::class) {
         "-F", "${apkDir.get().asFile}/recoverwell-base.apk",
         "--min-sdk-version", "26",
         "--target-sdk-version", "35",
-        "--version-code", "25",
-        "--version-name", "3.5"
+        "--version-code", "26",
+        "--version-name", "3.6"
     )
 }
 
