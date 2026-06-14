@@ -34,7 +34,8 @@ object MoreScreen {
         col.addView(Ui.listRow(a, "ic_exercises", "Stay fit",
             "Keep-fit conditioning + a weekly goal") { a.pushOverlay("Stay fit") { StayFitScreen.build(a) } })
         col.addView(Ui.listRow(a, "ic_info", "Ask my recovery",
-            "Can I drive yet? What's next? - answered offline") { a.pushOverlay("Ask my recovery") { AskScreen.build(a) } })
+            if (AiScreen.enabled(a)) "Ask anything - answered by AI from your recovery"
+            else "Can I drive yet? What's next? - answered offline") { a.pushOverlay("Ask my recovery") { AskScreen.build(a) } })
         col.addView(Ui.listRow(a, "ic_calendar", "Phase dates",
             "Adjust timings agreed with your physio") { a.pushOverlay("Phase dates") { phaseDatesEditor(a) } })
         col.addView(Ui.listRow(a, "ic_edit", "Physio visits",
@@ -51,6 +52,11 @@ object MoreScreen {
             iconBg = if (blocked) Ui.DANGER_BG else Ui.PRIMARY_CONTAINER) {
             a.pushOverlay("Reminders") { remindersHub(a) }
         })
+
+        col.addView(Ui.section(a, "AI features"))
+        col.addView(Ui.listRow(a, "ic_info", "AI assistant",
+            if (AiScreen.enabled(a)) "On - natural-language answers via Groq"
+            else "Off - turn on natural-language answers") { a.pushOverlay("AI features") { AiScreen.settings(a) } })
 
         col.addView(Ui.section(a, "Appearance"))
         val themeCard = Ui.card(a)
