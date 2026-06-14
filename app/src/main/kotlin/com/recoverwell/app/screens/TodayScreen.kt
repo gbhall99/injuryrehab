@@ -45,7 +45,9 @@ object TodayScreen {
         val heroTexts = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
         val onHero = Ui.ON_HERO
         val onHeroDim = com.recoverwell.draw.Palette.withAlpha(onHero, 0xCC)
-        heroTexts.addView(Ui.text(a, today.format(DateTimeFormatter.ofPattern("EEEE d MMMM")),
+        val dateLine = today.format(DateTimeFormatter.ofPattern("EEEE d MMMM"))
+        heroTexts.addView(Ui.text(a,
+            if (profile.name.isBlank()) dateLine else "Hi ${profile.name} · $dateLine",
             13f, onHeroDim, bold = true))
         heroTexts.addView(Ui.text(a, "Week $week", 30f, onHero, bold = true))
         heroTexts.addView(Ui.text(a, "Phase ${phase.number} · ${phase.title}", 14f,

@@ -45,9 +45,9 @@ object PdfReport {
         line(Style.DIM, RehabFramework.DISCLAIMER)
 
         line(Style.HEAD, "Profile")
-        line(Style.BODY, "Injury: ${profile.injuryDescription}")
         line(Style.BODY, "Injury date: ${profile.injuryDate} (${PhaseEngine.weeksSinceInjury(profile, today)} weeks ago) · Side: ${profile.side}")
-        line(Style.BODY, "Pathway: ${protocol.variantName} · Goal: ${profile.goal}")
+        val sport = com.recoverwell.core.protocol.SportRegistry.byId(profile.sportId)?.name
+        line(Style.BODY, "Pathway: ${protocol.variantName}" + (sport?.let { " · Goal: return to $it" } ?: ""))
         val phase = PhaseEngine.currentPhase(profile, today)
         line(Style.BODY, "Current phase: ${phase.number} - ${phase.title}")
         protocol.supportDevice?.let { dev ->

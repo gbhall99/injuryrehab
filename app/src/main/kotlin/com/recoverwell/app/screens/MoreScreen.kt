@@ -159,10 +159,6 @@ object MoreScreen {
         val nameEdit = Forms.editText(a, p.name, "How should the app greet you?")
         card.addView(nameEdit)
 
-        card.addView(Forms.label(a, "Injury"))
-        val descEdit = Forms.editText(a, p.injuryDescription, "What happened", multiline = true)
-        card.addView(descEdit)
-
         card.addView(Ui.spacer(a, 6))
         card.addView(Forms.dateRow(a, "Injury date", p.injuryDate) { p = p.copy(injuryDate = it) })
 
@@ -184,10 +180,6 @@ object MoreScreen {
         })
         card.addView(Ui.caption(a, ProtocolRegistry.byId(p.protocolId).variantName +
             " · more protocols can be added to the registry"))
-
-        card.addView(Forms.label(a, "Goal"))
-        val goalEdit = Forms.editText(a, p.goal, "What are you working back to?")
-        card.addView(goalEdit)
 
         val sports = ProtocolRegistry.byId(p.protocolId).supportedSportIds.mapNotNull { SportRegistry.byId(it) }
         if (sports.isNotEmpty()) {
@@ -234,11 +226,7 @@ object MoreScreen {
         // appointment edits rebuild the screen, so persist any typed-but-unsaved
         // text fields first or they would be lost
         fun saveWithTexts() {
-            a.store.saveProfile(p.copy(
-                name = nameEdit.text.toString().trim(),
-                injuryDescription = descEdit.text.toString().trim(),
-                goal = goalEdit.text.toString().trim()
-            ))
+            a.store.saveProfile(p.copy(name = nameEdit.text.toString().trim()))
             a.refresh()
         }
         p.appointments.forEachIndexed { i, appt ->
@@ -270,11 +258,7 @@ object MoreScreen {
 
         col.addView(Ui.spacer(a, 10))
         col.addView(Ui.fullWidth(Ui.button(a, if (onDone == null) "Save" else "Confirm & continue") {
-            a.store.saveProfile(p.copy(
-                name = nameEdit.text.toString().trim(),
-                injuryDescription = descEdit.text.toString().trim(),
-                goal = goalEdit.text.toString().trim()
-            ))
+            a.store.saveProfile(p.copy(name = nameEdit.text.toString().trim()))
             Reminders.reschedule(a)
             if (onDone != null) onDone() else a.popOverlay()
         }, a))
