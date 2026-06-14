@@ -184,6 +184,12 @@ object TodayScreen {
             }
             Unit
         }
+        // daily recovery-journal nudge (only when AI is on and not yet logged today)
+        if (AiScreen.enabled(a) && a.store.journalEntries().none { it.date == today }) {
+            prompts.add(Prompt(17, "ic_edit", "Record today's check-in",
+                "Speak freely about your day - AI reflects it back and spots patterns.",
+                "Open journal", TONE_INFO) { a.pushOverlay("Recovery journal") { JournalScreen.build(a) } })
+        }
         // milestone celebration
         com.recoverwell.core.logic.Wellbeing.recentlyReachedMilestone(profile, today)?.let { m ->
             prompts.add(Prompt(15, "ic_flag", "Milestone reached: ${m.title}", m.detail,

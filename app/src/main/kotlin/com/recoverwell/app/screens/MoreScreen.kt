@@ -57,6 +57,10 @@ object MoreScreen {
         col.addView(Ui.listRow(a, "ic_info", "AI assistant",
             if (AiScreen.enabled(a)) "On - natural-language answers via Groq"
             else "Off - turn on natural-language answers") { a.pushOverlay("AI features") { AiScreen.settings(a) } })
+        if (AiScreen.enabled(a)) {
+            col.addView(Ui.listRow(a, "ic_edit", "Recovery journal",
+                "Speak a daily check-in - AI reflects it back") { a.pushOverlay("Recovery journal") { JournalScreen.build(a) } })
+        }
 
         col.addView(Ui.section(a, "Appearance"))
         val themeCard = Ui.card(a)

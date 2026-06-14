@@ -49,6 +49,8 @@ class MainActivity : Activity() {
     private val REQ_EXPORT = 41
     private val REQ_IMPORT = 42
     private val REQ_AUTOBACKUP = 43
+    private val REQ_MIC = 44
+    private var pendingMicResult: ((Boolean) -> Unit)? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -446,6 +448,29 @@ class MainActivity : Activity() {
     }
 
     @Deprecated("Deprecated in Java")
+    /** Ensure microphone access, prompting once if needed, then call [onResult]. */
+    fun requestMic(onResult: (Boolean) -> Unit) {
+        if (checkSelfPermission("android.permission.RECORD_AUDIO") ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            onResult(true)
+            return
+        }
+        pendingMicResult = onResult
+        requestPermissions(arrayOf("android.permission.RECORD_AUDIO"), REQ_MIC)
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQ_MIC) {
+            val granted = grantResults.isNotEmpty() &&
+                grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED
+            pendingMicResult?.invoke(granted)
+            pendingMicResult = null
+        }
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         val uri = data?.data ?: return

@@ -188,6 +188,19 @@ class Store private constructor(context: Context) :
     fun savePhysioQuestions(qs: List<String>) =
         putKv("physioQuestions", Json.write(Json.strings(qs)))
 
+    // -- recovery journal -----------------------------------------------------
+
+    fun journalEntries(): List<JournalEntry> =
+        getKv("journalEntries")?.let { Json.parse(it).asArr().map(BackupCodec::journalEntryFrom) }
+            ?: emptyList()
+
+    private fun saveJournal(entries: List<JournalEntry>) =
+        putKv("journalEntries", Json.write(Json.arr(entries.map(BackupCodec::journalEntryJson))))
+
+    fun addJournalEntry(e: JournalEntry) = saveJournal(journalEntries() + e)
+
+    fun deleteJournalEntry(id: String) = saveJournal(journalEntries().filter { it.id != id })
+
     // -- backup / restore ----------------------------------------------------------
 
     fun snapshot(): AppState = AppState(
@@ -199,7 +212,8 @@ class Store private constructor(context: Context) :
         events = allEvents(),
         selfTestResults = selfTestResults(),
         rtsSignoffs = rtsSignoffs().toList(),
-        physioNotes = physioNotes()
+        physioNotes = physioNotes(),
+        journalEntries = journalEntries()
     )
 
     fun restore(state: AppState) {
@@ -225,5 +239,7 @@ class Store private constructor(context: Context) :
             putKv("rtsSignoffs", Json.write(Json.strings(state.rtsSignoffs)))
         if (state.physioNotes.isNotEmpty())
             putKv("physioNotes", Json.write(Json.arr(state.physioNotes.map(BackupCodec::physioNoteJson))))
+        if (state.journalEntries.isNotEmpty())
+            putKv("journalEntries", Json.write(Json.arr(state.journalEntries.map(BackupCodec::journalEntryJson))))
     }
 }

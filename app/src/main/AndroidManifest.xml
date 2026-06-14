@@ -8,10 +8,16 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-    <!-- Used ONLY by the in-app exercise video player (a WebView that loads
-         YouTube). All recovery data stays on-device; nothing is uploaded. -->
+    <!-- Network is used by the in-app exercise video player (a WebView that loads
+         YouTube) and, only when the user opts into AI, by the Groq-powered
+         assistant/journal. With AI off, no recovery data leaves the device. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Optional: only used by the AI recovery journal to record a spoken
+         check-in, which is transcribed by Groq then deleted. AI is off by
+         default; nothing is recorded unless the user opts in and taps record. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- so we can hand off "Watch on YouTube" links to a browser/YouTube -->
     <queries>

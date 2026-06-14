@@ -229,6 +229,34 @@ data class PhysioNote(
     val text: String
 )
 
+/** Overall tone the AI inferred from a spoken journal entry, ordered low->high. */
+enum class JournalMood(val score: Int, val label: String) {
+    LOW(1, "Low"), MIXED(2, "Mixed"), STEADY(3, "Steady"), POSITIVE(4, "Positive"), GREAT(5, "Great");
+
+    companion object {
+        /** Tolerant lookup by enum name or display label; defaults to [MIXED]. */
+        fun from(s: String?): JournalMood {
+            val t = s?.trim().orEmpty()
+            return values().firstOrNull { it.name.equals(t, true) || it.label.equals(t, true) } ?: MIXED
+        }
+    }
+}
+
+/**
+ * One daily "Rosebud-style" spoken check-in: the transcript of what the user
+ * said, plus the AI's reflection, observed insights, suggested tips and an
+ * inferred mood. Audio is transcribed then discarded - only text is kept.
+ */
+data class JournalEntry(
+    val id: String,
+    val date: LocalDate,
+    val transcript: String,
+    val reflection: String,
+    val insights: List<String>,
+    val tips: List<String>,
+    val mood: JournalMood
+)
+
 /**
  * One logged objective self-test (e.g. single-leg heel-rise count). Symmetry
  * tests carry both sides so a limb-symmetry index can be computed; single-value
