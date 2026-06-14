@@ -90,7 +90,9 @@ data class Profile(
     val onboardingComplete: Boolean,
     val disclaimerAcknowledged: Boolean,
     /** Target sport for the return-to-sport program; blank = the protocol default. */
-    val sportId: String = ""
+    val sportId: String = "",
+    /** Chosen support device (boot/cast); blank = the protocol default. */
+    val deviceId: String = ""
 )
 
 data class Medication(

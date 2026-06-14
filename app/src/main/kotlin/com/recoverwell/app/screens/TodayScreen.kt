@@ -227,6 +227,15 @@ object TodayScreen {
                 a.pushOverlay { WhatToExpectScreen.build(a) }
             })
         }
+        run {
+            val goal = a.store.setting("fitness_goal", com.recoverwell.core.logic.Fitness.DEFAULT_WEEKLY_GOAL.toString())
+                .toIntOrNull() ?: com.recoverwell.core.logic.Fitness.DEFAULT_WEEKLY_GOAL
+            val sessions = com.recoverwell.core.logic.Fitness.sessionsThisWeek(allEvents, today)
+            col.addView(Ui.listRow(a, "ic_exercises", "Stay fit",
+                "Keep-fit options that don't load the foot · $sessions of $goal this week") {
+                a.pushOverlay { StayFitScreen.build(a) }
+            })
+        }
         col.addView(Ui.listRow(a, "ic_info", "Ask my recovery",
             "Can I drive yet? What's next? - answered offline") { a.pushOverlay { AskScreen.build(a) } })
         col.addView(Ui.listRow(a, "ic_heart", "How you're doing",

@@ -28,6 +28,8 @@ object MoreScreen {
             "What's normal to feel, reassurance, milestones") { a.pushOverlay { WellbeingScreen.build(a) } })
         col.addView(Ui.listRow(a, "ic_info", "What to expect",
             "Plain-language guidance for this stage") { a.pushOverlay { WhatToExpectScreen.build(a) } })
+        col.addView(Ui.listRow(a, "ic_exercises", "Stay fit",
+            "Keep-fit conditioning + a weekly goal") { a.pushOverlay { StayFitScreen.build(a) } })
         col.addView(Ui.listRow(a, "ic_calendar", "Phase dates",
             "Adjust timings agreed with your physio") { a.pushOverlay { phaseDatesEditor(a) } })
         col.addView(Ui.listRow(a, "ic_edit", "Physio visits",
@@ -178,37 +180,21 @@ object MoreScreen {
         }
         col.addView(card)
 
-        val device = ProtocolRegistry.byId(p.protocolId).supportDevice
-        col.addView(Ui.section(a, (device?.name ?: "Support") + " & weight-bearing"))
+        col.addView(Ui.section(a, "Boot / cast & weight-bearing"))
         val bootCard = Ui.card(a)
-        if (device != null) {
-            val units = device.unitNamePlural
-            val step = device.plan.stepSize.coerceAtLeast(1)
-            bootCard.addView(Forms.stepper(a, "Setting now ($units)",
-                p.currentWedges, 0, device.maxValue, step = step) { p = p.copy(currentWedges = it) })
-            bootCard.addView(Forms.stepper(a, "Setting at start ($units)",
-                p.wedgePlan.initialWedges, 0, device.maxValue, step = step) {
-                p = p.copy(wedgePlan = p.wedgePlan.copy(initialWedges = it))
+        // device-type picker: VACOped (degrees) vs Aircast (wedges) vs cast
+        val devices = ProtocolRegistry.byId(p.protocolId).supportedDeviceIds
+            .mapNotNull { com.recoverwell.core.protocol.DeviceRegistry.byId(it) }
+        if (devices.size > 1) {
+            bootCard.addView(Forms.label(a, "What are you in?"))
+            bootCard.addView(Forms.choiceRow(a, devices, { it.name },
+                devices.firstOrNull { it.id == ProtocolRegistry.deviceFor(p)?.id }) { dev ->
+                // switching device resets the plan to that device's defaults
+                p = p.copy(deviceId = dev.id, wedgePlan = dev.plan, currentWedges = dev.plan.initialWedges)
+                rebuildBootSettings(a, p, bootCard, devicePickerCount = 2) { p = it }
             })
-            bootCard.addView(Forms.stepper(a, "Reduce by each change ($units)",
-                p.wedgePlan.stepSize, 1, device.maxValue) {
-                p = p.copy(wedgePlan = p.wedgePlan.copy(stepSize = it))
-            })
-            bootCard.addView(Forms.stepper(a, "First change · week", p.wedgePlan.removalStartWeek, 1, 12) {
-                p = p.copy(wedgePlan = p.wedgePlan.copy(removalStartWeek = it))
-            })
-            bootCard.addView(Forms.stepper(a, "Days between changes", p.wedgePlan.removalIntervalDays, 3, 28) {
-                p = p.copy(wedgePlan = p.wedgePlan.copy(removalIntervalDays = it))
-            })
-            bootCard.addView(Ui.spacer(a, 4))
-            bootCard.addView(Ui.caption(a, "Default: lower by ${device.plan.stepSize} $units every " +
-                "${device.plan.removalIntervalDays} days from week ${device.plan.removalStartWeek}. " +
-                "Match whatever your clinic prescribed."))
         }
-        bootCard.addView(Forms.label(a, "Weight-bearing"))
-        bootCard.addView(Forms.choiceRow(a, WeightBearing.values().toList(), { it.shortLabel }, p.weightBearing) {
-            p = p.copy(weightBearing = it)
-        })
+        rebuildBootSettings(a, p, bootCard, devicePickerCount = if (devices.size > 1) 2 else 0) { p = it }
         col.addView(bootCard)
 
         col.addView(Ui.section(a, "Appointments"))
@@ -262,6 +248,53 @@ object MoreScreen {
         }, a))
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
+    }
+
+    /** (Re)builds the device-dependent boot controls below the device picker. */
+    private fun rebuildBootSettings(
+        a: MainActivity, p0: Profile, bootCard: android.widget.LinearLayout,
+        devicePickerCount: Int, onChange: (Profile) -> Unit
+    ) {
+        while (bootCard.childCount > devicePickerCount) bootCard.removeViewAt(bootCard.childCount - 1)
+        var prof = p0
+        val device = ProtocolRegistry.deviceFor(prof)
+        if (device != null) {
+            if (device.operation.isNotBlank()) {
+                bootCard.addView(Ui.caption(a, device.operation))
+                bootCard.addView(Ui.spacer(a, 6))
+            }
+            if (device.kind != com.recoverwell.core.protocol.DeviceKind.CAST) {
+                val units = device.unitNamePlural
+                val step = device.plan.stepSize.coerceAtLeast(1)
+                bootCard.addView(Forms.stepper(a, "Setting now ($units)",
+                    prof.currentWedges, 0, device.maxValue, step = step) { prof = prof.copy(currentWedges = it); onChange(prof) })
+                bootCard.addView(Forms.stepper(a, "Setting at start ($units)",
+                    prof.wedgePlan.initialWedges, 0, device.maxValue, step = step) {
+                    prof = prof.copy(wedgePlan = prof.wedgePlan.copy(initialWedges = it)); onChange(prof)
+                })
+                bootCard.addView(Forms.stepper(a, "Reduce by each change ($units)",
+                    prof.wedgePlan.stepSize, 1, device.maxValue) {
+                    prof = prof.copy(wedgePlan = prof.wedgePlan.copy(stepSize = it)); onChange(prof)
+                })
+                bootCard.addView(Forms.stepper(a, "First change · week", prof.wedgePlan.removalStartWeek, 1, 12) {
+                    prof = prof.copy(wedgePlan = prof.wedgePlan.copy(removalStartWeek = it)); onChange(prof)
+                })
+                bootCard.addView(Forms.stepper(a, "Days between changes", prof.wedgePlan.removalIntervalDays, 3, 28) {
+                    prof = prof.copy(wedgePlan = prof.wedgePlan.copy(removalIntervalDays = it)); onChange(prof)
+                })
+                bootCard.addView(Ui.spacer(a, 4))
+                bootCard.addView(Ui.caption(a, "Default: ${device.reductionVerb} by ${device.plan.stepSize} $units every " +
+                    "${device.plan.removalIntervalDays} days from week ${device.plan.removalStartWeek}. " +
+                    "Match whatever your clinic prescribed."))
+            } else {
+                bootCard.addView(Ui.caption(a, "A cast can't be adjusted at home - your clinic re-sets the " +
+                    "angle toward neutral at appointments, so there's no daily boot change to schedule."))
+            }
+        }
+        bootCard.addView(Forms.label(a, "Weight-bearing"))
+        bootCard.addView(Forms.choiceRow(a, WeightBearing.values().toList(), { it.shortLabel }, prof.weightBearing) {
+            prof = prof.copy(weightBearing = it); onChange(prof)
+        })
     }
 
     // ------------------------------------------------------------------

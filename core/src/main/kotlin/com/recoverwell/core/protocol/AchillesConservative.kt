@@ -962,6 +962,34 @@ object AchillesConservative {
     )
 
     // ------------------------------------------------------------------
+    // Stay-fit: general conditioning that doesn't load the tendon
+    // ------------------------------------------------------------------
+
+    private val fitness: List<FitnessActivity> = listOf(
+        FitnessActivity("f_upper", "Seated press & row", "Upper body", 1,
+            "Dumbbells or a resistance band: shoulder press, rows, biceps and triceps. Sit tall with the boot " +
+                "resting - your upper body stays strong with zero load on the tendon."),
+        FitnessActivity("f_pushups", "Incline or knee push-ups", "Upper body", 1,
+            "Hands on a sofa or wall (or knees down) so the foot takes no weight - solid chest and arm work."),
+        FitnessActivity("f_core", "Core circuit", "Core & trunk", 1,
+            "Dead bugs, bird-dogs, side planks and gentle crunches. Keep the boot on and the ankle completely still."),
+        FitnessActivity("f_cardio", "No-impact cardio", "Cardio (no impact)", 1,
+            "Get your heart rate up without loading the leg: fast banded punches, seated 'boxing' rounds, an arm " +
+                "bike (ergometer) at the gym, or brisk upper-body circuits."),
+        FitnessActivity("f_glutes", "Hip & glute work", "Hips & glutes", 1,
+            "Clamshells, side-lying leg lifts and bridges driven through the good side - keeps the hips strong " +
+                "for when you're walking again."),
+        FitnessActivity("f_bike", "Stationary bike (light)", "Once out of the boot", 3,
+            "Once your physio approves: easy spinning at low resistance, pedalling through the heel and midfoot."),
+        FitnessActivity("f_swim", "Swimming & pool", "Once out of the boot", 3,
+            "Once any wounds are healed and your physio approves: pool walking and easy swimming are excellent " +
+                "low-impact cardio."),
+        FitnessActivity("f_gym", "Good-side & gym strength", "Once out of the boot", 4,
+            "Leg press, squats and step-ups within physio guidance; train the uninjured leg hard to limit overall " +
+                "strength loss while the injured side catches up.")
+    )
+
+    // ------------------------------------------------------------------
     // The registry entry: everything above, wired as framework data
     // ------------------------------------------------------------------
 
@@ -972,16 +1000,11 @@ object AchillesConservative {
         protocolName = "Conservative (non-surgical) functional rehabilitation - UK NHS-style pathway",
         placeholderNote = PLACEHOLDER_NOTE,
         sided = true,
-        supportDevice = SupportDevice(
-            name = "Walking boot",
-            unitName = "degree",
-            unitNamePlural = "degrees",
-            unitSymbol = "°",
-            reductionVerb = "lower the heel angle",
-            maxValue = 40,
-            // heel angle stepped from 30° to neutral, 5° a week from week 3 -> 0° by ~week 8
-            plan = WedgePlan(initialWedges = 30, removalStartWeek = 3, removalIntervalDays = 7, stepSize = 5)
-        ),
+        // Default to the OPED VACOped (ROM dial, degrees); the user can switch to
+        // an Aircast walker (wedges) or a cast journey in Settings.
+        supportDevice = DeviceRegistry.VACOPED,
+        supportedDeviceIds = listOf("vacoped", "aircast_wedges", "cast"),
+        defaultDeviceId = "vacoped",
         phases = phases,
         milestones = milestones,
         redFlags = redFlags,
@@ -1008,6 +1031,7 @@ object AchillesConservative {
         mindset = mindset,
         reassurance = reassurance,
         expectations = expectations,
+        fitness = fitness,
         bodySceneId = "lower_leg",
         welcomeBlurb = "Your daily coach through a conservative (non-surgical) Achilles " +
             "rupture - exercises, reminders and progress tracking.",
@@ -1053,7 +1077,8 @@ object Defaults {
             phaseStartOverrides = emptyMap(),
             onboardingComplete = false,
             disclaimerAcknowledged = false,
-            sportId = p.defaultSportId ?: ""
+            sportId = p.defaultSportId ?: "",
+            deviceId = p.defaultDeviceId ?: ""
         )
     }
 

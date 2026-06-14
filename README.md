@@ -107,6 +107,21 @@ progressive wedge reduction — built around a real recovery that started on
   proactively. Sport-aware via the same `{sport}` resolution.
 - **Home-screen widget** — week/phase, today's progress, your check-in status,
   the next reminder, and a one-tap way back in.
+- **Your boot or cast, modelled accurately** — the support device is a
+  selectable, data-driven registry (`DeviceRegistry`). The default is the **OPED
+  VACOped** boot, whose ROM dial sets the ankle angle in degrees (no heel
+  wedges): start locked in equinus, step the dial down to neutral, then a
+  controlled range — with device-specific setup/operation notes on the My-leg
+  screen. Switch to an **Aircast walker** (heel wedges, removed one at a time)
+  or a **rigid cast journey** (no home adjustment; clinic re-sets the angle) and
+  the schedule, the digital twin and the editable plan all follow the device.
+  `Profile.deviceId` rides in the backup; adding a boot/cast is a data entry.
+- **Stay fit while you recover** — general conditioning that keeps the rest of
+  you strong without loading the tendon (seated upper-body, core, no-impact
+  cardio, hips/glutes, and out-of-boot options like the bike and pool as they
+  unlock by phase), plus a settable weekly conditioning goal you can log
+  against. Protocol data, so it scales per injury and is kept separate from the
+  rehab-exercise counts.
 
 ## Rehab protocol (conservative / non-surgical only)
 

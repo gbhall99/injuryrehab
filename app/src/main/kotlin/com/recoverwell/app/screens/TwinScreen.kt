@@ -62,6 +62,44 @@ object TwinScreen {
         heroCard.addView(heroRow)
         col.addView(heroCard)
 
+        // ---- your boot / cast: how it's set up and operated ----
+        protocol.supportDevice?.let { device ->
+            col.addView(Ui.section(a, "Your ${device.name.lowercase()}"))
+            val card = Ui.card(a)
+            val head = Ui.row(a)
+            head.gravity = android.view.Gravity.CENTER_VERTICAL
+            head.addView(Ui.iconBadge(a, "ic_boot", boxDp = 36))
+            val ht = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
+            ht.setPadding(Ui.dp(a, 12), 0, Ui.dp(a, 8), 0)
+            ht.addView(Ui.text(a, device.name, 15.5f, Ui.TEXT, bold = true))
+            ht.addView(Ui.caption(a, if (device.kind == com.recoverwell.core.protocol.DeviceKind.CAST)
+                "Set in equinus by your clinic"
+            else "Now at ${device.format(profile.currentWedges)} · ${device.unitNamePlural}"))
+            head.addView(Ui.weight(ht, 1f))
+            head.addView(Ui.textButton(a, "Change") { a.pushOverlay { MoreScreen.profileEditor(a) } })
+            card.addView(head)
+            if (device.operation.isNotBlank()) {
+                card.addView(Ui.spacer(a, 6))
+                card.addView(Ui.text(a, device.operation, 14f, Ui.TEXT))
+            }
+            col.addView(card)
+            if (device.setupNotes.isNotEmpty()) {
+                val notes = Ui.card(a)
+                notes.addView(Ui.text(a, "Setting it up & wearing it", 13.5f, Ui.TEXT_DIM, bold = true))
+                device.setupNotes.forEachIndexed { i, n ->
+                    notes.addView(Ui.spacer(a, if (i == 0) 6 else 8))
+                    val r = Ui.row(a)
+                    r.gravity = android.view.Gravity.TOP
+                    r.addView(Ui.icon(a, "ic_check", 16, Ui.PRIMARY))
+                    val t = Ui.text(a, n, 14f, Ui.TEXT)
+                    t.setPadding(Ui.dp(a, 10), 0, 0, 0)
+                    r.addView(Ui.weight(t, 1f))
+                    notes.addView(r)
+                }
+                col.addView(notes)
+            }
+        }
+
         // ---- warnings ----
         val recent = a.store.allLogs().filter { !it.date.isBefore(today.minusDays(7)) }
         val warnings = Capability.warnings(profile, recent, today)

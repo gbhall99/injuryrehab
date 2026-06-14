@@ -57,6 +57,11 @@ class ContentQualityTest {
             sb.append(e.title).append('\n').append(e.summary).append('\n').append(e.reassure).append('\n')
             e.likely.forEach { sb.append(it).append('\n') }
         }
+        achilles.fitness.forEach { sb.append(it.name).append('\n').append(it.detail).append('\n') }
+        com.recoverwell.core.protocol.DeviceRegistry.all.forEach { d ->
+            sb.append(d.name).append('\n').append(d.operation).append('\n')
+            d.setupNotes.forEach { sb.append(it).append('\n') }
+        }
         achilles.redFlags.forEach { rf ->
             sb.append(rf.title).append('\n').append(rf.action).append('\n')
             rf.symptoms.forEach { sb.append(it).append('\n') }

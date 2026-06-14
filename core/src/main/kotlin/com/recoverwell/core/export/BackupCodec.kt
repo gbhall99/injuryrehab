@@ -134,7 +134,8 @@ object BackupCodec {
         ),
         "onboardingComplete" to Json.of(p.onboardingComplete),
         "disclaimerAcknowledged" to Json.of(p.disclaimerAcknowledged),
-        "sportId" to Json.of(p.sportId)
+        "sportId" to Json.of(p.sportId),
+        "deviceId" to Json.of(p.deviceId)
     )
 
     fun profileFrom(j: JsonValue): Profile = Profile(
@@ -171,7 +172,8 @@ object BackupCodec {
             .entries.associate { (k, v) -> k.toInt() to LocalDate.parse(v.asString()) },
         onboardingComplete = j.opt("onboardingComplete")?.asBool() ?: false,
         disclaimerAcknowledged = j.opt("disclaimerAcknowledged")?.asBool() ?: false,
-        sportId = j.opt("sportId")?.asString() ?: ""
+        sportId = j.opt("sportId")?.asString() ?: "",
+        deviceId = j.opt("deviceId")?.asString() ?: ""
     )
 
     // -- medication -----------------------------------------------------

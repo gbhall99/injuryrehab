@@ -57,10 +57,11 @@ object WeeklyDigest {
             }
         }
 
-        // exercises completed
+        // rehab exercises completed (not the engagement nudge or stay-fit sessions)
         val exercisesDone = events.count {
             it.type == EventType.EXERCISE && it.status == EventStatus.DONE &&
-                !it.date.isBefore(weekAgo) && !it.date.isAfter(today) && it.refId != "session_reminder"
+                !it.date.isBefore(weekAgo) && !it.date.isAfter(today) &&
+                it.refId != ScheduleEngine.EXERCISE_SESSION_REF && it.refId != Fitness.SESSION_REF
         }
 
         // milestones whose typical date fell this week

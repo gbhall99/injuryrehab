@@ -45,12 +45,18 @@ data class InjuryProtocol(
     val supportedSportIds: List<String> = emptyList(),
     /** Sport selected when the user hasn't chosen one yet; null = generic. */
     val defaultSportId: String? = null,
+    /** Ids (into DeviceRegistry) of the boots/casts this injury supports. */
+    val supportedDeviceIds: List<String> = emptyList(),
+    /** Device used when the user hasn't chosen one; null = use [supportDevice]. */
+    val defaultDeviceId: String? = null,
     /** Per-phase "what's normal to feel" + encouragement (the emotional side). */
     val mindset: List<PhaseMindset> = emptyList(),
     /** Reassurance about the injury's signature fear (e.g. re-rupture). */
     val reassurance: Reassurance? = null,
     /** Week-banded "what to expect" content, surfaced at the right time. */
     val expectations: List<WeekExpectation> = emptyList(),
+    /** General fitness / conditioning that's safe to do during recovery. */
+    val fitness: List<FitnessActivity> = emptyList(),
     /** Which drawn body visual the twin screen uses (registry key). */
     val bodySceneId: String,
     // ---- copy that would otherwise be hard-coded in screens (scalable) ----
@@ -75,19 +81,36 @@ data class InjuryProtocol(
     fun phase(number: Int): PhaseSpec = phases.first { it.number == number }
 }
 
+/** How a support device is adjusted - drives vocabulary and the twin visual. */
+enum class DeviceKind {
+    /** A ROM dial sets the ankle angle in degrees (e.g. OPED VACOped). */
+    BOOT_DIAL,
+    /** Stacked heel wedges set the angle; removed one at a time (e.g. Aircast). */
+    BOOT_WEDGES,
+    /** A rigid cast in fixed equinus; only a clinic adjusts it. */
+    CAST
+}
+
 data class SupportDevice(
-    /** e.g. "Walking boot" */
+    /** Stable id used for selection/backup, e.g. "vacoped". */
+    val id: String,
+    /** e.g. "VACOped boot" */
     val name: String,
+    val kind: DeviceKind,
     /** e.g. "wedge" / "wedges", or "degree" / "degrees" */
     val unitName: String,
     val unitNamePlural: String,
     /** Compact symbol for the unit, e.g. "°"; empty for counted units. */
     val unitSymbol: String,
-    /** What a scheduled reduction means, e.g. "remove a wedge" / "lower the heel angle". */
+    /** What a scheduled reduction means, e.g. "remove a wedge" / "lower the ROM dial". */
     val reductionVerb: String,
     /** Upper bound for the in-app stepper editing this device's value. */
     val maxValue: Int,
-    val plan: WedgePlan
+    val plan: WedgePlan,
+    /** One line on how this device works. */
+    val operation: String = "",
+    /** How to set up / wear / operate it safely (device-specific). */
+    val setupNotes: List<String> = emptyList()
 ) {
     /** Display a value with its unit: "20°" or "3 wedges". */
     fun format(value: Int): String =
@@ -141,6 +164,20 @@ data class RtsRung(
     val testIds: List<String>,
     val guidance: List<String>,
     val requiresPhysioSignoff: Boolean
+)
+
+/**
+ * General conditioning the user can do to stay fit *during* recovery, over and
+ * above rehabbing the injury - chosen so it doesn't load the healing tissue.
+ * [minPhase] gates when it becomes appropriate (e.g. out-of-boot work).
+ */
+data class FitnessActivity(
+    val id: String,
+    val name: String,
+    /** Grouping label, e.g. "Upper body", "Core & trunk", "Cardio (no impact)". */
+    val category: String,
+    val minPhase: Int,
+    val detail: String
 )
 
 /** The emotional reality of a phase: what's normal to feel, and a nudge forward. */
@@ -213,20 +250,31 @@ object ProtocolRegistry {
 
     fun byId(id: String): InjuryProtocol = all.firstOrNull { it.id == id } ?: default
 
-    /** Resolved per (protocol, sport) so the {sport} tokens are substituted once. */
+    /** Resolved per (protocol, sport, device) so tokens/device are applied once. */
     private val resolvedCache = java.util.concurrent.ConcurrentHashMap<String, InjuryProtocol>()
 
+    /** The user's chosen support device (boot/cast), or the protocol's default. */
+    fun deviceFor(profile: Profile): SupportDevice? {
+        val base = byId(profile.protocolId)
+        val id = profile.deviceId.ifBlank { base.defaultDeviceId ?: "" }
+        return if (id.isBlank()) base.supportDevice else DeviceRegistry.byId(id) ?: base.supportDevice
+    }
+
     /**
-     * The protocol for this profile, with its {sport} placeholders resolved to
-     * the user's chosen sport (or the protocol default). Every screen and engine
-     * reads through here, so picking a sport reshapes all the copy at once.
+     * The protocol for this profile, with {sport} tokens resolved and the chosen
+     * boot/cast swapped in. Every screen and engine reads through here, so
+     * picking a sport or device reshapes the plan and copy at once.
      */
     fun forProfile(profile: Profile): InjuryProtocol {
         val base = byId(profile.protocolId)
         val sportId = profile.sportId.ifBlank { base.defaultSportId ?: "" }
-        val sport = SportRegistry.byId(sportId) ?: return base
-        return resolvedCache.getOrPut(base.id + "|" + sport.id) {
-            SportText.resolveProtocol(base, sport.name)
+        val sport = SportRegistry.byId(sportId)
+        val device = deviceFor(profile)
+        val key = base.id + "|" + (sport?.id ?: "-") + "|" + (device?.id ?: "-")
+        return resolvedCache.getOrPut(key) {
+            var p = if (sport != null) SportText.resolveProtocol(base, sport.name) else base
+            if (device != null && device.id != base.supportDevice?.id) p = p.copy(supportDevice = device)
+            p
         }
     }
 }
