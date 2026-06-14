@@ -26,6 +26,14 @@ object Reminders {
     const val CHANNEL_TASKS = "tasks"
     private const val MAX_SCHEDULED = 32
 
+    /** Setting value "off" or "HH:mm" -> a time, or null when disabled. */
+    fun parseTime(value: String): LocalTime? =
+        if (value.isBlank() || value == "off") null
+        else runCatching {
+            val (h, m) = value.split(":").map { it.toInt() }
+            LocalTime.of(h, m)
+        }.getOrNull()
+
     fun ensureChannels(context: Context) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(
@@ -48,8 +56,13 @@ object Reminders {
     fun reschedule(context: Context) {
         ensureChannels(context)
         val store = Store.get(context)
+        val exerciseTime = parseTime(store.setting("exercise_reminder", "10:00"))
+        val checkInTime = parseTime(store.setting("checkin_reminder", "off"))
         val reminders = ScheduleEngine.upcomingReminders(
-            store.profile(), store.medications(), store.tasks(), LocalDateTime.now()
+            store.profile(), store.medications(), store.tasks(), LocalDateTime.now(),
+            exerciseReminderTime = exerciseTime,
+            overrides = store.exerciseOverrides(),
+            checkInTime = checkInTime
         ).take(MAX_SCHEDULED)
 
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -57,12 +70,18 @@ object Reminders {
         for (slot in 0 until MAX_SCHEDULED) {
             am.cancel(firePendingIntent(context, slot, null))
         }
+        val exactAllowed = android.os.Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms()
         reminders.forEachIndexed { slot, r ->
             val at = r.at.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-            am.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP, at, firePendingIntent(context, slot, r)
-            )
+            val pi = firePendingIntent(context, slot, r)
+            if (exactAllowed) {
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
+            } else {
+                // exact-alarm permission revoked: fire within a 10-minute window
+                am.setWindow(AlarmManager.RTC_WAKEUP, at, 10 * 60_000L, pi)
+            }
         }
+        com.recoverwell.app.widget.TodayWidget.update(context)
     }
 
     private fun firePendingIntent(
@@ -122,12 +141,36 @@ object Reminders {
         }
 
         val builder = Notification.Builder(context, channel)
-            .setSmallIcon(android.R.drawable.ic_popup_reminder)
+            .setSmallIcon(context.resources.getIdentifier("ic_bell", "drawable", context.packageName))
+            .setColor(0xFF2F6B4F.toInt())
             .setContentTitle(title)
             .setContentText(message)
             .setStyle(Notification.BigTextStyle().bigText(message))
             .setContentIntent(openApp)
             .setAutoCancel(true)
+
+        // one-tap pain logging straight from the daily check-in notification
+        fun painAction(label: String, pain: Int): Notification.Action {
+            val intent = Intent(context, ActionReceiver::class.java).apply {
+                action = "com.recoverwell.CHECKIN_${pain}_$notifId"
+                putExtra("status", "CHECKIN")
+                putExtra("pain", pain)
+                putExtra("notifId", notifId)
+            }
+            val pi = PendingIntent.getBroadcast(
+                context, notifId + 20 + pain, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            return Notification.Action.Builder(null, label, pi).build()
+        }
+
+        if (kind == ScheduleEngine.ItemKind.CHECKIN) {
+            builder.addAction(painAction("Good (low)", 2))
+            builder.addAction(painAction("Manageable", 5))
+            builder.addAction(painAction("Sore (high)", 8))
+            nm.notify(notifId, builder.build())
+            return
+        }
 
         if (kind == ScheduleEngine.ItemKind.MEDICATION) {
             builder.addAction(action("Taken", EventStatus.TAKEN))
@@ -135,8 +178,93 @@ object Reminders {
         } else {
             builder.addAction(action("Done", EventStatus.DONE))
         }
+        // review-mined essential: a snooze that actually works
+        run {
+            val intent = Intent(context, ActionReceiver::class.java).apply {
+                action = "com.recoverwell.SNOOZE_$notifId"
+                putExtra("kind", kind.name)
+                putExtra("refId", refId)
+                putExtra("slotKey", slotKey)
+                putExtra("title", title)
+                putExtra("message", message)
+                putExtra("status", "SNOOZE")
+                putExtra("notifId", notifId)
+            }
+            val pi = PendingIntent.getBroadcast(
+                context, notifId + 7, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            builder.addAction(Notification.Action.Builder(null, "Snooze 15m", pi).build())
+        }
 
         nm.notify(notifId, builder.build())
+    }
+
+    /** One-off re-delivery of a snoozed reminder, 15 minutes out. */
+    fun scheduleSnooze(
+        context: Context,
+        kind: ScheduleEngine.ItemKind,
+        refId: String,
+        slotKey: String,
+        title: String,
+        message: String,
+        notifId: Int
+    ) {
+        val intent = Intent(context, ReminderReceiver::class.java).apply {
+            action = "com.recoverwell.SNOOZED_$notifId"
+            putExtra("kind", kind.name)
+            putExtra("refId", refId)
+            putExtra("slotKey", slotKey)
+            putExtra("title", title)
+            putExtra("message", message)
+        }
+        val pi = PendingIntent.getBroadcast(
+            context, notifId + 13, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val at = System.currentTimeMillis() + 15 * 60_000L
+        val exactAllowed = android.os.Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms()
+        if (exactAllowed) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
+        else am.setWindow(AlarmManager.RTC_WAKEUP, at, 5 * 60_000L, pi)
+    }
+
+    /** Fires a reminder right now so the user can confirm notifications actually arrive. */
+    fun sendTestNotification(context: Context) {
+        ensureChannels(context)
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val openApp = PendingIntent.getActivity(
+            context, 99,
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val builder = Notification.Builder(context, CHANNEL_TASKS)
+            .setSmallIcon(context.resources.getIdentifier("ic_bell", "drawable", context.packageName))
+            .setColor(0xFF2F6B4F.toInt())
+            .setContentTitle("Reminders are working")
+            .setContentText("This is a test reminder from RecoverWell. If you can see it, your medication and rehab reminders will arrive too.")
+            .setStyle(Notification.BigTextStyle().bigText(
+                "This is a test reminder from RecoverWell. If you can see it, your medication and rehab reminders will arrive too."))
+            .setContentIntent(openApp)
+            .setAutoCancel(true)
+        nm.notify("test".hashCode(), builder.build())
+    }
+
+    /** One-tap pain log from the check-in notification; carries forward boot/weight-bearing. */
+    fun recordCheckIn(context: Context, pain: Int) {
+        val store = Store.get(context)
+        val today = LocalDate.now()
+        val log = store.dailyLog(today)
+        val p = store.profile()
+        store.saveDailyLog(
+            log.copy(
+                pain = pain,
+                wedges = log.wedges ?: p.currentWedges,
+                weightBearing = log.weightBearing ?: p.weightBearing
+            )
+        )
+        com.recoverwell.app.widget.TodayWidget.update(context)
     }
 
     fun recordEvent(
@@ -182,7 +310,28 @@ class ReminderReceiver : BroadcastReceiver() {
 
 class ActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        val notifId = intent.getIntExtra("notifId", 0)
+        // one-tap pain log from the check-in notification (no "kind" needed)
+        if (intent.getStringExtra("status") == "CHECKIN") {
+            Reminders.recordCheckIn(context, intent.getIntExtra("pain", 5))
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            nm.cancel(notifId)
+            return
+        }
         val kind = intent.getStringExtra("kind")?.let { ScheduleEngine.ItemKind.valueOf(it) } ?: return
+        if (intent.getStringExtra("status") == "SNOOZE") {
+            Reminders.scheduleSnooze(
+                context, kind,
+                intent.getStringExtra("refId") ?: return,
+                intent.getStringExtra("slotKey") ?: "",
+                intent.getStringExtra("title") ?: "RecoverWell reminder",
+                intent.getStringExtra("message") ?: "",
+                notifId
+            )
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            nm.cancel(notifId)
+            return
+        }
         val status = intent.getStringExtra("status")?.let { EventStatus.valueOf(it) } ?: return
         Reminders.recordEvent(
             context, kind,

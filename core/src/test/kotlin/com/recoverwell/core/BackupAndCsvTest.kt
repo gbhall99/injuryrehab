@@ -4,7 +4,8 @@ import com.recoverwell.core.export.AppState
 import com.recoverwell.core.export.BackupCodec
 import com.recoverwell.core.export.CsvExporter
 import com.recoverwell.core.model.*
-import com.recoverwell.core.protocol.ProtocolContent
+import com.recoverwell.core.protocol.Defaults
+import com.recoverwell.core.protocol.ProtocolRegistry
 import org.junit.Assert.*
 import org.junit.Test
 import java.time.LocalDate
@@ -14,15 +15,15 @@ class BackupAndCsvTest {
     private fun sampleState(): AppState {
         val injury = LocalDate.of(2026, 6, 2)
         return AppState(
-            profile = ProtocolContent.defaultProfile().copy(
+            profile = Defaults.profile().copy(
                 name = "G",
                 physioConfirmedPhase = 2,
                 phaseStartOverrides = mapOf(3 to injury.plusWeeks(9)),
                 onboardingComplete = true,
                 disclaimerAcknowledged = true
             ),
-            medications = ProtocolContent.defaultMedications(),
-            tasks = ProtocolContent.defaultTasks(),
+            medications = Defaults.medications(),
+            tasks = Defaults.tasks(),
             exerciseOverrides = mapOf(
                 "p1_slr" to ExerciseOverride("p1_slr", 4, null, 3, null, true)
             ),
@@ -47,13 +48,23 @@ class BackupAndCsvTest {
 
     @Test
     fun backupRejectsUnsupportedVersion() {
-        val bad = BackupCodec.encode(sampleState()).replaceFirst("\"version\":1", "\"version\":99")
+        val bad = BackupCodec.encode(sampleState()).replaceFirst("\"version\":4", "\"version\":99")
         try {
             BackupCodec.decode(bad)
             fail("Expected rejection of unknown backup version")
         } catch (e: IllegalArgumentException) {
             assertTrue(e.message!!.contains("version"))
         }
+    }
+
+    @Test
+    fun v1BackupRestoresOntoDefaultProtocol() {
+        // a v1 backup has no protocolId: it must restore as the Achilles protocol
+        val v1 = BackupCodec.encode(sampleState())
+            .replaceFirst("\"version\":4", "\"version\":1")
+            .replace("\"protocolId\":\"${ProtocolRegistry.default.id}\",", "")
+        val decoded = BackupCodec.decode(v1)
+        assertEquals(ProtocolRegistry.default.id, decoded.profile.protocolId)
     }
 
     @Test

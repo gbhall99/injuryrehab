@@ -42,6 +42,86 @@ progressive wedge reduction — built around a real recovery that started on
   bleeding and boot/skin red flags are one tap away from **every** screen via
   the persistent header button, written as symptoms + concrete actions
   (999 / 111 / clinic).
+- **On-device intelligence (no cloud, no network)** — *Insights* analyse your
+  own logs for pain/swelling trends and correlations (e.g. swelling lower on
+  elevation days); *Adaptive reminders* learn the time you actually take a dose
+  and offer to move the reminder to match; *Pace* projects whether you are
+  ahead of or behind the typical timeline from your physio-confirmed phases;
+  and *Ask my recovery* answers "Can I drive yet?", "What's next?" and red-flag
+  questions offline, deep-linking into the right screen.
+- **Engagement** — an optional once-a-day exercise nudge (only on days your
+  current phase has exercises), and a **weekly digest** on the Progress tab:
+  medication adherence, pain trend, exercise sessions completed, milestones
+  reached this week, and a single focus for the week ahead — with a Monday
+  "week in review" prompt on the home screen.
+- **Automatic backup** — pick a destination file once (Drive, Files, SD card —
+  anywhere SAF can reach) and the app silently overwrites it with a fresh
+  full-fidelity copy once a day. No account, no app network access; a persisted
+  document grant does the work. Manual export (PDF/CSV/JSON) remains.
+- **Reminder reliability** — a settings check that detects the real-world
+  reasons reminders fail (notifications blocked, exact-alarm permission
+  revoked, battery optimisation killing alarms), each with a one-tap route to
+  the right system screen and a "send a test reminder now" button. A home-screen
+  warning appears if delivery is actively blocked.
+- **Return-to-sport program (scalable by sport)** — a criteria-based ladder
+  for the final stretch, built on objective self-tests you perform and log
+  (single-leg heel-rise symmetry, balance, calf girth, walking/jogging
+  tolerance, hop count, hop symmetry, longer-run tolerance). The injury owns a
+  shared foundation (strength → jogging → hopping); each **sport** contributes
+  its own tail of stages on top, so the same Achilles rehab scales from padel
+  and tennis (cutting, court drills) to running (distance), football (sprint,
+  kick, contact), hiking (uneven ground), and low-impact cycling/swimming
+  (which skip the impact stages entirely). Pick your target sport on the
+  program screen or in Settings and the whole ladder, headline and readiness
+  reshape. Each stage clears only when its thresholds are met *and* — for
+  impact stages — you record physio sign-off, mirroring the two-key gate used
+  for phases. Sports are pure data (`SportRegistry`); adding one is a data entry.
+  Protocol copy uses `{sport}` placeholders resolved once per profile, so the
+  chosen sport flows through *everything* — the milestone timeline ("Return to
+  running"), the digital-twin "Can I play …?" check, phase guidance, and the
+  offline "Ask my recovery" answers — not just the program screen.
+- **Physio loop** — an auto-generated "bring to your appointment" pack
+  (pending phase gates, return-to-sport sign-offs due, caution-tone insights,
+  pace vs the typical timeline, plus your own questions) with a current-numbers
+  summary you can copy or export as PDF; and a post-visit capture that writes
+  straight back into the plan (phase confirmations, return-to-sport sign-offs,
+  boot/date edits) and a durable, backed-up visit note. Home-screen prompts
+  appear before an appointment and after, to prep and to capture.
+- **The mental side** — per-phase "what's normal to feel" with encouragement,
+  reassurance about the fear of re-rupture (ordinary sensations vs genuine
+  warning signs, one tap from the red-flag guide), a gentle reflection that
+  acts on your logged mood trend, and quiet celebration of milestones reached.
+- **Accessibility** — screen-reader headings for jump-navigation, decorative
+  graphics skipped by TalkBack while charts and the leg model carry spoken
+  descriptions, labelled icon controls throughout, ≥48dp targets and
+  system-font scaling. Guarded by tests.
+- **Calm, low-friction daily experience** — the home screen is a *prioritized*
+  surface: safety items always show, the single most important prompt becomes
+  the focus, and the rest collapse into a tidy "More for you" so the checklist
+  is never buried. A **10-second check-in** logs how today feels right on Today
+  (carrying forward boot/weight-bearing), and an optional **daily check-in
+  reminder** lets you log pain in one tap straight from the notification.
+- **"What to expect this week"** — week-banded, plain-language guidance for the
+  stage you're actually in (what's common now, what's coming, what's
+  reassuring), surfaced at the right moment to answer the anxious questions
+  proactively. Sport-aware via the same `{sport}` resolution.
+- **Home-screen widget** — week/phase, today's progress, your check-in status,
+  the next reminder, and a one-tap way back in.
+- **Your boot or cast, modelled accurately** — the support device is a
+  selectable, data-driven registry (`DeviceRegistry`). The default is the **OPED
+  VACOped** boot, whose ROM dial sets the ankle angle in degrees (no heel
+  wedges): start locked in equinus, step the dial down to neutral, then a
+  controlled range — with device-specific setup/operation notes on the My-leg
+  screen. Switch to an **Aircast walker** (heel wedges, removed one at a time)
+  or a **rigid cast journey** (no home adjustment; clinic re-sets the angle) and
+  the schedule, the digital twin and the editable plan all follow the device.
+  `Profile.deviceId` rides in the backup; adding a boot/cast is a data entry.
+- **Stay fit while you recover** — general conditioning that keeps the rest of
+  you strong without loading the tendon (seated upper-body, core, no-impact
+  cardio, hips/glutes, and out-of-boot options like the bike and pool as they
+  unlock by phase), plus a settable weekly conditioning goal you can log
+  against. Protocol data, so it scales per injury and is kept separate from the
+  rehab-exercise counts.
 
 ## Rehab protocol (conservative / non-surgical only)
 
@@ -88,14 +168,32 @@ clinical features.
 
 ## Engineering decisions
 
-### Stack: Kotlin + Android platform APIs, two-module clean split
+### Stack: Kotlin + Android platform APIs, four-module clean split
 
 - **`core/`** — pure Kotlin (zero Android imports): protocol content, phase
   gating, checklist/reminder scheduling, wedge planning, digital-twin logic,
   trend math, CSV export, versioned JSON backup codec (hand-rolled, zero
   dependencies). 39 unit tests.
-- **`app/`** — Android shell: programmatic Views, SQLite store, AlarmManager
-  reminders, notifications, Canvas rendering, SAF export/import, PDF report.
+- **`draw/`** — pure Kotlin rendering layer: a small `Sketch` 2D abstraction
+  plus everything the app draws (icon set, charts, the digital-twin leg, the
+  exercise demonstration engine and its keyframes, palette). Platform-free,
+  so the same visuals render on Android, in design tooling, and on a future
+  iOS/web port.
+- **`designlab/`** — JVM design tool: renders every drawn surface to PNG for
+  visual review (`gradle :designlab:render`), including the exact icon set
+  the app ships. The UI was iterated against these proofs.
+- **`app/`** — Android shell: programmatic Views over a token-based design
+  system (tonal surfaces, ripples, elevation, 48dp+ targets), SQLite store,
+  AlarmManager reminders, notifications, SAF export/import, PDF report.
+
+**Iconography:** all 28 icons (and the launcher glyph) are the official
+**Google Material Symbols** — the established Android icon set — shipped
+verbatim as their published vector drawables (Apache License 2.0,
+<https://github.com/google/material-design-icons>; attribution headers in
+each `res/drawable/ic_*.xml`). Nothing hand-drawn: `podiatry` for the leg
+tab, `footprint` for boot checks, `ecg_heart` for circulation, etc. Charts,
+the digital-twin leg and the exercise demonstration figures are functional
+data visualisations rendered from the `draw/` module.
 
 **Path to iOS/web:** all business rules live in `core/`, which is plain
 Kotlin with no Android types — it compiles unchanged as the common module of
@@ -126,25 +224,42 @@ runtime smoke check. In a normal environment the same two modules drop into
 a standard AGP build without code changes (`core` is build-system agnostic;
 `app` is plain Kotlin + resources).
 
-### Demonstrations: procedural Canvas animation, not video files
+### Demonstrations: real YouTube video, in-app, with an offline animation fallback
 
-Each exercise has an **animated demonstration rendered procedurally**
-(`ExerciseDemoView`): a side-view figure driven by named joint-angle
-keyframes (hip/knee/ankle/toes), interpolated at 60 fps, with props (boot,
-crutches, band, step, wall, bike, cones, racquet) and play/pause on tap.
+Each exercise leads with a **"Watch video demonstration"** button backed by a
+**self-healing resolution chain**, so a demonstration is always available:
 
-Why this over video:
+1. a **user-pinned** YouTube video for that exercise (paste any link; the id is
+   stored and kept in your backup) — the way to make any exercise *always* play
+   the exact clip you trust;
+2. a **curated** default id for the movement (verified; empty until confirmed);
+3. a scoped **YouTube search** (e.g. *"Seated heel raises Achilles rupture rehab
+   physiotherapy"*) — a search can never rot into a dead hard-coded id.
 
-- **Offline & reliable by construction** — no streaming, no caching step, no
-  third-party links that rot or get taken down. The "video" is code in this
-  repo, owned outright, with no licensing risk.
-- **Tiny** — the entire demonstration library adds ~20 KB to the APK vs
-  ~5–15 MB *per clip* for bundled video.
-- **Clinically reviewable & editable** — a physio-suggested tweak (e.g.
-  "dorsiflexion only to neutral") is a one-line keyframe change with a code
-  review trail, not a re-shoot.
-- The demo is always paired with written cues, prescription and a
-  precaution line, which carry the clinical detail.
+When there is a specific id, the in-app player embeds it via the reliable
+`youtube-nocookie.com/embed` IFrame and, on any embed/playback error (or if the
+API fails to load), **falls back to the search in the same WebView** — then to
+the external YouTube app, then to the offline animation. (The earlier
+`listType:'search'` embed was dropped: YouTube deprecated it in 2020, which is
+why it played unreliably.) A Settings toggle switches the whole thing to hand
+off to the YouTube app instead.
+
+- the demonstrations are **real video from reputable physios**, not a stylised
+  figure, and a search can never rot into a dead hard-coded video id;
+- the video player is the **only** feature that uses the network. It holds the
+  `INTERNET` permission solely for this, only runs when you open a video, and
+  never uploads your data - all recovery data stays on-device (stated in-app
+  under About). Prefer zero network? Set videos to "Open YouTube" and the app
+  itself stays silent;
+- the bundled **procedural animation** (`ExerciseDemoView`, rendered from the
+  `draw/` module) remains as an offline at-a-glance quick reference - the figure
+  faces forward with the boot correctly oriented (locked by a `draw` unit test),
+  paired with written cues, prescription and a precaution line.
+
+The search phrase is data: `InjuryProtocol.videoContext` plus an optional
+per-exercise `videoQuery` override, so a new injury links to its own videos
+with no code change.
+
 
 ### Storage: app-private SQLite, offline-only, export-first
 
@@ -187,6 +302,30 @@ Debian-packaged Android tools `aapt`, `zipalign`, `apksigner`,
 Install on the target phone via `adb install` or any file transfer
 (sideload); Android 8.0 or newer.
 
+## The injury framework
+
+The app is a general rehab framework: a recovery is described entirely by an
+`InjuryProtocol` value in `core/protocol/` - phases (with entry criteria,
+goals, precautions, do/don't lists, tissue-state and device-usage notes),
+exercises with demonstrations, milestones, red flags, movement checks, the
+support device and its vocabulary ("walking boot" / "wedges" here; a brace
+with angle stops would plug in the same way), the digital-twin visual, and
+onboarding prefills. Engines and screens read everything through
+`ProtocolRegistry`, keyed by the `protocolId` stored on the profile, and the
+versioned backup format carries the id (v1 backups migrate onto the Achilles
+protocol).
+
+**Adding a new injury or variant** is therefore:
+1. Write one data file (e.g. `AclReconstruction.kt`) building an
+   `InjuryProtocol` - cite its clinical source like the Achilles one does.
+2. Add any new demonstration keyframes to `draw/Demo.kt` (the figure rig is
+   shared) and, if needed, a body visual + an id mapping in `TwinScreen`.
+3. List it in `ProtocolRegistry.all`.
+The registry-wide quality tests (phase continuity, exercise completeness,
+demo coverage, red-flag presence) run against every entry automatically.
+This build deliberately ships exactly one protocol: the user's own
+conservative Achilles pathway.
+
 ## Personal data pre-fill (all editable in-app)
 
 | Field | Pre-filled value |
@@ -201,6 +340,8 @@ Install on the target phone via `adb install` or any file transfer
 ## Repository layout
 
 ```
-core/   pure-Kotlin domain: model/ protocol/ logic/ export/ json/  + tests
-app/    Android shell: data/ notify/ screens/ ui/ export/          + smoke tests
+core/      pure-Kotlin domain: model/ protocol/ logic/ export/ json/   + tests
+draw/      pure-Kotlin rendering: Sketch, icons, scenes, demo engine
+designlab/ JVM proof renderer + vector-resource generator
+app/       Android shell: data/ notify/ screens/ ui/ export/           + smoke tests
 ```

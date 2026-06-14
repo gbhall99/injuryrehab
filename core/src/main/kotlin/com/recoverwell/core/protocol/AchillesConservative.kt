@@ -18,17 +18,11 @@ import java.time.LocalTime
  * prescription. The app marks them as physio-confirmable and they are
  * editable in Settings.
  */
-object ProtocolContent {
+object AchillesConservative {
 
-    const val PROTOCOL_NAME =
-        "Conservative (non-surgical) functional rehabilitation - UK NHS-style pathway"
+    const val ID = "achilles_rupture_conservative"
 
-    const val DISCLAIMER =
-        "RecoverWell supports - but never replaces - the advice of your physiotherapist " +
-            "and consultant. All timelines are typical-protocol placeholders: confirm every " +
-            "progression with your own clinical team before acting on it."
-
-    const val PLACEHOLDER_NOTE =
+    private const val PLACEHOLDER_NOTE =
         "Typical conservative-protocol timing - confirm with your physio. Your own plan may differ."
 
     // ------------------------------------------------------------------
@@ -40,11 +34,13 @@ object ProtocolContent {
             number = 1,
             title = "Immobilisation & protection",
             subtitle = "Weeks 0-2 · boot at full equinus, let the tendon ends knit",
+            tissueState = "Tendon ends knitting together - maximum protection",
+            deviceUsage = "Boot on at all times · heel angle {n}°",
             startWeek = 0,
             endWeek = 2,
             entryCriteria = listOf(
                 "Achilles rupture confirmed and conservative pathway chosen by your clinical team",
-                "Walking boot fitted with full wedge set (foot pointed down / full equinus)"
+                "Walking boot set to full heel angle (foot pointed down / full equinus)"
             ),
             goals = listOf(
                 "Protect the healing tendon - boot on at all times, including in bed unless told otherwise",
@@ -55,7 +51,7 @@ object ProtocolContent {
             precautions = listOf(
                 "Never walk without the boot, even for one step (e.g. night-time bathroom trips)",
                 "Do not move the ankle up towards you (dorsiflexion) - the boot angle protects the tendon",
-                "Do not remove or change wedges yourself unless your clinic has told you to",
+                "Do not change the boot's heel angle yourself unless your clinic has told you to",
                 "Watch daily for DVT warning signs - calf pain, heat, swelling, redness"
             ),
             allowed = listOf(
@@ -70,32 +66,34 @@ object ProtocolContent {
                 "Pulling the foot/toes up towards you (dorsiflexion past the boot angle)",
                 "Calf stretching of any kind",
                 "Driving",
-                "Running, jumping, sport of any kind - padel comes much later"
+                "Running, jumping, sport of any kind - {sport} comes much later"
             ),
             exercises = phase1Exercises()
         ),
         PhaseSpec(
             number = 2,
-            title = "Progressive weight-bearing & wedge reduction",
+            title = "Progressive weight-bearing & heel-angle reduction",
             subtitle = "Weeks 2-8 · step the heel down gradually, build to full weight",
+            tissueState = "Early healing tissue forming - protected loading helps it organise",
+            deviceUsage = "Boot on at all times · heel angle {n}°",
             startWeek = 2,
             endWeek = 8,
             entryCriteria = listOf(
                 "Around 2 weeks since injury (typical protocol - confirm with your physio)",
                 "Comfortable in the boot with pain and swelling settling",
-                "Clinic happy for the wedge-reduction plan to start"
+                "Clinic happy for the heel-angle reduction plan to start"
             ),
             goals = listOf(
-                "Remove wedges on schedule so the boot reaches neutral by ~week 8 (your clinic sets the exact plan)",
+                "Lower the heel angle on schedule so the boot reaches neutral (0°) by ~week 8",
                 "Progress from crutches to confident full weight-bearing in the boot",
                 "Keep swelling controlled; continue clot-prevention medication if still prescribed",
                 "Maintain strength everywhere else so phase 4 starts from a good base"
             ),
             precautions = listOf(
-                "Only remove wedges on the planned dates and only if your clinic agrees",
+                "Only lower the heel angle on the planned dates and only if your clinic agrees",
                 "Still no steps without the boot",
                 "No dorsiflexion past the current boot angle, no calf stretching",
-                "If a wedge change causes sharp pain, put the wedge back and call your clinic",
+                "If lowering the heel angle causes sharp pain, set it back and call your clinic",
                 "Keep watching for DVT signs - risk persists while immobilised"
             ),
             allowed = listOf(
@@ -109,7 +107,7 @@ object ProtocolContent {
                 "Calf stretching or forcing the ankle upwards",
                 "Removing more wedges than planned to “speed things up”",
                 "Driving (most people cannot drive safely in a boot - ask your clinic and insurer)",
-                "Impact activity: running, jumping, padel"
+                "Impact activity: running, jumping, {sport}"
             ),
             exercises = phase2Exercises()
         ),
@@ -117,6 +115,8 @@ object ProtocolContent {
             number = 3,
             title = "Early mobilisation out of the boot",
             subtitle = "Weeks 8-12 · wean off the boot, wake the ankle up gently",
+            tissueState = "Tendon consolidating - gentle movement, no stretch",
+            deviceUsage = "Weaning out of the boot, physio-guided",
             startWeek = 8,
             endWeek = 12,
             entryCriteria = listOf(
@@ -148,7 +148,7 @@ object ProtocolContent {
                 "Barefoot or flat-shoe walking",
                 "Single-leg heel raises - far too early",
                 "Running, hopping, jumping",
-                "Padel, even “just a gentle rally”"
+                "{Sport}, even a gentle session"
             ),
             exercises = phase3Exercises()
         ),
@@ -156,6 +156,8 @@ object ProtocolContent {
             number = 4,
             title = "Strengthening",
             subtitle = "Weeks 12-24 · rebuild the calf, balance and gait",
+            tissueState = "Tendon remodelling - progressive load makes it stronger",
+            deviceUsage = null,
             startWeek = 12,
             endWeek = 24,
             entryCriteria = listOf(
@@ -186,7 +188,7 @@ object ProtocolContent {
             notAllowed = listOf(
                 "Running and jumping (until physio clears - typically phase 5)",
                 "Ballistic or forced calf stretching",
-                "Sports with sudden direction changes - padel still waits",
+                "Returning to {sport} - that is phase 5 work",
                 "Maximal single-leg hopping or sprinting"
             ),
             exercises = phase4Exercises()
@@ -194,7 +196,9 @@ object ProtocolContent {
         PhaseSpec(
             number = 5,
             title = "Return to sport",
-            subtitle = "Week 24 onwards · earn your way back to the padel court",
+            subtitle = "Week 24 onwards · earn your way back to {sport}",
+            tissueState = "Tendon maturing - building sport-level capacity",
+            deviceUsage = null,
             startWeek = 24,
             endWeek = null,
             entryCriteria = listOf(
@@ -206,8 +210,8 @@ object ProtocolContent {
             goals = listOf(
                 "Build a graded running programme: walk-jog intervals first",
                 "Add hopping and plyometric capacity, then direction changes",
-                "Padel-specific drills: court movement, shadow play, controlled rallies",
-                "Return to competitive padel when cleared - typically 9-12 months after injury"
+                "{Sport}-specific drills: graded, physio-approved practice",
+                "Return to competitive {sport} when cleared - typically 9-12 months after injury"
             ),
             precautions = listOf(
                 "Each step up (jog, hop, agility, rally, match) needs physio sign-off",
@@ -218,8 +222,8 @@ object ProtocolContent {
             allowed = listOf(
                 "Graded running once cleared",
                 "Plyometric progressions once cleared",
-                "Padel drills and controlled rallies once cleared",
-                "Full competitive padel typically from 9-12 months, with physio sign-off"
+                "{Sport} drills once cleared",
+                "Full competitive {sport} typically from 9-12 months, with physio sign-off"
             ),
             notAllowed = listOf(
                 "Competitive matches before your physio explicitly signs them off",
@@ -238,7 +242,7 @@ object ProtocolContent {
 
     private fun phase1Exercises() = listOf(
         ExerciseSpec(
-            id = "p1_toe_scrunch", phase = 1, name = "Toe wiggles & scrunches (in boot)",
+            id = "p1_toe_scrunch", phase = 1, name = "Toe wiggles & scrunches",
             demoId = "toe_scrunch",
             cues = listOf(
                 "Keep the boot on and the ankle completely still",
@@ -483,7 +487,7 @@ object ProtocolContent {
                 "Increase step height before adding speed"
             ),
             sets = 3, reps = 10, holdSeconds = 0, sessionsPerDay = 1,
-            whyItMatters = "Builds the leg drive and confidence needed for stairs, slopes and eventually the lunging footwork padel demands.",
+            whyItMatters = "Builds the leg drive and confidence needed for stairs, slopes and eventually the footwork {sport} demands.",
             precaution = "Use the rail until balance is solid."
         ),
         ExerciseSpec(
@@ -495,7 +499,7 @@ object ProtocolContent {
                 "Drive up evenly through both legs"
             ),
             sets = 3, reps = 12, holdSeconds = 0, sessionsPerDay = 1,
-            whyItMatters = "Restores symmetrical leg strength and ankle confidence under bend - the position every padel shot starts from.",
+            whyItMatters = "Restores symmetrical leg strength and ankle confidence under bend - the positions {sport} demands.",
             precaution = "Heels stay down; depth only as ankle comfort allows."
         ),
         ExerciseSpec(
@@ -546,7 +550,7 @@ object ProtocolContent {
                 "Land softly - quiet feet"
             ),
             sets = 3, reps = 10, holdSeconds = 0, sessionsPerDay = 1,
-            whyItMatters = "Padel is a game of springs: plyometric capacity is the last physical quality the tendon needs before real rallies.",
+            whyItMatters = "Sport is built on springs: plyometric capacity is the last physical quality the tendon needs before returning to {sport}.",
             precaution = "Each new hop variation needs physio sign-off."
         ),
         ExerciseSpec(
@@ -562,16 +566,16 @@ object ProtocolContent {
             precaution = "Fatigue ruins technique: stop while movements still feel crisp."
         ),
         ExerciseSpec(
-            id = "p5_padel", phase = 5, name = "Padel-specific drills",
+            id = "p5_padel", phase = 5, name = "{Sport}-specific drills",
             demoId = "padel_drill",
             cues = listOf(
-                "Stage 1: shadow swings and court movement, no ball",
-                "Stage 2: cooperative rallies, no competitive points",
-                "Stage 3: friendly matches, then competition - each stage physio-approved"
+                "Stage 1: sport-specific movement patterns at low intensity, no resistance",
+                "Stage 2: light, controlled practice - skills before speed",
+                "Stage 3: progressive return to full play, then competition - each stage physio-approved"
             ),
             sets = 1, reps = 1, holdSeconds = 1200, sessionsPerDay = 1,
-            whyItMatters = "Staged court exposure rebuilds timing and confidence while keeping loads predictable - the final bridge back to the game you are doing all this for.",
-            precaution = "Full competitive padel typically returns 9-12 months after injury, only with explicit physio sign-off."
+            whyItMatters = "Staged exposure to {sport} rebuilds timing and confidence while keeping loads predictable - the final bridge back to the game you are doing all this for.",
+            precaution = "Full competitive {sport} typically returns 9-12 months after injury, only with explicit physio sign-off."
         )
     )
 
@@ -583,28 +587,20 @@ object ProtocolContent {
         Milestone(0, "Injury & boot fitted", "Rupture confirmed; boot on in full equinus; clot-prevention plan started."),
         Milestone(1, "Specialist review", "Consultant confirms the conservative pathway and the boot/wedge plan."),
         Milestone(2, "Settled in the boot", "Pain and swelling settling; weight-bearing as tolerated becoming comfortable."),
-        Milestone(3, "First wedge out", "Wedge reduction typically begins (clinic-dependent: weekly or fortnightly)."),
+        Milestone(3, "First heel-angle reduction", "Heel-angle reduction typically begins (clinic-dependent: weekly or fortnightly)."),
         Milestone(6, "Walking confidently in boot", "Full weight-bearing without crutches for most people."),
-        Milestone(8, "Boot at neutral", "All wedges typically removed; foot flat in the boot."),
+        Milestone(8, "Boot at neutral", "Heel angle typically at neutral (0°); foot flat in the boot."),
         Milestone(10, "Boot weaning", "Transition to supportive shoes with a heel raise, guided by your physio."),
         Milestone(12, "Out of the boot", "Normal shoes; gentle stretching may begin ONLY if your physio approves."),
         Milestone(16, "Strength building", "Double-leg heel raises strong; balance work progressing."),
         Milestone(24, "Single-leg strength & jogging", "Single-leg raise benchmark approaching; walk-jog may begin once cleared."),
-        Milestone(39, "Padel drills", "Court movement and controlled rallies, physio-approved (~9 months)."),
-        Milestone(52, "Return to padel", "Typical window for full competitive return is 9-12 months with sign-off.")
+        Milestone(39, "{Sport} drills", "Sport-specific drills and graded practice, physio-approved (~9 months)."),
+        Milestone(52, "Return to {sport}", "Typical window for full competitive return is 9-12 months with sign-off.")
     )
 
     // ------------------------------------------------------------------
     // Red flags - kept one tap away throughout the app
     // ------------------------------------------------------------------
-
-    data class RedFlagSection(
-        val id: String,
-        val title: String,
-        val urgency: String,
-        val symptoms: List<String>,
-        val action: String
-    )
 
     val redFlags: List<RedFlagSection> = listOf(
         RedFlagSection(
@@ -671,30 +667,10 @@ object ProtocolContent {
     )
 
     // ------------------------------------------------------------------
-    // Pre-filled personal defaults (all editable in-app)
+    // Prefills (all editable in-app)
     // ------------------------------------------------------------------
 
-    fun defaultProfile(): Profile = Profile(
-        name = "",
-        injuryDate = LocalDate.of(2026, 6, 2),
-        side = Side.LEFT,
-        pathway = Pathway.CONSERVATIVE_NON_SURGICAL,
-        injuryDescription = "Full Achilles tendon rupture (left), injured playing padel; " +
-            "managed conservatively in a walking boot.",
-        goal = "Full recovery and return to playing padel",
-        appointments = listOf(
-            Appointment(LocalDate.of(2026, 6, 7), "Consultant review", completed = true)
-        ),
-        wedgePlan = WedgePlan(initialWedges = 5, removalStartWeek = 3, removalIntervalDays = 7),
-        currentWedges = 5,
-        weightBearing = WeightBearing.AS_TOLERATED,
-        physioConfirmedPhase = 1,
-        phaseStartOverrides = emptyMap(),
-        onboardingComplete = false,
-        disclaimerAcknowledged = false
-    )
-
-    fun defaultMedications(): List<Medication> = listOf(
+    private val prefillMedications: List<Medication> = listOf(
         Medication(
             id = "med_anticoagulant",
             name = "Anticoagulant",
@@ -706,7 +682,7 @@ object ProtocolContent {
         )
     )
 
-    fun defaultTasks(): List<RehabTask> = listOf(
+    private val prefillTasks: List<RehabTask> = listOf(
         RehabTask(
             id = "task_elevation",
             kind = TaskKind.ELEVATION,
@@ -733,4 +709,379 @@ object ProtocolContent {
             fromPhase = 1, toPhase = 3, dueDate = null, active = true
         )
     )
+
+    // ------------------------------------------------------------------
+    // Return-to-sport self-tests and ladder (criteria, not dates)
+    // ------------------------------------------------------------------
+
+    private val selfTests: List<SelfTest> = listOf(
+        SelfTest(
+            id = "heel_rise_sym", name = "Single-leg heel-rise count", unit = "reps",
+            symmetry = true, passThreshold = 90.0, requirePainFree = true, lowerIsBetter = false,
+            howTo = listOf(
+                "Stand by a wall or counter for light balance support only",
+                "On one leg, rise fully onto your toes and lower with control - that's one rep",
+                "Count good-quality reps until form drops or you fatigue, then test the other side",
+                "Record reps for each side"
+            ),
+            precaution = "Calf strength symmetry is the single best marker before impact. Stop at sharp tendon pain.",
+            earliestPhase = 4
+        ),
+        SelfTest(
+            id = "balance_eo", name = "Single-leg balance (eyes open)", unit = "seconds",
+            symmetry = false, passThreshold = 30.0, requirePainFree = false, lowerIsBetter = false,
+            howTo = listOf(
+                "Stand on the injured leg only, hands on hips, near support",
+                "Time how long you hold steady before you touch down or grab support",
+                "Cap the timing at 45 seconds"
+            ),
+            precaution = "Tests the ankle's control and confidence, not just strength.",
+            earliestPhase = 4
+        ),
+        SelfTest(
+            id = "calf_girth_sym", name = "Calf circumference", unit = "cm",
+            symmetry = true, passThreshold = 95.0, requirePainFree = false, lowerIsBetter = false,
+            howTo = listOf(
+                "Sit with the leg relaxed; find the widest part of the calf",
+                "Measure around it with a tape, same spot on each leg",
+                "Record both sides - the injured calf is usually a little smaller at first"
+            ),
+            precaution = "A shrinking gap shows the calf muscle is rebuilding. Not a strength test on its own.",
+            earliestPhase = 4
+        ),
+        SelfTest(
+            id = "walk_tol", name = "Pain-free brisk walk", unit = "minutes",
+            symmetry = false, passThreshold = 30.0, requirePainFree = true, lowerIsBetter = false,
+            howTo = listOf(
+                "Walk briskly on even ground at a comfortable pace",
+                "Record how many minutes you manage with no tendon pain and no limp",
+                "Stop the count the moment pain or a limp appears"
+            ),
+            precaution = "Walking tolerance is the floor you build running on.",
+            earliestPhase = 4
+        ),
+        SelfTest(
+            id = "jog_tol", name = "Continuous easy jog", unit = "minutes",
+            symmetry = false, passThreshold = 20.0, requirePainFree = true, lowerIsBetter = false,
+            howTo = listOf(
+                "Only once your physio has cleared jogging",
+                "On a flat, even surface, jog easily and record continuous pain-free minutes",
+                "Next-morning stiffness that settles within an hour is acceptable; worsening week-on-week is not"
+            ),
+            precaution = "Build by a few minutes per session, never in big jumps.",
+            earliestPhase = 5
+        ),
+        SelfTest(
+            id = "hop_count", name = "Single-leg hops in a row", unit = "hops",
+            symmetry = false, passThreshold = 20.0, requirePainFree = true, lowerIsBetter = false,
+            howTo = listOf(
+                "Only once your physio has cleared hopping",
+                "On the injured leg, do small controlled pogo hops on the spot",
+                "Count consecutive springy, pain-free hops before form drops"
+            ),
+            precaution = "Land softly through the forefoot; this is springiness, not height.",
+            earliestPhase = 5
+        ),
+        SelfTest(
+            id = "hop_sym", name = "Single-leg hop for distance", unit = "cm",
+            symmetry = true, passThreshold = 90.0, requirePainFree = true, lowerIsBetter = false,
+            howTo = listOf(
+                "Only once your physio has cleared hopping",
+                "From standing on one leg, hop forward as far as you can land cleanly and hold it",
+                "Measure the distance for each leg (best of 3) and record both"
+            ),
+            precaution = "Limb symmetry on hopping is a key gate before cutting and court sport.",
+            earliestPhase = 5
+        ),
+        SelfTest(
+            id = "run_long", name = "Longer continuous run", unit = "minutes",
+            symmetry = false, passThreshold = 40.0, requirePainFree = true, lowerIsBetter = false,
+            howTo = listOf(
+                "Only once you're comfortable with continuous easy jogging",
+                "On flat, even ground, run easily and record continuous pain-free minutes",
+                "Build distance gradually - no more than about 10% more per week"
+            ),
+            precaution = "Endurance running is calf-endurance work; increase volume slowly.",
+            earliestPhase = 5
+        )
+    )
+
+    // The SHARED foundation only; sport-specific tail stages live in SportRegistry
+    // so the same rehab scales from padel to running to cycling.
+    private val returnToSport: List<RtsRung> = listOf(
+        RtsRung(
+            id = "rts_strength", order = 1, title = "Single-leg strength base", phase = 4,
+            summary = "Rebuild calf strength, balance and walking tolerance before any impact.",
+            testIds = listOf("heel_rise_sym", "balance_eo", "calf_girth_sym", "walk_tol"),
+            guidance = listOf(
+                "This is the foundation - skipping it is how tendons get re-injured later.",
+                "Re-test every week or two; expect steady, not overnight, gains."
+            ),
+            requiresPhysioSignoff = false
+        ),
+        RtsRung(
+            id = "rts_jog", order = 2, title = "Cleared to start jogging", phase = 5,
+            summary = "Strength and walking are there; impact can begin - with physio sign-off.",
+            testIds = listOf("heel_rise_sym", "walk_tol"),
+            guidance = listOf(
+                "Starting impact too early is the classic setback. Your physio confirms this step.",
+                "Begin with walk-jog intervals, not a continuous run."
+            ),
+            requiresPhysioSignoff = true
+        ),
+        RtsRung(
+            id = "rts_run_hop", order = 3, title = "Running & hopping", phase = 5,
+            summary = "Build continuous jogging and basic plyometric capacity.",
+            testIds = listOf("jog_tol", "hop_count", "heel_rise_sym"),
+            guidance = listOf(
+                "Add hopping work alongside steady jogging volume.",
+                "Keep one easy day between impact sessions early on."
+            ),
+            requiresPhysioSignoff = true
+        )
+    )
+
+    // ------------------------------------------------------------------
+    // The emotional side: what's normal to feel, and reassurance
+    // ------------------------------------------------------------------
+
+    private val mindset: List<PhaseMindset> = listOf(
+        PhaseMindset(
+            phase = 1,
+            normalToFeel = listOf(
+                "Shock and frustration that one wrong step changed your routine - that's normal",
+                "Feeling clumsy and dependent on crutches and the boot",
+                "Anxiety about the clot risk - the medication and your daily checks are exactly how you manage it"
+            ),
+            encouragement = "Right now your only job is to protect the tendon and rest. Doing little is doing the work."
+        ),
+        PhaseMindset(
+            phase = 2,
+            normalToFeel = listOf(
+                "Impatience as the days blur together in the boot",
+                "Small wins - a longer walk, fewer crutches - feeling surprisingly big",
+                "Worry every time you lower the heel angle; a bit of unfamiliarity is expected"
+            ),
+            encouragement = "Steady, boring weeks are good weeks. The tendon is knitting on schedule."
+        ),
+        PhaseMindset(
+            phase = 3,
+            normalToFeel = listOf(
+                "Nervousness about those first steps out of the boot - almost everyone feels it",
+                "The ankle feeling stiff, weak and strangely unfamiliar",
+                "A wobble of confidence on uneven ground"
+            ),
+            encouragement = "Confidence comes back one careful step at a time. Trust the wean, not the calendar."
+        ),
+        PhaseMindset(
+            phase = 4,
+            normalToFeel = listOf(
+                "Motivation returning as you can finally train and feel stronger",
+                "Frustration that the calf is weaker than you expected",
+                "Comparing yourself to where you 'should' be - try not to"
+            ),
+            encouragement = "This is where the real rebuilding happens. Consistent strength work now is what gets you back on court."
+        ),
+        PhaseMindset(
+            phase = 5,
+            normalToFeel = listOf(
+                "Excitement and nerves about impact and, finally, {sport}",
+                "Fear of re-rupture the first time you jog, hop or change direction",
+                "Wanting to rush the last stretch - the hardest patience of all"
+            ),
+            encouragement = "You've earned this stage. Respect each step-up and the court will still be there."
+        )
+    )
+
+    private val reassurance = Reassurance(
+        title = "Worried about re-rupture?",
+        body = "Almost everyone recovering from an Achilles rupture feels a jolt of fear at every twinge. " +
+            "That fear is normal and it fades as strength and trust return. Knowing the difference between " +
+            "ordinary healing sensations and a genuine warning sign is what turns anxiety into confidence.",
+        normalVsFlag = listOf(
+            "Morning stiffness that eases as you move" to "A sudden snap or pop with loss of push-off power",
+            "A tendon that looks/feels a little thicker than the other side" to "A new gap or dip you can feel in the tendon",
+            "Mild ache for a day after a harder session" to "Sharp tendon pain that stops you mid-step",
+            "Twinges that settle within a day" to "New calf pain, heat, swelling or redness - think DVT"
+        )
+    )
+
+    // ------------------------------------------------------------------
+    // What to expect (week-banded; proactive reassurance)
+    // ------------------------------------------------------------------
+
+    private val expectations: List<WeekExpectation> = listOf(
+        WeekExpectation(0, 2, "The first two weeks",
+            "Protect the tendon and settle the swelling. This is the most cautious stretch.",
+            listOf(
+                "Bruising and swelling down the calf, ankle and foot - normal as it settles",
+                "The boot feeling heavy and awkward; sleep can be disrupted",
+                "Throbbing when the leg hangs down - elevate above heart level to ease it"
+            ),
+            "You're not being overcautious - early protection is exactly what gives the tendon the best result."),
+        WeekExpectation(2, 8, "Weeks 2-8: weight-bearing & heel-angle reduction",
+            "Build confidence on the leg as the heel angle steps down toward neutral.",
+            listOf(
+                "Walking further in the boot, often off crutches by around week 6",
+                "Each heel-angle reduction feeling odd for a day or two - that settles",
+                "Calf looking thinner than the other side - muscle wasting is expected and reversible"
+            ),
+            "Slow, steady weeks are good weeks; the tendon is healing on schedule even when nothing feels dramatic."),
+        WeekExpectation(8, 12, "Weeks 8-12: out of the boot",
+            "Wean out of the boot and re-learn a normal, even walking pattern.",
+            listOf(
+                "First steps out of the boot feeling wobbly and the ankle very stiff",
+                "A limp at first - a heel raise in the shoe helps while strength returns",
+                "Re-rupture anxiety peaking around now; that's normal as protection comes off"
+            ),
+            "Nerves out of the boot are universal. Progress at your physio's pace and confidence follows strength."),
+        WeekExpectation(12, 24, "Weeks 12-24: strengthening",
+            "The rebuild: calf strength, balance and gait, working toward single-leg strength.",
+            listOf(
+                "Steady strength gains - double-leg, then eventually single-leg heel raises",
+                "Mild ache after sessions is fine; sharp tendon pain is not",
+                "Frustration that strength lags expectations - it takes months, not weeks"
+            ),
+            "This phase does the real work. Consistency now is what gets you back to {sport}."),
+        WeekExpectation(24, 52, "6-12 months: return to {sport}",
+            "Earn impact back in stages - jogging, hopping, change of direction, then your sport.",
+            listOf(
+                "Returning to jogging, then graded running and hopping once cleared",
+                "The tendon often staying slightly thicker than the other side - that's normal",
+                "Morning stiffness that eases as you warm up"
+            ),
+            "Most people return to {sport} around 9-12 months. Respect each step-up and the court will still be there."),
+        WeekExpectation(52, 520, "Beyond a year",
+            "Most function is back; keep the calf strong to protect against re-injury.",
+            listOf(
+                "Near-symmetrical strength and confidence in most activities",
+                "Occasional stiffness after a hard session - usually nothing to worry about",
+                "Keeping up calf strengthening long-term lowers re-injury risk"
+            ),
+            "You've done the hard part. Maintenance strength work keeps the gains for good.")
+    )
+
+    // ------------------------------------------------------------------
+    // Stay-fit: general conditioning that doesn't load the tendon
+    // ------------------------------------------------------------------
+
+    private val fitness: List<FitnessActivity> = listOf(
+        FitnessActivity("f_upper", "Seated press & row", "Upper body", 1,
+            "Dumbbells or a resistance band: shoulder press, rows, biceps and triceps. Sit tall with the boot " +
+                "resting - your upper body stays strong with zero load on the tendon."),
+        FitnessActivity("f_pushups", "Incline or knee push-ups", "Upper body", 1,
+            "Hands on a sofa or wall (or knees down) so the foot takes no weight - solid chest and arm work."),
+        FitnessActivity("f_core", "Core circuit", "Core & trunk", 1,
+            "Dead bugs, bird-dogs, side planks and gentle crunches. Keep the boot on and the ankle completely still."),
+        FitnessActivity("f_cardio", "No-impact cardio", "Cardio (no impact)", 1,
+            "Get your heart rate up without loading the leg: fast banded punches, seated 'boxing' rounds, an arm " +
+                "bike (ergometer) at the gym, or brisk upper-body circuits."),
+        FitnessActivity("f_glutes", "Hip & glute work", "Hips & glutes", 1,
+            "Clamshells, side-lying leg lifts and bridges driven through the good side - keeps the hips strong " +
+                "for when you're walking again."),
+        FitnessActivity("f_bike", "Stationary bike (light)", "Once out of the boot", 3,
+            "Once your physio approves: easy spinning at low resistance, pedalling through the heel and midfoot."),
+        FitnessActivity("f_swim", "Swimming & pool", "Once out of the boot", 3,
+            "Once any wounds are healed and your physio approves: pool walking and easy swimming are excellent " +
+                "low-impact cardio."),
+        FitnessActivity("f_gym", "Good-side & gym strength", "Once out of the boot", 4,
+            "Leg press, squats and step-ups within physio guidance; train the uninjured leg hard to limit overall " +
+                "strength loss while the injured side catches up.")
+    )
+
+    // ------------------------------------------------------------------
+    // The registry entry: everything above, wired as framework data
+    // ------------------------------------------------------------------
+
+    val protocol = InjuryProtocol(
+        id = ID,
+        injuryName = "Achilles tendon rupture",
+        variantName = "Conservative (non-surgical) · walking boot",
+        protocolName = "Conservative (non-surgical) functional rehabilitation - UK NHS-style pathway",
+        placeholderNote = PLACEHOLDER_NOTE,
+        sided = true,
+        // Default to the OPED VACOped (ROM dial, degrees); the user can switch to
+        // an Aircast walker (wedges) or a cast journey in Settings.
+        supportDevice = DeviceRegistry.VACOPED,
+        supportedDeviceIds = listOf("vacoped", "aircast_wedges", "cast"),
+        defaultDeviceId = "vacoped",
+        phases = phases,
+        milestones = milestones,
+        redFlags = redFlags,
+        movementChecks = listOf(
+            MovementCheckSpec("Walk without the boot", 3,
+                "Not before ~week 8-10, physio-confirmed", "Physio-guided weaning only"),
+            MovementCheckSpec("Pull foot up past neutral / calf stretch", 4,
+                "Not before week 12 - tendon over-lengthening risk", "Gentle and physio-guided only"),
+            MovementCheckSpec("Drive a car", 4,
+                "Generally only out of the boot and able to emergency-brake - confirm with clinic and insurer",
+                "Confirm with clinic and insurer"),
+            MovementCheckSpec("Standing heel raises", 4,
+                "Phase 4 work - too early now", "Progress as prescribed"),
+            MovementCheckSpec("Run / jump", 5,
+                "Phase 5 work after strength benchmarks", "Graded programme once physio clears it"),
+            MovementCheckSpec("Play {sport}", 5,
+                "The end goal - but not yet",
+                "Drills first; competitive play typically 9-12 months with sign-off")
+        ),
+        selfTests = selfTests,
+        returnToSport = returnToSport,
+        supportedSportIds = listOf("padel", "tennis", "football", "running", "hiking", "cycling", "swimming", "gym"),
+        defaultSportId = "padel",
+        mindset = mindset,
+        reassurance = reassurance,
+        expectations = expectations,
+        fitness = fitness,
+        bodySceneId = "lower_leg",
+        welcomeBlurb = "Your daily coach through a conservative (non-surgical) Achilles " +
+            "rupture - exercises, reminders and progress tracking.",
+        safetyTitle = "Safety first",
+        safetyBlurb = "Achilles rupture carries a real risk of blood clots - that is why " +
+            "you take a clot-prevention medication. The red-flag button stays at the top " +
+            "of every screen. Read it once now so you know what to watch for.",
+        redFlagIntro = "After an Achilles rupture you are at raised risk of a blood clot, and " +
+            "the healing tendon can re-tear. Take these signs seriously even if they seem mild.",
+        redFlagButtonLabel = "DVT & re-rupture red flags",
+        videoContext = "Achilles rupture rehab physiotherapy",
+        prefillDescription = "Full Achilles tendon rupture (left), injured playing padel; " +
+            "managed conservatively in a walking boot.",
+        prefillGoal = "Full recovery and return to playing padel",
+        prefillAppointments = listOf(
+            Appointment(LocalDate.of(2026, 6, 7), "Consultant review", completed = true)
+        ),
+        prefillMedications = prefillMedications,
+        prefillTasks = prefillTasks
+    )
+}
+
+/**
+ * Personal first-run seed for THIS build's user, layered over the protocol
+ * prefills. Every field is editable in-app.
+ */
+object Defaults {
+    fun profile(): Profile {
+        val p = ProtocolRegistry.default
+        return Profile(
+            protocolId = p.id,
+            name = "",
+            injuryDate = LocalDate.of(2026, 6, 2),
+            side = Side.LEFT,
+            pathway = Pathway.CONSERVATIVE_NON_SURGICAL,
+            injuryDescription = p.prefillDescription,
+            goal = p.prefillGoal,
+            appointments = p.prefillAppointments,
+            wedgePlan = p.supportDevice?.plan ?: WedgePlan(0, 1, 7),
+            currentWedges = p.supportDevice?.plan?.initialWedges ?: 0,
+            weightBearing = WeightBearing.AS_TOLERATED,
+            physioConfirmedPhase = 1,
+            phaseStartOverrides = emptyMap(),
+            onboardingComplete = false,
+            disclaimerAcknowledged = false,
+            sportId = p.defaultSportId ?: "",
+            deviceId = p.defaultDeviceId ?: ""
+        )
+    }
+
+    fun medications(): List<Medication> = ProtocolRegistry.default.prefillMedications
+    fun tasks(): List<RehabTask> = ProtocolRegistry.default.prefillTasks
 }

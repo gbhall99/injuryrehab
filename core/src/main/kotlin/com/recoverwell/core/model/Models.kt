@@ -30,30 +30,35 @@ data class Appointment(
 )
 
 /**
- * Plan for stepping the boot down from full equinus to neutral.
- * Defaults follow a typical NHS conservative functional protocol
- * (one wedge removed per week from the start of week 3) but every value
- * is a physio-confirmable placeholder, editable in the app.
+ * Plan for stepping a support device down from its starting setting to neutral
+ * (0). The value is expressed in the device's own unit - boot wedges (step 1)
+ * or heel-angle degrees (e.g. step 5) - and [stepSize] is how much each
+ * scheduled change reduces it. Every value is a physio-confirmable placeholder,
+ * editable in the app. Field names keep the historical "wedge" spelling for
+ * backup compatibility; the unit is defined by the protocol's SupportDevice.
  */
 data class WedgePlan(
     val initialWedges: Int,
     val removalStartWeek: Int,
-    val removalIntervalDays: Int
+    val removalIntervalDays: Int,
+    val stepSize: Int = 1
 ) {
-    /** Dates on which one wedge is due to be removed, with the wedge count after removal. */
+    private val step get() = stepSize.coerceAtLeast(1)
+
+    /** Dates on which a reduction is due, with the device value after it. */
     fun removalSchedule(injuryDate: LocalDate): List<Pair<LocalDate, Int>> {
         val out = ArrayList<Pair<LocalDate, Int>>()
         var date = injuryDate.plusDays((removalStartWeek - 1) * 7L)
         var remaining = initialWedges
         while (remaining > 0) {
-            remaining -= 1
+            remaining = (remaining - step).coerceAtLeast(0)
             out.add(date to remaining)
             date = date.plusDays(removalIntervalDays.toLong())
         }
         return out
     }
 
-    /** Expected wedge count in the boot on a given date. */
+    /** Expected device value on a given date. */
     fun expectedWedges(injuryDate: LocalDate, on: LocalDate): Int {
         var expected = initialWedges
         for ((date, after) in removalSchedule(injuryDate)) {
@@ -64,6 +69,8 @@ data class WedgePlan(
 }
 
 data class Profile(
+    /** Which InjuryProtocol in the registry this recovery follows. */
+    val protocolId: String,
     val name: String,
     val injuryDate: LocalDate,
     val side: Side,
@@ -78,8 +85,14 @@ data class Profile(
     val physioConfirmedPhase: Int,
     /** Optional per-phase start date overrides set by the user/physio. Key = phase number. */
     val phaseStartOverrides: Map<Int, LocalDate>,
+    /** Date each phase was physio-confirmed, for pace/forecasting. Key = phase number. */
+    val phaseConfirmedDates: Map<Int, LocalDate> = emptyMap(),
     val onboardingComplete: Boolean,
-    val disclaimerAcknowledged: Boolean
+    val disclaimerAcknowledged: Boolean,
+    /** Target sport for the return-to-sport program; blank = the protocol default. */
+    val sportId: String = "",
+    /** Chosen support device (boot/cast); blank = the protocol default. */
+    val deviceId: String = ""
 )
 
 data class Medication(
@@ -127,7 +140,10 @@ data class ExerciseSpec(
     val holdSeconds: Int,
     val sessionsPerDay: Int,
     val whyItMatters: String,
-    val precaution: String
+    val precaution: String,
+    /** Optional override search phrase for the "watch on YouTube" link;
+     *  blank = derive from the exercise name + protocol video context. */
+    val videoQuery: String = ""
 )
 
 /** User edits applied on top of the protocol defaults; null = keep default. */
@@ -137,13 +153,19 @@ data class ExerciseOverride(
     val reps: Int?,
     val holdSeconds: Int?,
     val sessionsPerDay: Int?,
-    val enabled: Boolean
+    val enabled: Boolean,
+    /** User-pinned YouTube video id for this exercise's demonstration. */
+    val videoId: String? = null
 )
 
 data class PhaseSpec(
     val number: Int,
     val title: String,
     val subtitle: String,
+    /** One line on what the healing tissue is doing in this phase. */
+    val tissueState: String,
+    /** Support-device state this phase; "{n}" = current unit count; null = no device. */
+    val deviceUsage: String?,
     /** Default start, in completed weeks since injury (phase 1 = 0). */
     val startWeek: Int,
     /** Default end week (exclusive); null for the final open-ended phase. */
@@ -196,3 +218,29 @@ data class Milestone(
     val title: String,
     val detail: String
 )
+
+/** A dated record of what a clinician said - the durable half of the physio loop. */
+data class PhysioNote(
+    val id: String,
+    val date: LocalDate,
+    val text: String
+)
+
+/**
+ * One logged objective self-test (e.g. single-leg heel-rise count). Symmetry
+ * tests carry both sides so a limb-symmetry index can be computed; single-value
+ * tests leave [otherValue] null.
+ */
+data class SelfTestResult(
+    val id: String,
+    val testId: String,
+    val date: LocalDate,
+    val injuredValue: Double,
+    val otherValue: Double?,
+    val painFree: Boolean,
+    val note: String
+) {
+    /** Limb-symmetry index as a percentage (injured / other x 100), or null. */
+    val symmetryPct: Int?
+        get() = otherValue?.takeIf { it > 0.0 }?.let { ((injuredValue / it) * 100).toInt() }
+}

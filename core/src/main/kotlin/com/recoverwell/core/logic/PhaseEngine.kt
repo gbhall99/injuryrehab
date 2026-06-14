@@ -2,7 +2,7 @@ package com.recoverwell.core.logic
 
 import com.recoverwell.core.model.PhaseSpec
 import com.recoverwell.core.model.Profile
-import com.recoverwell.core.protocol.ProtocolContent
+import com.recoverwell.core.protocol.ProtocolRegistry
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
@@ -30,20 +30,21 @@ object PhaseEngine {
 
     /** Highest phase whose start date has been reached. */
     fun dateEligiblePhase(profile: Profile, today: LocalDate): Int =
-        ProtocolContent.phases
+        ProtocolRegistry.forProfile(profile).phases
             .filter { !phaseStartDate(profile, it).isAfter(today) }
             .maxOfOrNull { it.number } ?: 1
 
     /** The phase the app treats as active: date-eligible, capped by physio confirmation. */
     fun currentPhase(profile: Profile, today: LocalDate): PhaseSpec {
+        val protocol = ProtocolRegistry.forProfile(profile)
         val byDate = dateEligiblePhase(profile, today)
         val active = minOf(byDate, profile.physioConfirmedPhase.coerceAtLeast(1))
-        return ProtocolContent.phase(active.coerceIn(1, ProtocolContent.phases.size))
+        return protocol.phase(active.coerceIn(1, protocol.phases.size))
     }
 
     fun nextPhaseGate(profile: Profile, today: LocalDate): Gate {
         val current = currentPhase(profile, today)
-        val next = ProtocolContent.phases.firstOrNull { it.number == current.number + 1 }
+        val next = ProtocolRegistry.forProfile(profile).phases.firstOrNull { it.number == current.number + 1 }
             ?: return Gate(null, dateEligible = false, physioConfirmed = false, startDate = null, daysUntilEligible = 0)
         val start = phaseStartDate(profile, next)
         val eligible = !start.isAfter(today)

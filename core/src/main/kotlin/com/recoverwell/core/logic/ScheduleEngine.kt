@@ -1,7 +1,7 @@
 package com.recoverwell.core.logic
 
 import com.recoverwell.core.model.*
-import com.recoverwell.core.protocol.ProtocolContent
+import com.recoverwell.core.protocol.ProtocolRegistry
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -13,7 +13,7 @@ import java.time.LocalTime
  */
 object ScheduleEngine {
 
-    enum class ItemKind { MEDICATION, TASK, WEDGE_CHANGE, EXERCISE }
+    enum class ItemKind { MEDICATION, TASK, WEDGE_CHANGE, EXERCISE, CHECKIN }
 
     data class ChecklistItem(
         val kind: ItemKind,
@@ -52,22 +52,47 @@ object ScheduleEngine {
     fun slotKey(time: LocalTime): String =
         String.format(java.util.Locale.ROOT, "%02d:%02d", time.hour, time.minute)
 
-    /** Wedge-change items due on [date] according to the editable wedge plan. */
-    fun wedgeChangesOn(profile: Profile, date: LocalDate): List<ChecklistItem> =
-        profile.wedgePlan.removalSchedule(profile.injuryDate)
+    /**
+     * Consecutive days on which EVERY active medication dose was taken,
+     * ending today (if today is already complete) or yesterday. Judged
+     * against the current schedule - good enough for a motivation streak.
+     */
+    fun medicationStreak(meds: List<Medication>, events: List<EventLog>, today: LocalDate): Int {
+        val slots = meds.filter { it.active }
+            .flatMap { m -> m.times.map { m.id to slotKey(it) } }
+        if (slots.isEmpty()) return 0
+        val taken = events.filter { it.type == EventType.MEDICATION && it.status == EventStatus.TAKEN }
+            .groupBy { it.date }
+        fun complete(d: LocalDate) = slots.all { (id, slot) ->
+            taken[d]?.any { it.refId == id && it.slotKey == slot } == true
+        }
+        var day = if (complete(today)) today else today.minusDays(1)
+        var n = 0
+        while (complete(day)) {
+            n++
+            day = day.minusDays(1)
+        }
+        return n
+    }
+
+    /** Device-reduction items due on [date] per the editable plan (boot wedges etc.). */
+    fun wedgeChangesOn(profile: Profile, date: LocalDate): List<ChecklistItem> {
+        val device = ProtocolRegistry.forProfile(profile).supportDevice ?: return emptyList()
+        return profile.wedgePlan.removalSchedule(profile.injuryDate)
             .filter { it.first == date }
             .map { (d, after) ->
                 ChecklistItem(
                     kind = ItemKind.WEDGE_CHANGE,
                     refId = "wedge_$after",
                     slotKey = d.toString(),
-                    title = "Wedge change due: remove 1 wedge (${after} left)",
-                    subtitle = ProtocolContent.PLACEHOLDER_NOTE +
-                        " Only change wedges if your clinic has agreed this step.",
+                    title = "Boot change due: ${device.reductionVerb} to ${device.format(after)}",
+                    subtitle = ProtocolRegistry.forProfile(profile).placeholderNote +
+                        " Only adjust the ${device.name.lowercase()} if your clinic has agreed this step.",
                     time = LocalTime.of(9, 0),
                     status = null
                 )
             }
+    }
 
     fun dailyChecklist(
         profile: Profile,
@@ -155,21 +180,56 @@ object ScheduleEngine {
         return "${ex.sets} set${if (ex.sets > 1) "s" else ""} × ${ex.reps}$hold"
     }
 
+    /** Stable id used for the once-daily "do your exercises" engagement nudge. */
+    const val EXERCISE_SESSION_REF = "session_reminder"
+
+    /** Stable id used for the once-daily "how's it feeling?" check-in nudge. */
+    const val DAILY_CHECKIN_REF = "daily_checkin"
+
     /**
      * All reminders in (now, now+horizonDays]: medication times, task times,
-     * and dated wedge changes. The Android layer schedules the earliest ones.
+     * dated wedge changes and - when [exerciseReminderTime] is set - one daily
+     * exercise-session nudge per day that has exercises in the active phase.
+     * The Android layer schedules the earliest ones.
      */
     fun upcomingReminders(
         profile: Profile,
         meds: List<Medication>,
         tasks: List<RehabTask>,
         now: LocalDateTime,
-        horizonDays: Int = 3
+        horizonDays: Int = 3,
+        exerciseReminderTime: LocalTime? = null,
+        overrides: Map<String, ExerciseOverride> = emptyMap(),
+        checkInTime: LocalTime? = null
     ): List<Reminder> {
         val out = ArrayList<Reminder>()
         for (offset in 0..horizonDays) {
             val date = now.toLocalDate().plusDays(offset.toLong())
             val phase = PhaseEngine.currentPhase(profile, date)
+
+            if (checkInTime != null) {
+                val at = LocalDateTime.of(date, checkInTime)
+                if (at.isAfter(now)) out.add(
+                    Reminder(
+                        at, ItemKind.CHECKIN, DAILY_CHECKIN_REF, DAILY_CHECKIN_REF,
+                        "How's it feeling today?",
+                        "A 10-second check-in keeps your recovery trends accurate. How's the pain right now?"
+                    )
+                )
+            }
+
+            if (exerciseReminderTime != null) {
+                val exercises = mergedExercises(phase.exercises, overrides)
+                val at = LocalDateTime.of(date, exerciseReminderTime)
+                if (exercises.isNotEmpty() && at.isAfter(now)) out.add(
+                    Reminder(
+                        at, ItemKind.EXERCISE, EXERCISE_SESSION_REF, EXERCISE_SESSION_REF,
+                        "Rehab exercises",
+                        "${exercises.size} exercise${if (exercises.size == 1) "" else "s"} in today's plan. " +
+                            "A few focused minutes keeps your recovery on track."
+                    )
+                )
+            }
 
             for (med in meds.filter { it.active }) {
                 for (t in med.times) {

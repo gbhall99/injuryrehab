@@ -6,11 +6,16 @@ plugins {
 
 kotlin {
     jvmToolchain(21)
+    coreLibrariesVersion = "1.7.21"
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
+        // ART has no LambdaMetafactory: stdlib must stay 1.7.x (last indy-free
+        // release) and the compiler must not emit 1.8+ stdlib intrinsics.
+        apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_1_7)
+        languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_1_7)
         // dx (the only dexer available offline) cannot translate invokedynamic,
         // so force class-based lambdas / SAM conversions.
         freeCompilerArgs.addAll("-Xlambdas=class", "-Xsam-conversions=class")
@@ -27,6 +32,7 @@ dependencies {
     // the device supplies the actual framework at runtime.
     compileOnly("org.robolectric:android-all:14-robolectric-10818077")
     implementation(project(":core"))
+    implementation(project(":draw"))
 
     // JVM-side integration tests: Robolectric boots the real Activity,
     // receivers and SQLite store without needing an emulator.
@@ -92,12 +98,41 @@ val collectDexInput by tasks.registering(Sync::class) {
     configurations.runtimeClasspath.get()
         .filter { it.name.endsWith(".jar") && !it.name.contains("annotations") }
         .forEach { from(zipTree(it)) }
+    // kotlin-stdlib's java.util.stream interop uses invokedynamic and is
+    // unreachable in this app - keep it away from the dexer (guard enforces)
+    exclude("kotlin/streams/**")
     exclude("META-INF/**", "module-info.class", "**/*.kotlin_metadata", "**/*.kotlin_builtins")
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
-val dex by tasks.registering(Exec::class) {
+// ART does not provide LambdaMetafactory/StringConcatFactory: any class that
+// references them would dex into invoke-custom and crash on devices. Fail the
+// build instead - JVM tests cannot catch this (real Java has those methods).
+val checkNoInvokeDynamic by tasks.registering {
     dependsOn(collectDexInput)
+    inputs.dir(dexInputDir)
+    doLast {
+        val offenders = dexInputDir.get().asFile.walkTopDown()
+            .filter { it.isFile && it.extension == "class" }
+            .filter { f ->
+                val bytes = f.readBytes().toString(Charsets.ISO_8859_1)
+                bytes.contains("LambdaMetafactory") || bytes.contains("StringConcatFactory")
+            }
+            .map { it.relativeTo(dexInputDir.get().asFile).path }
+            .toList()
+        if (offenders.isNotEmpty()) {
+            throw GradleException(
+                "invokedynamic bootstrap references found (would crash on device):\n  " +
+                    offenders.joinToString("\n  ")
+            )
+        }
+        val n = dexInputDir.get().asFile.walkTopDown().count { it.extension == "class" }
+        println("invoke-dynamic guard: " + n + " classes clean")
+    }
+}
+
+val dex by tasks.registering(Exec::class) {
+    dependsOn(collectDexInput, checkNoInvokeDynamic)
     inputs.dir(dexInputDir)
     outputs.file(apkDir.map { it.file("classes.dex") })
     doFirst { apkDir.get().asFile.mkdirs() }
@@ -122,9 +157,9 @@ val aaptPackage by tasks.registering(Exec::class) {
         "-I", platformJar,
         "-F", "${apkDir.get().asFile}/recoverwell-base.apk",
         "--min-sdk-version", "26",
-        "--target-sdk-version", "30",
-        "--version-code", "1",
-        "--version-name", "1.0"
+        "--target-sdk-version", "35",
+        "--version-code", "20",
+        "--version-name", "3.0"
     )
 }
 

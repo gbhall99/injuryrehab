@@ -4,7 +4,8 @@ import com.recoverwell.core.logic.ScheduleEngine
 import com.recoverwell.core.model.EventLog
 import com.recoverwell.core.model.EventStatus
 import com.recoverwell.core.model.EventType
-import com.recoverwell.core.protocol.ProtocolContent
+import com.recoverwell.core.protocol.Defaults
+import com.recoverwell.core.protocol.ProtocolRegistry
 import org.junit.Assert.*
 import org.junit.Test
 import java.time.LocalDate
@@ -14,9 +15,9 @@ import java.time.LocalTime
 class ScheduleEngineTest {
 
     private val injury = LocalDate.of(2026, 6, 2)
-    private val profile = ProtocolContent.defaultProfile()
-    private val meds = ProtocolContent.defaultMedications()
-    private val tasks = ProtocolContent.defaultTasks()
+    private val profile = Defaults.profile()
+    private val meds = Defaults.medications()
+    private val tasks = Defaults.tasks()
 
     @Test
     fun checklistHasTwoMedicationSlots() {
@@ -52,16 +53,16 @@ class ScheduleEngineTest {
 
     @Test
     fun wedgeChangeAppearsOnPlannedDates() {
-        // Default plan: 5 wedges, one removed weekly from start of week 3.
-        val firstRemoval = injury.plusDays(14)
-        val items = ScheduleEngine.wedgeChangesOn(profile, firstRemoval)
+        // Default plan: heel angle 30 degrees, lowered 5 every week from week 3.
+        val firstChange = injury.plusDays(14)
+        val items = ScheduleEngine.wedgeChangesOn(profile, firstChange)
         assertEquals(1, items.size)
-        assertTrue(items[0].title.contains("4 left"))
-        assertTrue(ScheduleEngine.wedgeChangesOn(profile, firstRemoval.plusDays(1)).isEmpty())
-        // Last removal leaves 0 wedges, 4 weeks after the first.
-        val last = ScheduleEngine.wedgeChangesOn(profile, firstRemoval.plusWeeks(4))
+        assertTrue(items[0].title, items[0].title.contains("25°"))
+        assertTrue(ScheduleEngine.wedgeChangesOn(profile, firstChange.plusDays(1)).isEmpty())
+        // 30 -> 0 in 5-degree steps takes 6 changes; the 6th leaves 0 degrees.
+        val last = ScheduleEngine.wedgeChangesOn(profile, firstChange.plusWeeks(5))
         assertEquals(1, last.size)
-        assertTrue(last[0].title.contains("0 left"))
+        assertTrue(last[0].title, last[0].title.contains("0°"))
     }
 
     @Test
@@ -70,7 +71,7 @@ class ScheduleEngineTest {
             "p1_slr" to com.recoverwell.core.model.ExerciseOverride("p1_slr", sets = 5, reps = 8, holdSeconds = null, sessionsPerDay = 1, enabled = true),
             "p1_toe_scrunch" to com.recoverwell.core.model.ExerciseOverride("p1_toe_scrunch", null, null, null, null, enabled = false)
         )
-        val merged = ScheduleEngine.mergedExercises(ProtocolContent.phase(1).exercises, overrides)
+        val merged = ScheduleEngine.mergedExercises(ProtocolRegistry.default.phase(1).exercises, overrides)
         assertNull(merged.find { it.id == "p1_toe_scrunch" })
         val slr = merged.first { it.id == "p1_slr" }
         assertEquals(5, slr.sets)
@@ -89,6 +90,29 @@ class ScheduleEngineTest {
         assertEquals("task_elevation", reminders.first().refId)
         // Today's remaining med dose at 20:00 is present.
         assertTrue(reminders.any { it.refId == "med_anticoagulant" && it.at.toLocalTime() == LocalTime.of(20, 0) })
+    }
+
+    @Test
+    fun medicationStreakCountsFullDaysOnly() {
+        val today = injury.plusDays(10)
+        fun taken(d: LocalDate, slot: String) =
+            EventLog("e$d$slot", d, EventType.MEDICATION, "med_anticoagulant", slot, EventStatus.TAKEN, 500)
+
+        // three full days, then today only half-complete -> streak 3 (ends yesterday)
+        val events = listOf(
+            taken(today.minusDays(3), "08:00"), taken(today.minusDays(3), "20:00"),
+            taken(today.minusDays(2), "08:00"), taken(today.minusDays(2), "20:00"),
+            taken(today.minusDays(1), "08:00"), taken(today.minusDays(1), "20:00"),
+            taken(today, "08:00")
+        )
+        assertEquals(3, ScheduleEngine.medicationStreak(meds, events, today))
+        // completing today extends it to 4
+        assertEquals(4, ScheduleEngine.medicationStreak(meds, events + taken(today, "20:00"), today))
+        // a MISSED day in the middle breaks the chain
+        val broken = events.filter { it.date != today.minusDays(2) }
+        assertEquals(1, ScheduleEngine.medicationStreak(meds, broken, today))
+        // no active meds -> no streak
+        assertEquals(0, ScheduleEngine.medicationStreak(emptyList(), events, today))
     }
 
     @Test

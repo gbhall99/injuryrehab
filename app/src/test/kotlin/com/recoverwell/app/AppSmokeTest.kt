@@ -38,7 +38,8 @@ class OnboardingSmokeTest : SmokeBase() {
     fun launchesIntoOnboardingWithDisclaimer() {
         val activity = Robolectric.setupActivity(MainActivity::class.java)
         val texts = allText(activity.window.decorView).joinToString("\n")
-        assertTrue(texts.has("Welcome to RecoverWell"))
+        assertTrue(texts.has("Welcome to"))
+        assertTrue(texts.has("RecoverWell"))
         assertTrue(texts.has("supports"))
         assertTrue(texts.has("Red flags"))
     }
@@ -57,22 +58,22 @@ class ScreensSmokeTest : SmokeBase() {
         )
         activity.show(MainActivity.Tab.TODAY)
         var texts = allText(activity.window.decorView).joinToString("\n")
-        assertTrue(texts.has("checklist"))
+        assertTrue(texts.has("done today"))
         assertTrue(texts.has("Anticoagulant 2.5 mg"))
         assertTrue(texts.has("phase"))
 
         activity.show(MainActivity.Tab.EXERCISES)
         texts = allText(activity.window.decorView).joinToString("\n")
-        assertTrue(texts.has("Exercise library"))
+        assertTrue(texts.has("unlock by date"))
 
         activity.show(MainActivity.Tab.TRACKER)
         texts = allText(activity.window.decorView).joinToString("\n")
-        assertTrue(texts.has("Recovery tracker"))
+        assertTrue(texts.has("Today's log"))
         assertTrue(texts.has("Milestones"))
 
         activity.show(MainActivity.Tab.TWIN)
         texts = allText(activity.window.decorView).joinToString("\n")
-        assertTrue(texts.has("My leg right now"))
+        assertTrue(texts.has("Achilles"))
         assertTrue(texts.has("Not yet"))
 
         activity.show(MainActivity.Tab.MORE)

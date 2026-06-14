@@ -9,7 +9,8 @@ import com.recoverwell.core.logic.PhaseEngine
 import com.recoverwell.core.logic.TrendMath
 import com.recoverwell.core.model.EventStatus
 import com.recoverwell.core.model.EventType
-import com.recoverwell.core.protocol.ProtocolContent
+import com.recoverwell.core.protocol.ProtocolRegistry
+import com.recoverwell.core.protocol.RehabFramework
 import java.io.ByteArrayOutputStream
 import java.time.LocalDate
 import java.util.Locale
@@ -37,17 +38,22 @@ object PdfReport {
         val out = ArrayList<Pair<Style, String>>()
         fun line(style: Style, text: String) = out.add(style to text)
 
-        line(Style.TITLE, "RecoverWell - Achilles Rehab Report")
-        line(Style.DIM, "Generated $today · ${ProtocolContent.PROTOCOL_NAME}")
-        line(Style.DIM, ProtocolContent.DISCLAIMER)
+        val protocol = ProtocolRegistry.forProfile(profile)
+        line(Style.TITLE, "RecoverWell - Recovery Report")
+        line(Style.DIM, "Generated $today · ${protocol.injuryName} · ${protocol.variantName}")
+        line(Style.DIM, "Protocol basis: ${protocol.protocolName}")
+        line(Style.DIM, RehabFramework.DISCLAIMER)
 
         line(Style.HEAD, "Profile")
         line(Style.BODY, "Injury: ${profile.injuryDescription}")
         line(Style.BODY, "Injury date: ${profile.injuryDate} (${PhaseEngine.weeksSinceInjury(profile, today)} weeks ago) · Side: ${profile.side}")
-        line(Style.BODY, "Pathway: conservative / non-surgical · Goal: ${profile.goal}")
+        line(Style.BODY, "Pathway: ${protocol.variantName} · Goal: ${profile.goal}")
         val phase = PhaseEngine.currentPhase(profile, today)
         line(Style.BODY, "Current phase: ${phase.number} - ${phase.title}")
-        line(Style.BODY, "Boot wedges: ${profile.currentWedges} (plan expects ${profile.wedgePlan.expectedWedges(profile.injuryDate, today)}) · ${profile.weightBearing.label}")
+        protocol.supportDevice?.let { dev ->
+            line(Style.BODY, "${dev.name}: ${dev.format(profile.currentWedges)} " +
+                "(plan expects ${dev.format(profile.wedgePlan.expectedWedges(profile.injuryDate, today))}) · ${profile.weightBearing.label}")
+        }
         for (a in profile.appointments) {
             line(Style.BODY, "Appointment: ${a.date} ${a.label}${if (a.completed) " (completed)" else ""}")
         }
