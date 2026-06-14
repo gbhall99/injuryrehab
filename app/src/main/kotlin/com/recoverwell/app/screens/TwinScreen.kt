@@ -76,7 +76,7 @@ object TwinScreen {
                 "Set in equinus by your clinic"
             else "Now at ${device.format(profile.currentWedges)} · ${device.unitNamePlural}"))
             head.addView(Ui.weight(ht, 1f))
-            head.addView(Ui.textButton(a, "Change") { a.pushOverlay { MoreScreen.profileEditor(a) } })
+            head.addView(Ui.textButton(a, "Change") { a.pushOverlay("Injury & goal") { MoreScreen.profileEditor(a) } })
             card.addView(head)
             if (device.operation.isNotBlank()) {
                 card.addView(Ui.spacer(a, 6))
@@ -167,8 +167,8 @@ object TwinScreen {
         }
         col.addView(dontCard)
 
-        col.addView(Ui.fullWidth(Ui.dangerButton(a, protocol.redFlagButtonLabel) {
-            a.pushOverlay { RedFlagsScreen.build(a) }
+        col.addView(Ui.fullWidth(Ui.dangerButton(a, "Open red flags") {
+            a.pushOverlay("Red flags") { RedFlagsScreen.build(a) }
         }, a))
 
         col.addView(Ui.spacer(a, 24))

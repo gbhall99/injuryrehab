@@ -15,6 +15,7 @@ import com.recoverwell.core.logic.Capability
 import com.recoverwell.core.logic.PhaseEngine
 import com.recoverwell.core.logic.ScheduleEngine
 import com.recoverwell.core.model.EventStatus
+import com.recoverwell.core.model.Swelling
 import com.recoverwell.core.protocol.ProtocolRegistry
 import com.recoverwell.draw.RingScene
 import java.time.LocalDate
@@ -90,7 +91,7 @@ object TodayScreen {
             background = Ui.ripple(a, Ui.rounded(com.recoverwell.draw.Palette.withAlpha(onHero, 0x28), 22f), 0x40FFFFFF)
             setPadding(Ui.dp(a, 16), Ui.dp(a, 9), Ui.dp(a, 16), Ui.dp(a, 9))
             contentDescription = "Phase guide"
-            setOnClickListener { a.pushOverlay { phaseDetail(a, phase.number) } }
+            setOnClickListener { a.pushOverlay("Phase ${phase.number}") { phaseDetail(a, phase.number) } }
         }
         hero.addView(phaseBtn, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
@@ -117,8 +118,8 @@ object TodayScreen {
             card.addView(headRow)
             card.addView(Ui.spacer(a, 4))
             card.addView(Ui.text(a, w.detail, 14f, Ui.ON_DANGER_BG))
-            card.addView(Ui.fullWidth(Ui.dangerButton(a, "Open red flag guidance") {
-                a.pushOverlay { RedFlagsScreen.build(a) }
+            card.addView(Ui.fullWidth(Ui.dangerButton(a, "Open red flags") {
+                a.pushOverlay("Red flags") { RedFlagsScreen.build(a) }
             }, a))
             col.addView(card)
         }
@@ -136,7 +137,7 @@ object TodayScreen {
         }
         for (w in warnings.filter { it.severity == Capability.Severity.WARNING }) {
             prompts.add(Prompt(3, "ic_alert", w.title, w.detail, "Open red flags", TONE_WARN, safety = true) {
-                a.pushOverlay { RedFlagsScreen.build(a) }
+                a.pushOverlay("Red flags") { RedFlagsScreen.build(a) }
             })
         }
 
@@ -164,32 +165,32 @@ object TodayScreen {
                 prompts.add(Prompt(12, "ic_calendar",
                     if (days == 0L) "${soon.label} today" else "${soon.label} in $days day${if (days == 1L) "" else "s"}",
                     "Prep your questions and current numbers to make the most of it.",
-                    "Open appointment pack", TONE_INFO) { a.pushOverlay { PhysioScreen.build(a) } })
+                    "Open appointment pack", TONE_INFO) { a.pushOverlay("Physio visits") { PhysioScreen.build(a) } })
             } else if (toCapture != null) {
                 prompts.add(Prompt(13, "ic_edit", "How did your appointment go?",
                     "Capture what your physio said so your plan stays in sync.",
-                    "Capture the visit", TONE_INFO) { a.pushOverlay { PhysioScreen.build(a) } })
+                    "Capture the visit", TONE_INFO) { a.pushOverlay("Physio visits") { PhysioScreen.build(a) } })
             }
             Unit
         }
         // milestone celebration
         com.recoverwell.core.logic.Wellbeing.recentlyReachedMilestone(profile, today)?.let { m ->
             prompts.add(Prompt(15, "ic_flag", "Milestone reached: ${m.title}", m.detail,
-                "See how far you've come", TONE_DONE) { a.pushOverlay { WellbeingScreen.build(a) } })
+                "How you're doing", TONE_DONE) { a.pushOverlay("How you're doing") { WellbeingScreen.build(a) } })
         }
         // a single caution insight (positive/neutral insights live on Progress)
         val insights = com.recoverwell.core.logic.Insights.generate(
             profile, a.store.allLogs(), allEvents, a.store.medications(), a.store.tasks(), today)
         insights.firstOrNull { it.tone == com.recoverwell.core.logic.Insights.Tone.CAUTION }?.let { ins ->
             prompts.add(Prompt(16, "ic_alert", ins.title, ins.detail, "See trends", TONE_WARN) {
-                a.show(MainActivity.Tab.TRACKER)
+                TrackerScreen.openReview(); a.show(MainActivity.Tab.TRACKER)
             })
         }
         // weekly review on Mondays
         if (today.dayOfWeek == java.time.DayOfWeek.MONDAY && a.store.allLogs().size >= 5) {
             prompts.add(Prompt(18, "ic_progress", "Your week in review is ready",
                 "Last week's adherence, pain trend and what to focus on next.",
-                "Open this week", TONE_INFO) { a.show(MainActivity.Tab.TRACKER) })
+                "Open this week", TONE_INFO) { TrackerScreen.openReview(); a.show(MainActivity.Tab.TRACKER) })
         }
         // adaptive reminder suggestion
         com.recoverwell.core.logic.AdaptiveReminders
@@ -212,36 +213,8 @@ object TodayScreen {
         val rest = sorted.filterNot { it.safety }
         rest.firstOrNull()?.let { col.addView(focusCard(a, it)) }
 
-        // ---- more for you (collapsed) + standing shortcuts ----
-        val rts = com.recoverwell.core.logic.ReturnToSport.progress(
-            profile, a.store.selfTestResults(), a.store.rtsSignoffs(), today)
-        col.addView(Ui.section(a, "More for you"))
-        for (p in rest.drop(1).take(3)) col.addView(promptRow(a, p))
-        if (rts.available) {
-            col.addView(Ui.listRow(a, "ic_flag", rts.returnPhrase,
-                (rts.currentRung?.let { "Stage: ${it.title}" } ?: "Keep building strength") +
-                    " · ${rts.readinessPct}% ready") { a.pushOverlay { ReturnToSportScreen.build(a) } })
-        }
-        com.recoverwell.core.logic.Wellbeing.expectationFor(profile, today)?.let { exp ->
-            col.addView(Ui.listRow(a, "ic_info", "What to expect this week", exp.title) {
-                a.pushOverlay { WhatToExpectScreen.build(a) }
-            })
-        }
-        run {
-            val goal = a.store.setting("fitness_goal", com.recoverwell.core.logic.Fitness.DEFAULT_WEEKLY_GOAL.toString())
-                .toIntOrNull() ?: com.recoverwell.core.logic.Fitness.DEFAULT_WEEKLY_GOAL
-            val sessions = com.recoverwell.core.logic.Fitness.sessionsThisWeek(allEvents, today)
-            col.addView(Ui.listRow(a, "ic_exercises", "Stay fit",
-                "Keep-fit options that don't load the foot · $sessions of $goal this week") {
-                a.pushOverlay { StayFitScreen.build(a) }
-            })
-        }
-        col.addView(Ui.listRow(a, "ic_info", "Ask my recovery",
-            "Can I drive yet? What's next? - answered offline") { a.pushOverlay { AskScreen.build(a) } })
-        col.addView(Ui.listRow(a, "ic_heart", "How you're doing",
-            "What's normal to feel right now") { a.pushOverlay { WellbeingScreen.build(a) } })
-
-        // ---- checklist ----------------------------------------------------
+        // ---- checklist (the daily task: kept directly under the hero/focus,
+        // above the discretionary "More for you" list, so it's never buried) ----
         fun addGroup(label: String, kinds: Set<ScheduleEngine.ItemKind>) {
             val group = items.filter { it.kind in kinds }
             if (group.isEmpty()) return
@@ -275,6 +248,28 @@ object TodayScreen {
             })
         }
 
+        // ---- more for you (discretionary, below the daily task) ----------------
+        // contextual prompts and the timely recovery surfaces only; standing
+        // destinations (Ask, Stay fit, How you're doing) live in the More tab.
+        val moreRows = ArrayList<View>()
+        for (p in rest.drop(1).take(2)) moreRows.add(promptRow(a, p))
+        val rts = com.recoverwell.core.logic.ReturnToSport.progress(
+            profile, a.store.selfTestResults(), a.store.rtsSignoffs(), today)
+        if (rts.available) {
+            moreRows.add(Ui.listRow(a, "ic_flag", rts.returnPhrase,
+                (rts.currentRung?.let { "Stage: ${it.title}" } ?: "Keep building strength") +
+                    " · ${rts.readinessPct}% ready") { a.pushOverlay(rts.returnPhrase) { ReturnToSportScreen.build(a) } })
+        }
+        com.recoverwell.core.logic.Wellbeing.expectationFor(profile, today)?.let { exp ->
+            moreRows.add(Ui.listRow(a, "ic_info", "What to expect this week", exp.title) {
+                a.pushOverlay("What to expect") { WhatToExpectScreen.build(a) }
+            })
+        }
+        if (moreRows.isNotEmpty()) {
+            col.addView(Ui.section(a, "More for you"))
+            for (r in moreRows) col.addView(r)
+        }
+
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
     }
@@ -294,7 +289,7 @@ object TodayScreen {
                 val spec = ProtocolRegistry.forProfile(a.store.profile())
                     .phases.flatMap { it.exercises }.find { it.id == item.refId }
                 if (spec != null) {
-                    a.pushOverlay { ExercisesScreen.exerciseDetail(a, spec, item.slotKey) }
+                    a.pushOverlay(spec.name) { ExercisesScreen.exerciseDetail(a, spec, item.slotKey) }
                 } else {
                     record(a, item, EventStatus.DONE)
                 }
@@ -356,7 +351,10 @@ object TodayScreen {
         a.refresh()
     }
 
-    /** 10-second daily log right on Today; full form is one tap away. */
+    /** Whether the quick check-in is showing its expanded fields in place. */
+    private var checkInExpanded = false
+
+    /** 10-second daily log right on Today; "Add more detail" expands it in place. */
     private fun quickCheckInCard(a: MainActivity, today: LocalDate): View {
         val log = a.store.dailyLog(today)
         val card = Ui.card(a)
@@ -381,18 +379,46 @@ object TodayScreen {
         var mood: Int? = null
         card.addView(Forms.label(a, "Mood · optional"))
         card.addView(Forms.choiceRow(a, (1..5).toList(), { "$it" }, null) { mood = it })
+
+        // progressive disclosure: the same record, expanded in place - no jump to
+        // a second, differently-shaped form (one canonical daily-log shape)
+        var swelling: Swelling? = null
+        var energy: Int? = null
+        var romEdit: android.widget.EditText? = null
+        var notesEdit: android.widget.EditText? = null
+        if (checkInExpanded) {
+            card.addView(Forms.label(a, "Swelling"))
+            card.addView(Forms.choiceRow(a, Swelling.values().toList(), { it.label }, null) { swelling = it })
+            card.addView(Forms.label(a, "Energy"))
+            card.addView(Forms.choiceRow(a, (1..5).toList(), { "$it" }, null) { energy = it })
+            card.addView(Forms.label(a, "Range of movement · only if your physio measured it"))
+            romEdit = Forms.editText(a, "", "e.g. plantarflexion 30°")
+            card.addView(romEdit)
+            card.addView(Forms.label(a, "Notes"))
+            notesEdit = Forms.editText(a, "", "Anything worth remembering", multiline = true)
+            card.addView(notesEdit)
+        }
+
         card.addView(Ui.fullWidth(Ui.button(a, "Save check-in") {
             val p = a.store.profile()
             // carry forward the boot/weight-bearing state so the day's record is complete
             a.store.saveDailyLog(log.copy(
                 pain = pain, mood = mood ?: log.mood,
+                swelling = swelling ?: log.swelling,
+                energy = energy ?: log.energy,
+                romNote = romEdit?.text?.toString()?.ifBlank { null } ?: log.romNote,
+                notes = notesEdit?.text?.toString()?.ifBlank { null } ?: log.notes,
                 wedges = log.wedges ?: p.currentWedges,
                 weightBearing = log.weightBearing ?: p.weightBearing))
+            checkInExpanded = false
             a.refresh()
         }, a))
-        card.addView(Ui.fullWidth(Ui.textButton(a, "Add more detail (swelling, ROM, notes)") {
-            a.show(MainActivity.Tab.TRACKER)
-        }, a, 2))
+        if (!checkInExpanded) {
+            card.addView(Ui.fullWidth(Ui.textButton(a, "Add more detail (swelling, energy, ROM, notes)") {
+                checkInExpanded = true
+                a.refresh()
+            }, a, 2))
+        }
         return card
     }
 

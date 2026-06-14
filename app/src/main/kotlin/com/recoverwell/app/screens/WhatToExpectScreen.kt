@@ -83,11 +83,11 @@ object WhatToExpectScreen {
             col.addView(Ui.section(a, r.title))
             val card = Ui.card(a)
             card.addView(Ui.text(a, r.body, 14.5f, Ui.TEXT))
-            card.addView(Ui.fullWidth(Ui.tonalButton(a, "Normal vs warning signs") {
-                a.pushOverlay { WellbeingScreen.build(a) }
+            card.addView(Ui.fullWidth(Ui.tonalButton(a, "How you're doing") {
+                a.pushOverlay("How you're doing") { WellbeingScreen.build(a) }
             }, a))
-            card.addView(Ui.fullWidth(Ui.textButton(a, "Open the red-flag guide", Ui.DANGER) {
-                a.pushOverlay { RedFlagsScreen.build(a) }
+            card.addView(Ui.fullWidth(Ui.textButton(a, "Open red flags", Ui.DANGER) {
+                a.pushOverlay("Red flags") { RedFlagsScreen.build(a) }
             }, a, 2))
             col.addView(card)
         }

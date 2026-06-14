@@ -18,37 +18,38 @@ import java.util.UUID
 /** Settings hub: every personal field is editable from here. */
 object MoreScreen {
 
+    // remembers whether the boot reduction-schedule disclosure is open
+    private var bootScheduleExpanded = false
+
     fun build(a: MainActivity): View {
         val col = Ui.column(a)
 
         col.addView(Ui.section(a, "My recovery"))
         col.addView(Ui.listRow(a, "ic_heart", "Injury & goal",
-            "Dates, side, boot plan, appointments") { a.pushOverlay { profileEditor(a) } })
+            "Dates, side, boot plan, appointments") { a.pushOverlay("Injury & goal") { profileEditor(a) } })
         col.addView(Ui.listRow(a, "ic_heart", "How you're doing",
-            "What's normal to feel, reassurance, milestones") { a.pushOverlay { WellbeingScreen.build(a) } })
+            "What's normal to feel, reassurance, milestones") { a.pushOverlay("How you're doing") { WellbeingScreen.build(a) } })
         col.addView(Ui.listRow(a, "ic_info", "What to expect",
-            "Plain-language guidance for this stage") { a.pushOverlay { WhatToExpectScreen.build(a) } })
+            "Plain-language guidance for this stage") { a.pushOverlay("What to expect") { WhatToExpectScreen.build(a) } })
         col.addView(Ui.listRow(a, "ic_exercises", "Stay fit",
-            "Keep-fit conditioning + a weekly goal") { a.pushOverlay { StayFitScreen.build(a) } })
+            "Keep-fit conditioning + a weekly goal") { a.pushOverlay("Stay fit") { StayFitScreen.build(a) } })
+        col.addView(Ui.listRow(a, "ic_info", "Ask my recovery",
+            "Can I drive yet? What's next? - answered offline") { a.pushOverlay("Ask my recovery") { AskScreen.build(a) } })
         col.addView(Ui.listRow(a, "ic_calendar", "Phase dates",
-            "Adjust timings agreed with your physio") { a.pushOverlay { phaseDatesEditor(a) } })
+            "Adjust timings agreed with your physio") { a.pushOverlay("Phase dates") { phaseDatesEditor(a) } })
         col.addView(Ui.listRow(a, "ic_edit", "Physio visits",
-            "Appointment pack, sign-offs and visit notes") { a.pushOverlay { PhysioScreen.build(a) } })
-        col.addView(Ui.listRow(a, "ic_pill", "Medications",
-            "Doses, times and reminders") { a.pushOverlay { medsEditor(a) } })
-        col.addView(Ui.listRow(a, "ic_bell", "Daily care reminders",
-            "Elevation, boot checks, circulation checks") { a.pushOverlay { tasksEditor(a) } })
-        val exTime = Reminders.parseTime(a.store.setting("exercise_reminder", "10:00"))
-        col.addView(Ui.listRow(a, "ic_exercises", "Exercise reminders",
-            if (exTime == null) "Off"
-            else "Daily nudge at %02d:%02d".format(exTime.hour, exTime.minute)) {
-            a.pushOverlay { exerciseReminderEditor(a) }
-        })
-        val ciTime = Reminders.parseTime(a.store.setting("checkin_reminder", "off"))
-        col.addView(Ui.listRow(a, "ic_pulse", "Daily check-in reminder",
-            if (ciTime == null) "Off"
-            else "Log how you feel at %02d:%02d".format(ciTime.hour, ciTime.minute)) {
-            a.pushOverlay { checkInReminderEditor(a) }
+            "Appointment pack, sign-offs and visit notes") { a.pushOverlay("Physio visits") { PhysioScreen.build(a) } })
+
+        // a single Reminders hub gathers medications, daily-care, exercise and
+        // check-in nudges and the reliability checker (previously four+ sibling rows)
+        col.addView(Ui.section(a, "Reminders"))
+        val blocked = com.recoverwell.app.notify.ReminderHealth.deliveryBlocked(a)
+        col.addView(Ui.listRow(a, "ic_bell", "Reminders",
+            if (blocked) "Action needed - reminders may not arrive"
+            else "Medications, daily care, exercises and check-ins",
+            iconTint = if (blocked) Ui.DANGER else Ui.PRIMARY,
+            iconBg = if (blocked) Ui.DANGER_BG else Ui.PRIMARY_CONTAINER) {
+            a.pushOverlay("Reminders") { remindersHub(a) }
         })
 
         col.addView(Ui.section(a, "Appearance"))
@@ -75,24 +76,12 @@ object MoreScreen {
             "that uses the network). \"Open YouTube\" hands off to the YouTube app instead."))
         col.addView(videoCard)
 
-        col.addView(Ui.section(a, "Notifications"))
-        val blocked = com.recoverwell.app.notify.ReminderHealth.deliveryBlocked(a)
-        val anyIssue = com.recoverwell.app.notify.ReminderHealth.hasIssue(a)
-        col.addView(Ui.listRow(a, "ic_bell", "Reminder reliability",
-            if (blocked) "Action needed - reminders may not arrive"
-            else if (anyIssue) "Mostly fine - one setting could be improved"
-            else "All clear - test it any time",
-            iconTint = if (blocked) Ui.DANGER else Ui.PRIMARY,
-            iconBg = if (blocked) Ui.DANGER_BG else Ui.PRIMARY_CONTAINER) {
-            a.pushOverlay { reminderHealth(a) }
-        })
-
         col.addView(Ui.section(a, "Safety & info"))
         col.addView(Ui.listRow(a, "ic_alert", "Red flags",
             "DVT, re-rupture, bleeding - know them cold",
-            iconTint = Ui.DANGER, iconBg = Ui.DANGER_BG) { a.pushOverlay { RedFlagsScreen.build(a) } })
+            iconTint = Ui.DANGER, iconBg = Ui.DANGER_BG) { a.pushOverlay("Red flags") { RedFlagsScreen.build(a) } })
         col.addView(Ui.listRow(a, "ic_info", "About & protocol sources",
-            "What this app is based on") { a.pushOverlay { about(a) } })
+            "What this app is based on") { a.pushOverlay("About") { about(a) } })
 
         col.addView(Ui.section(a, "Data"))
         val lastBackup = a.store.setting("last_backup", "")
@@ -106,11 +95,54 @@ object MoreScreen {
             else "Off · save a fresh copy daily, no action needed",
             iconTint = if (autoOn) Ui.PRIMARY else Ui.TEXT_DIM,
             iconBg = if (autoOn) Ui.PRIMARY_CONTAINER else Ui.SURFACE_HIGH) {
-            a.pushOverlay { autoBackupEditor(a) }
+            a.pushOverlay("Automatic backup") { autoBackupEditor(a) }
         })
         col.addView(Ui.listRow(a, "ic_export", "Full backup · JSON", "Everything, restorable") { a.exportBackup() })
         col.addView(Ui.listRow(a, "ic_restore", "Restore from backup", "Replaces all current data") { a.importBackup() })
+        col.addView(Ui.listRow(a, "ic_export", "PDF report", "Share progress with your physio") { a.exportPdf() })
+        col.addView(Ui.listRow(a, "ic_export", "Daily logs · CSV", "Spreadsheet-friendly") { a.exportLogsCsv() })
+        col.addView(Ui.listRow(a, "ic_export", "Medication & task log · CSV", "Adherence history") { a.exportEventsCsv() })
 
+        col.addView(Ui.spacer(a, 24))
+        return Ui.scroll(a, col)
+    }
+
+    // ------------------------------------------------------------------
+
+    /** One place for every reminder type, plus the reliability diagnostics. */
+    private fun remindersHub(a: MainActivity): View {
+        val col = Ui.column(a)
+        col.addView(Ui.backRow(a, "Reminders") { a.popOverlay() })
+        col.addView(Ui.caption(a, "Every nudge in one place. Each gets its own time, and logs " +
+            "taken/missed where that applies."))
+        col.addView(Ui.spacer(a, 4))
+
+        col.addView(Ui.listRow(a, "ic_pill", "Medications",
+            "Doses, times and reminders") { a.pushOverlay("Medications") { medsEditor(a) } })
+        col.addView(Ui.listRow(a, "ic_bell", "Daily care reminders",
+            "Elevation, boot checks, circulation checks") { a.pushOverlay("Daily care") { tasksEditor(a) } })
+        val exTime = Reminders.parseTime(a.store.setting("exercise_reminder", "10:00"))
+        col.addView(Ui.listRow(a, "ic_exercises", "Exercise reminders",
+            if (exTime == null) "Off"
+            else "Daily nudge at %02d:%02d".format(exTime.hour, exTime.minute)) {
+            a.pushOverlay("Exercise reminders") { exerciseReminderEditor(a) }
+        })
+        val ciTime = Reminders.parseTime(a.store.setting("checkin_reminder", "off"))
+        col.addView(Ui.listRow(a, "ic_pulse", "Daily check-in reminder",
+            if (ciTime == null) "Off"
+            else "Log how you feel at %02d:%02d".format(ciTime.hour, ciTime.minute)) {
+            a.pushOverlay("Daily check-in reminder") { checkInReminderEditor(a) }
+        })
+        val blocked = com.recoverwell.app.notify.ReminderHealth.deliveryBlocked(a)
+        val anyIssue = com.recoverwell.app.notify.ReminderHealth.hasIssue(a)
+        col.addView(Ui.listRow(a, "ic_bell", "Reminder reliability",
+            if (blocked) "Action needed - reminders may not arrive"
+            else if (anyIssue) "Mostly fine - one setting could be improved"
+            else "All clear - test it any time",
+            iconTint = if (blocked) Ui.DANGER else Ui.PRIMARY,
+            iconBg = if (blocked) Ui.DANGER_BG else Ui.PRIMARY_CONTAINER) {
+            a.pushOverlay("Reminder reliability") { reminderHealth(a) }
+        })
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
     }
@@ -266,26 +298,35 @@ object MoreScreen {
             if (device.kind != com.recoverwell.core.protocol.DeviceKind.CAST) {
                 val units = device.unitNamePlural
                 val step = device.plan.stepSize.coerceAtLeast(1)
+                // the common path is confirming today's setting once; the full
+                // reduction schedule is tucked behind a disclosure
                 bootCard.addView(Forms.stepper(a, "Setting now ($units)",
                     prof.currentWedges, 0, device.maxValue, step = step) { prof = prof.copy(currentWedges = it); onChange(prof) })
-                bootCard.addView(Forms.stepper(a, "Setting at start ($units)",
-                    prof.wedgePlan.initialWedges, 0, device.maxValue, step = step) {
-                    prof = prof.copy(wedgePlan = prof.wedgePlan.copy(initialWedges = it)); onChange(prof)
-                })
-                bootCard.addView(Forms.stepper(a, "Reduce by each change ($units)",
-                    prof.wedgePlan.stepSize, 1, device.maxValue) {
-                    prof = prof.copy(wedgePlan = prof.wedgePlan.copy(stepSize = it)); onChange(prof)
-                })
-                bootCard.addView(Forms.stepper(a, "First change · week", prof.wedgePlan.removalStartWeek, 1, 12) {
-                    prof = prof.copy(wedgePlan = prof.wedgePlan.copy(removalStartWeek = it)); onChange(prof)
-                })
-                bootCard.addView(Forms.stepper(a, "Days between changes", prof.wedgePlan.removalIntervalDays, 3, 28) {
-                    prof = prof.copy(wedgePlan = prof.wedgePlan.copy(removalIntervalDays = it)); onChange(prof)
-                })
-                bootCard.addView(Ui.spacer(a, 4))
-                bootCard.addView(Ui.caption(a, "Default: ${device.reductionVerb} by ${device.plan.stepSize} $units every " +
-                    "${device.plan.removalIntervalDays} days from week ${device.plan.removalStartWeek}. " +
-                    "Match whatever your clinic prescribed."))
+                bootCard.addView(Ui.fullWidth(Ui.textButton(a,
+                    if (bootScheduleExpanded) "Hide reduction schedule" else "Edit reduction schedule") {
+                    bootScheduleExpanded = !bootScheduleExpanded
+                    rebuildBootSettings(a, prof, bootCard, devicePickerCount, onChange)
+                }, a, 2))
+                if (bootScheduleExpanded) {
+                    bootCard.addView(Forms.stepper(a, "Setting at start ($units)",
+                        prof.wedgePlan.initialWedges, 0, device.maxValue, step = step) {
+                        prof = prof.copy(wedgePlan = prof.wedgePlan.copy(initialWedges = it)); onChange(prof)
+                    })
+                    bootCard.addView(Forms.stepper(a, "Reduce by each change ($units)",
+                        prof.wedgePlan.stepSize, 1, device.maxValue) {
+                        prof = prof.copy(wedgePlan = prof.wedgePlan.copy(stepSize = it)); onChange(prof)
+                    })
+                    bootCard.addView(Forms.stepper(a, "First change · week", prof.wedgePlan.removalStartWeek, 1, 12) {
+                        prof = prof.copy(wedgePlan = prof.wedgePlan.copy(removalStartWeek = it)); onChange(prof)
+                    })
+                    bootCard.addView(Forms.stepper(a, "Days between changes", prof.wedgePlan.removalIntervalDays, 3, 28) {
+                        prof = prof.copy(wedgePlan = prof.wedgePlan.copy(removalIntervalDays = it)); onChange(prof)
+                    })
+                    bootCard.addView(Ui.spacer(a, 4))
+                    bootCard.addView(Ui.caption(a, "Default: ${device.reductionVerb} by ${device.plan.stepSize} $units every " +
+                        "${device.plan.removalIntervalDays} days from week ${device.plan.removalStartWeek}. " +
+                        "Match whatever your clinic prescribed."))
+                }
             } else {
                 bootCard.addView(Ui.caption(a, "A cast can't be adjusted at home - your clinic re-sets the " +
                     "angle toward neutral at appointments, so there's no daily boot change to schedule."))
@@ -370,7 +411,7 @@ object MoreScreen {
             }
             card.addView(Ui.spacer(a, 4))
             val row = Ui.row(a)
-            row.addView(Ui.weight(Ui.textButton(a, "Edit") { a.pushOverlay { medEditor(a, med) } }, 1f))
+            row.addView(Ui.weight(Ui.textButton(a, "Edit") { a.pushOverlay(med.name.ifBlank { "Medication" }) { medEditor(a, med) } }, 1f))
             row.addView(Ui.weight(Ui.textButton(a, if (med.active) "Pause" else "Resume") {
                 a.store.saveMedications(a.store.medications().map {
                     if (it.id == med.id) it.copy(active = !it.active) else it
@@ -390,7 +431,7 @@ object MoreScreen {
         }
 
         col.addView(Ui.fullWidth(Ui.tonalButton(a, "Add medication") {
-            a.pushOverlay {
+            a.pushOverlay("New medication") {
                 medEditor(a, Medication(UUID.randomUUID().toString(), "", "", listOf(LocalTime.of(9, 0)), "", true))
             }
         }, a))
@@ -488,7 +529,7 @@ object MoreScreen {
             card.addView(Ui.caption(a, task.detail))
             card.addView(Ui.spacer(a, 4))
             val row = Ui.row(a)
-            row.addView(Ui.weight(Ui.textButton(a, "Edit") { a.pushOverlay { taskEditor(a, task) } }, 1f))
+            row.addView(Ui.weight(Ui.textButton(a, "Edit") { a.pushOverlay(task.title.ifBlank { "Task" }) { taskEditor(a, task) } }, 1f))
             row.addView(Ui.weight(Ui.textButton(a, if (task.active) "Turn off" else "Turn on") {
                 a.store.saveTasks(a.store.tasks().map {
                     if (it.id == task.id) it.copy(active = !it.active) else it
@@ -508,7 +549,7 @@ object MoreScreen {
         }
 
         col.addView(Ui.fullWidth(Ui.tonalButton(a, "Add custom task") {
-            a.pushOverlay {
+            a.pushOverlay("New task") {
                 taskEditor(a, RehabTask(
                     UUID.randomUUID().toString(), TaskKind.CUSTOM, "", "",
                     listOf(LocalTime.of(9, 0)), 1, 5, null, true

@@ -84,8 +84,8 @@ object WellbeingScreen {
                 card.addView(row)
             }
             col.addView(card)
-            col.addView(Ui.fullWidth(Ui.tonalButton(a, "See the full red-flag guide") {
-                a.pushOverlay { RedFlagsScreen.build(a) }
+            col.addView(Ui.fullWidth(Ui.tonalButton(a, "Open red flags") {
+                a.pushOverlay("Red flags") { RedFlagsScreen.build(a) }
             }, a))
         }
 

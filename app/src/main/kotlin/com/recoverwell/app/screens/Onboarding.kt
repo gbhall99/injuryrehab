@@ -3,6 +3,7 @@ package com.recoverwell.app.screens
 import android.view.View
 import com.recoverwell.app.MainActivity
 import com.recoverwell.app.notify.Reminders
+import com.recoverwell.app.ui.Forms
 import com.recoverwell.app.ui.Ui
 import com.recoverwell.core.protocol.ProtocolRegistry
 import com.recoverwell.core.protocol.RehabFramework
@@ -27,12 +28,13 @@ object Onboarding {
         col.addView(Ui.body(a, protocol.welcomeBlurb))
 
         col.addView(Ui.spacer(a, 12))
-        val disc = Ui.card(a, Ui.WARN_BG)
-        disc.addView(Ui.text(a, "Before you start", 16f, Ui.WARN, bold = true))
-        disc.addView(Ui.spacer(a, 4))
-        disc.addView(Ui.text(a, RehabFramework.DISCLAIMER, 14.5f))
-        col.addView(disc)
+        // one-line acknowledgement up front; the full disclaimer is one tap away
+        // (and stays permanently in the footer strip and About) so the first
+        // screen is a light read, not a wall of cards
+        col.addView(Ui.text(a, "RecoverWell supports - never replaces - your physio and consultant.",
+            14.5f, Ui.TEXT_DIM))
 
+        col.addView(Ui.spacer(a, 12))
         val safety = Ui.card(a, Ui.DANGER_BG)
         val sr = Ui.row(a)
         sr.addView(Ui.iconBadge(a, "ic_alert", Ui.DANGER, 0x14B3261E, boxDp = 36))
@@ -42,10 +44,14 @@ object Onboarding {
         safety.addView(sr)
         safety.addView(Ui.spacer(a, 6))
         safety.addView(Ui.text(a, protocol.safetyBlurb, 14.5f, Ui.ON_DANGER_BG))
-        safety.addView(Ui.fullWidth(Ui.dangerButton(a, "Read the red flags") {
-            a.pushOverlay { RedFlagsScreen.build(a) }
+        safety.addView(Ui.fullWidth(Ui.dangerButton(a, "Open red flags") {
+            a.pushOverlay("Red flags") { RedFlagsScreen.build(a) }
         }, a))
         col.addView(safety)
+
+        col.addView(Ui.fullWidth(Ui.textButton(a, "Read the full disclaimer") {
+            Forms.info(a, "Medical disclaimer", RehabFramework.DISCLAIMER)
+        }, a, 4))
 
         col.addView(Ui.spacer(a, 12))
         col.addView(Ui.fullWidth(Ui.button(a, "I understand - continue") {

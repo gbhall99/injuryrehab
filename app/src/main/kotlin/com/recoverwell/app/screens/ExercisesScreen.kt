@@ -78,7 +78,7 @@ object ExercisesScreen {
                 meta + if (o?.enabled == false) " · disabled" else "",
                 iconTint = if (locked) Ui.TEXT_DIM else Ui.PRIMARY,
                 iconBg = if (locked) Ui.SURFACE_HIGH else Ui.PRIMARY_CONTAINER
-            ) { a.pushOverlay { exerciseDetail(a, spec, null) } }
+            ) { a.pushOverlay(spec.name) { exerciseDetail(a, spec, null) } }
             col.addView(row)
         }
 
