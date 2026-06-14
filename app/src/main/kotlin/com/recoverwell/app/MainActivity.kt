@@ -227,6 +227,11 @@ class MainActivity : Activity() {
         appBar.visibility = if (onboarding) View.GONE else View.VISIBLE
         appBarTitle.text = if (overlays.isNotEmpty())
             (overlayTitles.lastOrNull() ?: currentTab.label) else currentTab.label
+        // an in-place refresh (e.g. checking an item off) rebuilds the screen, which
+        // would otherwise jump the scroll to the top - capture and restore it so the
+        // user's attention stays where they acted. Navigation (animated) resets to top.
+        val priorScrollY = if (!animated)
+            (if (content.childCount > 0) findScroll(content.getChildAt(0))?.scrollY ?: 0 else 0) else 0
         for (i in 0 until content.childCount) content.getChildAt(i).animate().cancel()
         content.removeAllViews()
         val view = try {
@@ -250,7 +255,19 @@ class MainActivity : Activity() {
                 .setDuration(220L)
                 .setInterpolator(android.view.animation.DecelerateInterpolator())
                 .start()
+        } else if (priorScrollY > 0) {
+            // restore the scroll position so an in-place action keeps its place
+            findScroll(view)?.let { sv -> sv.post { sv.scrollTo(0, priorScrollY) } }
         }
+    }
+
+    /** First ScrollView in a subtree, used to preserve scroll across refreshes. */
+    private fun findScroll(v: View?): android.widget.ScrollView? {
+        if (v is android.widget.ScrollView) return v
+        if (v is ViewGroup) for (i in 0 until v.childCount) {
+            findScroll(v.getChildAt(i))?.let { return it }
+        }
+        return null
     }
 
     private fun errorScreen(t: Throwable): View {

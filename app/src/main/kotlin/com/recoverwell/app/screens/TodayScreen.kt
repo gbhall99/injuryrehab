@@ -254,11 +254,13 @@ object TodayScreen {
                 val total = sessions.size
                 val done = sessions.count { it.isDone }
                 val baseTitle = first.title.substringBefore("  (").trim()
-                val subtitle = first.subtitle + if (total > 1) " · $done/$total done today" else ""
-                col.addView(Ui.checkRow(a, baseTitle, subtitle, null, done == total, null) {
-                    // act on the next not-done session; if all are done, undo the last
-                    onItemTapped(a, sessions.firstOrNull { !it.isDone } ?: sessions.last())
-                })
+                val tap = { onItemTapped(a, sessions.firstOrNull { !it.isDone } ?: sessions.last()) }
+                if (total > 1) {
+                    // bullet-chart pill shaded to % complete
+                    col.addView(Ui.progressRow(a, baseTitle, first.subtitle, done, total) { tap() })
+                } else {
+                    col.addView(Ui.checkRow(a, baseTitle, first.subtitle, null, done == total, null) { tap() })
+                }
             }
         }
         addGroup("Medication", setOf(ScheduleEngine.ItemKind.MEDICATION))
