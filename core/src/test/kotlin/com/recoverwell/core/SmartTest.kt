@@ -14,9 +14,9 @@ class SmartTest {
 
     private val injury = LocalDate.of(2026, 6, 2)
     private val today = injury.plusDays(40)
-    private val profile = Defaults.profile()
-    private val meds = Defaults.medications()
-    private val tasks = Defaults.tasks()
+    private val profile = Fixtures.profile()
+    private val meds = Fixtures.medications()
+    private val tasks = Fixtures.tasks()
 
     private fun log(d: LocalDate, pain: Int? = null, swelling: Swelling? = null) =
         DailyLog.empty(d).copy(pain = pain, swelling = swelling)

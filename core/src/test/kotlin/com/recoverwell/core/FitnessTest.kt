@@ -13,15 +13,15 @@ import java.util.UUID
 class FitnessTest {
 
     private val injury = LocalDate.of(2026, 1, 1)
-    private val meds = Defaults.medications()
-    private val tasks = Defaults.tasks()
+    private val meds = Fixtures.medications()
+    private val tasks = Fixtures.tasks()
 
     private fun fitnessEvent(d: LocalDate) =
         EventLog(UUID.randomUUID().toString(), d, EventType.EXERCISE, Fitness.SESSION_REF, "session", EventStatus.DONE, 600)
 
     @Test
     fun earlyPhaseExcludesOutOfBootActivities() {
-        val p = Defaults.profile().copy(injuryDate = injury, physioConfirmedPhase = 1)
+        val p = Fixtures.profile().copy(injuryDate = injury, physioConfirmedPhase = 1)
         val avail = Fitness.available(p, injury.plusDays(3))
         assertTrue(avail.isNotEmpty())
         assertTrue("no phase-3+ activities in phase 1", avail.all { it.minPhase <= 1 })
@@ -30,7 +30,7 @@ class FitnessTest {
 
     @Test
     fun laterPhaseUnlocksMoreActivities() {
-        val p = Defaults.profile().copy(injuryDate = injury, physioConfirmedPhase = 4)
+        val p = Fixtures.profile().copy(injuryDate = injury, physioConfirmedPhase = 4)
         val avail = Fitness.available(p, injury.plusWeeks(30))
         assertTrue(avail.any { it.id == "f_bike" })
         assertTrue(avail.any { it.id == "f_gym" })
@@ -46,7 +46,7 @@ class FitnessTest {
     @Test
     fun conditioningSessionsDoNotInflateRehabExerciseCount() {
         val today = injury.plusWeeks(20)
-        val profile = Defaults.profile().copy(injuryDate = injury)
+        val profile = Fixtures.profile().copy(injuryDate = injury)
         val events = listOf(
             EventLog("a", today, EventType.EXERCISE, "p4_real_exercise", "session1", EventStatus.DONE, 600),
             fitnessEvent(today),

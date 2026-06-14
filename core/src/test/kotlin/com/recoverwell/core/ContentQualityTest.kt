@@ -67,7 +67,7 @@ class ContentQualityTest {
             rf.symptoms.forEach { sb.append(it).append('\n') }
         }
         val state = AppState(
-            Defaults.profile(), Defaults.medications(), Defaults.tasks(),
+            Fixtures.profile(), Fixtures.medications(), Fixtures.tasks(),
             emptyMap(), emptyList(), emptyList()
         )
         sb.append(BackupCodec.encode(state))
@@ -115,7 +115,7 @@ class ContentQualityTest {
 
     @Test
     fun defaultsMatchPersonalData() {
-        val p = Defaults.profile()
+        val p = Fixtures.profile()
         assertEquals("2026-06-02", p.injuryDate.toString())
         assertEquals("LEFT", p.side.name)
         assertEquals("CONSERVATIVE_NON_SURGICAL", p.pathway.name)
@@ -123,7 +123,7 @@ class ContentQualityTest {
         assertTrue(p.appointments.first().completed)
         assertTrue(p.goal.contains("padel"))
 
-        val med = Defaults.medications().single()
+        val med = Fixtures.medications().single()
         assertEquals("2.5 mg", med.dose)
         assertEquals(2, med.times.size)
         assertEquals(listOf("08:00", "20:00"), med.times.map { it.toString() })
