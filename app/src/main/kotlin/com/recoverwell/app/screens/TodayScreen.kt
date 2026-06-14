@@ -162,11 +162,11 @@ object TodayScreen {
                 "A week of recovery data and no backup yet. One tap saves it to a file you control.",
                 "Back up now", TONE_INFO) { a.exportBackup() })
         }
-        // physio appointment prep / capture
+        // physio appointment prep / capture / re-book
         run {
-            val soon = profile.appointments.filter { !it.completed && !it.date.isBefore(today) &&
-                it.date.isBefore(today.plusDays(4)) }.minByOrNull { it.date }
-            val toCapture = profile.appointments.filter { !it.completed && it.date.isBefore(today) }.maxByOrNull { it.date }
+            val outlook = com.recoverwell.core.logic.Appointments.outlook(profile.appointments, today)
+            val soon = outlook.next?.takeIf { it.date.isBefore(today.plusDays(4)) }
+            val toCapture = outlook.overdue.maxByOrNull { it.date }
             if (soon != null) {
                 val days = java.time.temporal.ChronoUnit.DAYS.between(today, soon.date)
                 prompts.add(Prompt(12, "ic_calendar",
@@ -177,6 +177,10 @@ object TodayScreen {
                 prompts.add(Prompt(13, "ic_edit", "How did your appointment go?",
                     "Capture what your physio said so your plan stays in sync.",
                     "Capture the visit", TONE_INFO) { a.pushOverlay("Physio visits") { PhysioScreen.build(a) } })
+            } else if (outlook.needsRebooking) {
+                prompts.add(Prompt(14, "ic_calendar", "Book your next physio visit",
+                    "Your last appointment is done and nothing's scheduled - line up the next one to keep your plan moving.",
+                    "Add appointment", TONE_INFO) { a.pushOverlay("Physio visits") { PhysioScreen.build(a) } })
             }
             Unit
         }
