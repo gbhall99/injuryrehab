@@ -182,25 +182,20 @@ val zipalignApk by tasks.registering(Exec::class) {
     commandLine("zipalign", "-f", "4", "recoverwell-unsigned.apk", "recoverwell-aligned.apk")
 }
 
-val generateKeystore by tasks.registering(Exec::class) {
-    val ks = apkDir.map { it.file("debug.keystore") }
-    outputs.file(ks)
-    onlyIf { !ks.get().asFile.exists() }
-    doFirst { apkDir.get().asFile.mkdirs() }
-    commandLine(
-        "keytool", "-genkeypair", "-keystore", ks.get().asFile.toString(),
-        "-alias", "debug", "-storepass", "android", "-keypass", "android",
-        "-dname", "CN=RecoverWell Debug", "-keyalg", "RSA", "-keysize", "2048",
-        "-validity", "10000"
-    )
-}
+// A fixed debug keystore is committed at app/signing/debug.keystore so every
+// build signs with the SAME identity. This lets a new APK install straight over
+// a previously installed one - a freshly generated key per build would change
+// the signature and make Android reject the update ("App not installed").
+// Debug-only key: not for Play Store / release distribution.
+val signingKeystore = file("signing/debug.keystore")
 
 val assembleApk by tasks.registering(Exec::class) {
-    dependsOn(zipalignApk, generateKeystore)
+    dependsOn(zipalignApk)
+    inputs.file(signingKeystore)
     workingDir(apkDir)
     commandLine(
         "apksigner", "sign",
-        "--ks", "debug.keystore", "--ks-pass", "pass:android", "--key-pass", "pass:android",
+        "--ks", signingKeystore.absolutePath, "--ks-pass", "pass:android", "--key-pass", "pass:android",
         "--out", "recoverwell-debug.apk", "recoverwell-aligned.apk"
     )
     doLast {
