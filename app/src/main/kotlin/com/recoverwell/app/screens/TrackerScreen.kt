@@ -17,17 +17,36 @@ import com.recoverwell.draw.ChartScene
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-/** Daily log entry, trend charts, milestone timeline and export. */
+/** Daily log entry up front; trends, pace, insights and milestones under Review. */
 object TrackerScreen {
 
     private var chartMetric = "Pain"
     private var selectedDate: LocalDate? = null
+    // "Log" (the daily task) is primary; "Review" holds the analytics so the
+    // screen is no longer one long wall of forms and charts
+    private var section = "Log"
+
+    /** Open the Progress tab straight onto the analytics view (e.g. from Today). */
+    fun openReview() { section = "Review" }
 
     fun build(a: MainActivity): View {
         val today = LocalDate.now()
         val day = (selectedDate ?: today).coerceAtMost(today)
         val col = Ui.column(a)
 
+        col.addView(Forms.choiceRow(a, listOf("Log", "Review"), { it }, section) {
+            section = it; a.refresh()
+        })
+        col.addView(Ui.spacer(a, 6))
+
+        if (section == "Log") buildLog(a, today, day, col) else buildReview(a, today, col)
+
+        col.addView(Ui.spacer(a, 24))
+        return Ui.scroll(a, col)
+    }
+
+    /** The daily log: the primary, every-day task. */
+    private fun buildLog(a: MainActivity, today: LocalDate, day: LocalDate, col: LinearLayout) {
         // ---- daily log: any day is editable (review-mined: backfill matters) ----
         col.addView(Ui.section(a, if (day == today) "Today's log" else "Log · earlier day"))
         val nav = Ui.row(a)
@@ -110,7 +129,10 @@ object TrackerScreen {
             a.refresh()
         }, a))
         col.addView(form)
+    }
 
+    /** The review surfaces: trends, pace, return-to-sport, insights, milestones. */
+    private fun buildReview(a: MainActivity, today: LocalDate, col: LinearLayout) {
         // ---- this week (weekly digest) ----
         val logs = a.store.allLogs()
         run {
@@ -224,7 +246,7 @@ object TrackerScreen {
             col.addView(Ui.listRow(a, "ic_flag", rts.returnPhrase,
                 if (rts.available) "$cleared of ${rts.rungs.size} stages cleared · ${rts.readinessPct}% ready"
                 else "Objective self-tests unlock around phase ${rts.startPhase}") {
-                a.pushOverlay { ReturnToSportScreen.build(a) }
+                a.pushOverlay(rts.returnPhrase) { ReturnToSportScreen.build(a) }
             })
         }
 
@@ -283,18 +305,7 @@ object TrackerScreen {
             timeline.addView(row)
         }
         col.addView(timeline)
-
-        // ---- export ----
-        col.addView(Ui.section(a, "Export & backup"))
-        col.addView(Ui.caption(a, "Everything stays on this phone unless you export it."))
         col.addView(Ui.spacer(a, 6))
-        col.addView(Ui.listRow(a, "ic_export", "PDF report", "Share progress with your physio") { a.exportPdf() })
-        col.addView(Ui.listRow(a, "ic_export", "Daily logs · CSV", "Spreadsheet-friendly") { a.exportLogsCsv() })
-        col.addView(Ui.listRow(a, "ic_export", "Medication & task log · CSV", "Adherence history") { a.exportEventsCsv() })
-        col.addView(Ui.listRow(a, "ic_export", "Full backup · JSON", "Everything, restorable") { a.exportBackup() })
-        col.addView(Ui.listRow(a, "ic_restore", "Restore from backup", "Replaces all current data") { a.importBackup() })
-
-        col.addView(Ui.spacer(a, 24))
-        return Ui.scroll(a, col)
+        col.addView(Ui.caption(a, "Export a PDF, CSV or full backup any time from More › Data."))
     }
 }

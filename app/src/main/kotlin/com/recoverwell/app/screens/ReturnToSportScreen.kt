@@ -110,7 +110,7 @@ object ReturnToSportScreen {
         col.addView(Ui.spacer(a, 6))
         col.addView(Ui.listRow(a, "ic_alert", "Red flags",
             "New snap, calf pain, swelling - check before pushing on",
-            iconTint = Ui.DANGER, iconBg = Ui.DANGER_BG) { a.pushOverlay { RedFlagsScreen.build(a) } })
+            iconTint = Ui.DANGER, iconBg = Ui.DANGER_BG) { a.pushOverlay("Red flags") { RedFlagsScreen.build(a) } })
 
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)

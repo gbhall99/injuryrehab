@@ -29,7 +29,7 @@ class MainActivity : Activity() {
         EXERCISES("Exercises", "ic_exercises"),
         TRACKER("Progress", "ic_progress"),
         TWIN("My leg", "ic_leg"),
-        MORE("Settings", "ic_more")
+        MORE("More", "ic_more")
     }
 
     lateinit var store: Store
@@ -39,6 +39,9 @@ class MainActivity : Activity() {
     private lateinit var appBarTitle: android.widget.TextView
     var currentTab = Tab.TODAY
     private val overlays = ArrayList<() -> View>()
+    // each overlay's own title for the app bar (null falls back to the tab name,
+    // so the bar never shows a generic "RecoverWell" over a named screen)
+    private val overlayTitles = ArrayList<String?>()
 
     private var pendingExport: ByteArray? = null
     private var pendingExportToast = ""
@@ -80,7 +83,7 @@ class MainActivity : Activity() {
         appBarTitle = Ui.display(this, Tab.TODAY.label)
         appBar.addView(Ui.weight(appBarTitle, 1f))
         appBar.addView(Ui.iconButton(this, "ic_alert", Ui.DANGER, Ui.DANGER_BG, desc = "Red flags - urgent symptoms") {
-            pushOverlay { RedFlagsScreen.build(this) }
+            pushOverlay("Red flags") { RedFlagsScreen.build(this) }
         })
         root.addView(appBar)
 
@@ -194,18 +197,23 @@ class MainActivity : Activity() {
     fun show(tab: Tab) {
         currentTab = tab
         overlays.clear()
+        overlayTitles.clear()
         render(animated = true)
     }
 
     fun refresh() = render(animated = false)
 
-    fun pushOverlay(factory: () -> View) {
+    fun pushOverlay(title: String? = null, factory: () -> View) {
         overlays.add(factory)
+        overlayTitles.add(title)
         render(animated = true)
     }
 
     fun popOverlay() {
-        if (overlays.isNotEmpty()) overlays.removeAt(overlays.size - 1)
+        if (overlays.isNotEmpty()) {
+            overlays.removeAt(overlays.size - 1)
+            overlayTitles.removeAt(overlayTitles.size - 1)
+        }
         render(animated = true)
     }
 
@@ -214,7 +222,8 @@ class MainActivity : Activity() {
         val onboarding = onboardingActive()
         tabBar.visibility = if (onboarding) View.GONE else View.VISIBLE
         disclaimer.visibility = if (onboarding) View.GONE else View.VISIBLE
-        appBarTitle.text = if (overlays.isNotEmpty()) "RecoverWell" else currentTab.label
+        appBarTitle.text = if (overlays.isNotEmpty())
+            (overlayTitles.lastOrNull() ?: currentTab.label) else currentTab.label
         for (i in 0 until content.childCount) content.getChildAt(i).animate().cancel()
         content.removeAllViews()
         val view = try {

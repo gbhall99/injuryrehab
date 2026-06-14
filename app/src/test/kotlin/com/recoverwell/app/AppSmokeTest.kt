@@ -69,6 +69,10 @@ class ScreensSmokeTest : SmokeBase() {
         activity.show(MainActivity.Tab.TRACKER)
         texts = allText(activity.window.decorView).joinToString("\n")
         assertTrue(texts.has("Today's log"))
+        // analytics (milestones, trends, pace) now live under the Review toggle
+        com.recoverwell.app.screens.TrackerScreen.openReview()
+        activity.refresh()
+        texts = allText(activity.window.decorView).joinToString("\n")
         assertTrue(texts.has("Milestones"))
 
         activity.show(MainActivity.Tab.TWIN)
@@ -78,7 +82,8 @@ class ScreensSmokeTest : SmokeBase() {
 
         activity.show(MainActivity.Tab.MORE)
         texts = allText(activity.window.decorView).joinToString("\n")
-        assertTrue(texts.has("Medications"))
+        // reminders (including Medications) are reached via the single Reminders hub
+        assertTrue(texts.has("Reminders"))
     }
 
 }

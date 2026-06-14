@@ -43,7 +43,7 @@ object PhysioScreen {
             apptCard.addView(Ui.text(a, "Next: ${upcoming.label}", 15.5f, Ui.TEXT, bold = true))
             apptCard.addView(Ui.caption(a, "${upcoming.date} · in ${java.time.temporal.ChronoUnit.DAYS.between(today, upcoming.date)} days"))
             apptCard.addView(Ui.fullWidth(Ui.tonalButton(a, "Mark done & capture") {
-                completeAppointment(a, upcoming); a.pushOverlay { captureNote(a) }
+                completeAppointment(a, upcoming); a.pushOverlay("Visit note") { captureNote(a) }
             }, a))
         } else {
             apptCard.addView(Ui.text(a, "No upcoming appointment scheduled", 14.5f, Ui.TEXT))
@@ -52,7 +52,7 @@ object PhysioScreen {
             apptCard.addView(Ui.divider(a))
             apptCard.addView(Ui.text(a, "Was: ${o.label} · ${o.date}", 14f, Ui.WARN, bold = true))
             apptCard.addView(Ui.fullWidth(Ui.tonalButton(a, "How did it go? Capture it") {
-                completeAppointment(a, o); a.pushOverlay { captureNote(a) }
+                completeAppointment(a, o); a.pushOverlay("Visit note") { captureNote(a) }
             }, a))
         }
         // quick add
@@ -168,11 +168,11 @@ object PhysioScreen {
             })
         }
         col.addView(Ui.listRow(a, "ic_calendar", "Adjust phase dates",
-            "If your physio re-timed a phase") { a.pushOverlay { MoreScreen.phaseDatesEditor(a) } })
+            "If your physio re-timed a phase") { a.pushOverlay("Phase dates") { MoreScreen.phaseDatesEditor(a) } })
         col.addView(Ui.listRow(a, "ic_boot", "Adjust boot / injury plan",
-            "Boot angle, schedule, weight-bearing") { a.pushOverlay { MoreScreen.profileEditor(a) } })
+            "Boot angle, schedule, weight-bearing") { a.pushOverlay("Injury & goal") { MoreScreen.profileEditor(a) } })
         col.addView(Ui.listRow(a, "ic_edit", "Add a visit note",
-            "What your physio said - kept in your backup") { a.pushOverlay { captureNote(a) } })
+            "What your physio said - kept in your backup") { a.pushOverlay("Visit note") { captureNote(a) } })
 
         // ---- visit notes history -------------------------------------------
         val notes = a.store.physioNotes().sortedByDescending { it.date }
