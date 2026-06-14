@@ -26,7 +26,10 @@ enum class Swelling(val score: Int, val label: String) {
 data class Appointment(
     val date: LocalDate,
     val label: String,
-    val completed: Boolean
+    val completed: Boolean,
+    /** Stable identity so completing/removing one targets exactly that entry.
+     *  Blank on legacy backups predating the field; matched by date+label then. */
+    val id: String = ""
 )
 
 /**

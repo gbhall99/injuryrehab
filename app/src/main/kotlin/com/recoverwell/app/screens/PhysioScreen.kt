@@ -9,6 +9,7 @@ import com.recoverwell.app.MainActivity
 import com.recoverwell.app.notify.Reminders
 import com.recoverwell.app.ui.Forms
 import com.recoverwell.app.ui.Ui
+import com.recoverwell.core.logic.Appointments
 import com.recoverwell.core.logic.PhaseEngine
 import com.recoverwell.core.logic.PhysioPrep
 import com.recoverwell.core.logic.ReturnToSport
@@ -35,25 +36,38 @@ object PhysioScreen {
 
         // ---- appointments ---------------------------------------------------
         col.addView(Ui.section(a, "Appointments"))
-        val appts = profile.appointments.sortedBy { it.date }
-        val upcoming = appts.filter { !it.completed && !it.date.isBefore(today) }.minByOrNull { it.date }
-        val overdue = appts.filter { !it.completed && it.date.isBefore(today) }
+        val outlook = Appointments.outlook(profile.appointments, today)
         val apptCard = Ui.card(a)
+        val upcoming = outlook.next
         if (upcoming != null) {
             apptCard.addView(Ui.text(a, "Next: ${upcoming.label}", 15.5f, Ui.TEXT, bold = true))
             apptCard.addView(Ui.caption(a, "${upcoming.date} · in ${java.time.temporal.ChronoUnit.DAYS.between(today, upcoming.date)} days"))
             apptCard.addView(Ui.fullWidth(Ui.tonalButton(a, "Mark done & capture") {
                 completeAppointment(a, upcoming); a.pushOverlay("Visit note") { captureNote(a) }
             }, a))
+            apptCard.addView(Ui.fullWidth(Ui.textButton(a, "Remove this appointment") {
+                Forms.confirm(a, "Remove appointment?", "\"${upcoming.label}\" on ${upcoming.date} will be deleted.") {
+                    deleteAppointment(a, upcoming); a.refresh()
+                }
+            }, a, 4))
+        } else if (outlook.needsRebooking) {
+            apptCard.addView(Ui.text(a, "Time to book your next visit", 15.5f, Ui.TEXT, bold = true))
+            apptCard.addView(Ui.caption(a, "Your last appointment is done and nothing's in the diary - " +
+                "add the next one below so you don't lose momentum."))
         } else {
             apptCard.addView(Ui.text(a, "No upcoming appointment scheduled", 14.5f, Ui.TEXT))
         }
-        for (o in overdue) {
+        for (o in outlook.overdue) {
             apptCard.addView(Ui.divider(a))
             apptCard.addView(Ui.text(a, "Was: ${o.label} · ${o.date}", 14f, Ui.WARN, bold = true))
             apptCard.addView(Ui.fullWidth(Ui.tonalButton(a, "How did it go? Capture it") {
                 completeAppointment(a, o); a.pushOverlay("Visit note") { captureNote(a) }
             }, a))
+            apptCard.addView(Ui.fullWidth(Ui.textButton(a, "Remove this appointment") {
+                Forms.confirm(a, "Remove appointment?", "\"${o.label}\" on ${o.date} will be deleted.") {
+                    deleteAppointment(a, o); a.refresh()
+                }
+            }, a, 4))
         }
         // quick add
         var newDate = today.plusWeeks(2)
@@ -64,7 +78,8 @@ object PhysioScreen {
         apptCard.addView(Ui.fullWidth(Ui.textButton(a, "Add appointment") {
             val label = newLabel.text.toString().ifBlank { "Physio review" }
             a.store.saveProfile(a.store.profile().copy(
-                appointments = a.store.profile().appointments + Appointment(newDate, label, false)))
+                appointments = a.store.profile().appointments +
+                    Appointment(newDate, label, false, UUID.randomUUID().toString())))
             a.refresh()
         }, a, 4))
         col.addView(apptCard)
@@ -243,9 +258,20 @@ object PhysioScreen {
     private fun completeAppointment(a: MainActivity, appt: Appointment) {
         a.store.saveProfile(a.store.profile().copy(
             appointments = a.store.profile().appointments.map {
-                if (it.date == appt.date && it.label == appt.label) it.copy(completed = true) else it
+                if (it.matches(appt)) it.copy(completed = true) else it
             }))
+        a.refresh()
     }
+
+    private fun deleteAppointment(a: MainActivity, appt: Appointment) {
+        a.store.saveProfile(a.store.profile().copy(
+            appointments = a.store.profile().appointments.filterNot { it.matches(appt) }))
+    }
+
+    /** Prefer the stable id; fall back to date+label for legacy entries without one. */
+    private fun Appointment.matches(other: Appointment): Boolean =
+        if (id.isNotBlank() || other.id.isNotBlank()) id == other.id
+        else date == other.date && label == other.label
 
     private fun captureNote(a: MainActivity): View {
         val col = Ui.column(a)
