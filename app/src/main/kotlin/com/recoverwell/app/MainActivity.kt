@@ -35,6 +35,7 @@ class MainActivity : Activity() {
     lateinit var store: Store
     private lateinit var content: FrameLayout
     private lateinit var tabBar: LinearLayout
+    private lateinit var appBar: LinearLayout
     private lateinit var disclaimer: android.widget.TextView
     private lateinit var appBarTitle: android.widget.TextView
     var currentTab = Tab.TODAY
@@ -76,7 +77,7 @@ class MainActivity : Activity() {
         }
 
         // app bar: large title + always-one-tap red flags
-        val appBar = Ui.row(this).apply {
+        appBar = Ui.row(this).apply {
             setPadding(Ui.dp(this@MainActivity, 20), Ui.dp(this@MainActivity, 14),
                 Ui.dp(this@MainActivity, 12), Ui.dp(this@MainActivity, 6))
         }
@@ -220,8 +221,10 @@ class MainActivity : Activity() {
     private fun render(animated: Boolean) {
         rebuildTabBar()
         val onboarding = onboardingActive()
+        // onboarding is a clean, full-screen modal flow: hide all the app chrome
         tabBar.visibility = if (onboarding) View.GONE else View.VISIBLE
         disclaimer.visibility = if (onboarding) View.GONE else View.VISIBLE
+        appBar.visibility = if (onboarding) View.GONE else View.VISIBLE
         appBarTitle.text = if (overlays.isNotEmpty())
             (overlayTitles.lastOrNull() ?: currentTab.label) else currentTab.label
         for (i in 0 until content.childCount) content.getChildAt(i).animate().cancel()

@@ -1,6 +1,7 @@
 package com.recoverwell.app.screens
 
 import android.view.View
+import android.widget.LinearLayout
 import com.recoverwell.app.MainActivity
 import com.recoverwell.app.notify.Reminders
 import com.recoverwell.app.ui.Forms
@@ -73,10 +74,12 @@ object Onboarding {
             a, "Tell us about your injury and what you're working back to. Pick your " +
                 "side and injury date - everything else can be adjusted later in More."))
         col.addView(banner)
+        // the editor is a ScrollView: give it the remaining height (weight) so it
+        // scrolls within itself, instead of overflowing and overlapping the banner
         col.addView(MoreScreen.profileEditor(a) {
             a.popOverlay()
             a.pushOverlay { stepMeds(a) }
-        })
+        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         return col
     }
 
@@ -113,7 +116,7 @@ object Onboarding {
             a.store.saveProfile(a.store.profile().copy(onboardingComplete = true))
             Reminders.reschedule(a)
             a.show(MainActivity.Tab.TODAY)
-        })
+        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         return col
     }
 }
