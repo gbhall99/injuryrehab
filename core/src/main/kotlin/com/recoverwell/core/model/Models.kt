@@ -29,7 +29,9 @@ data class Appointment(
     val completed: Boolean,
     /** Stable identity so completing/removing one targets exactly that entry.
      *  Blank on legacy backups predating the field; matched by date+label then. */
-    val id: String = ""
+    val id: String = "",
+    /** Who the appointment is with, e.g. "Mr Patel (consultant)". Optional. */
+    val withWhom: String = ""
 )
 
 /**

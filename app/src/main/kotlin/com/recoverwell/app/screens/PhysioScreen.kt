@@ -38,48 +38,50 @@ object PhysioScreen {
         col.addView(Ui.section(a, "Appointments"))
         val outlook = Appointments.outlook(profile.appointments, today)
         val apptCard = Ui.card(a)
-        val upcoming = outlook.next
-        if (upcoming != null) {
-            apptCard.addView(Ui.text(a, "Next: ${upcoming.label}", 15.5f, Ui.TEXT, bold = true))
-            apptCard.addView(Ui.caption(a, "${upcoming.date} · in ${java.time.temporal.ChronoUnit.DAYS.between(today, upcoming.date)} days"))
-            apptCard.addView(Ui.fullWidth(Ui.tonalButton(a, "Mark done & capture") {
-                completeAppointment(a, upcoming); a.pushOverlay("Visit note") { captureNote(a) }
-            }, a))
-            apptCard.addView(Ui.fullWidth(Ui.textButton(a, "Remove this appointment") {
-                Forms.confirm(a, "Remove appointment?", "\"${upcoming.label}\" on ${upcoming.date} will be deleted.") {
-                    deleteAppointment(a, upcoming); a.refresh()
-                }
-            }, a, 4))
-        } else if (outlook.needsRebooking) {
+        val upcoming = profile.appointments.filter { !it.completed && !it.date.isBefore(today) }.sortedBy { it.date }
+        if (upcoming.isEmpty() && outlook.needsRebooking) {
             apptCard.addView(Ui.text(a, "Time to book your next visit", 15.5f, Ui.TEXT, bold = true))
             apptCard.addView(Ui.caption(a, "Your last appointment is done and nothing's in the diary - " +
                 "add the next one below so you don't lose momentum."))
-        } else {
+        } else if (upcoming.isEmpty()) {
             apptCard.addView(Ui.text(a, "No upcoming appointment scheduled", 14.5f, Ui.TEXT))
+        }
+        upcoming.forEachIndexed { i, appt ->
+            if (i > 0) apptCard.addView(Ui.divider(a))
+            val days = java.time.temporal.ChronoUnit.DAYS.between(today, appt.date)
+            val prefix = if (i == 0) "Next: " else ""
+            apptCard.addView(Ui.text(a, "$prefix${appt.label}", 15.5f, Ui.TEXT, bold = true))
+            apptCard.addView(Ui.caption(a, "${appt.date} · " +
+                (if (days == 0L) "today" else "in $days day${if (days == 1L) "" else "s"}") +
+                (if (appt.withWhom.isNotBlank()) " · with ${appt.withWhom}" else "")))
+            apptCard.addView(Ui.fullWidth(Ui.tonalButton(a, "Mark done & capture") {
+                completeAppointment(a, appt); a.pushOverlay("Visit note") { captureNote(a) }
+            }, a))
+            apptCard.addView(apptActions(a, appt))
         }
         for (o in outlook.overdue) {
             apptCard.addView(Ui.divider(a))
-            apptCard.addView(Ui.text(a, "Was: ${o.label} · ${o.date}", 14f, Ui.WARN, bold = true))
+            apptCard.addView(Ui.text(a, "Was: ${o.label} · ${o.date}" +
+                (if (o.withWhom.isNotBlank()) " · with ${o.withWhom}" else ""), 14f, Ui.WARN, bold = true))
             apptCard.addView(Ui.fullWidth(Ui.tonalButton(a, "How did it go? Capture it") {
                 completeAppointment(a, o); a.pushOverlay("Visit note") { captureNote(a) }
             }, a))
-            apptCard.addView(Ui.fullWidth(Ui.textButton(a, "Remove this appointment") {
-                Forms.confirm(a, "Remove appointment?", "\"${o.label}\" on ${o.date} will be deleted.") {
-                    deleteAppointment(a, o); a.refresh()
-                }
-            }, a, 4))
+            apptCard.addView(apptActions(a, o))
         }
         // quick add
         var newDate = today.plusWeeks(2)
         apptCard.addView(Ui.divider(a))
         apptCard.addView(Forms.dateRow(a, "New appointment", newDate) { newDate = it })
-        val newLabel = Forms.editText(a, "", "e.g. Physio review")
+        val newLabel = Forms.editText(a, "", "Title, e.g. Physio review")
         apptCard.addView(newLabel)
+        val newWith = Forms.editText(a, "", "Who it's with · optional, e.g. Mr Patel")
+        apptCard.addView(newWith)
         apptCard.addView(Ui.fullWidth(Ui.textButton(a, "Add appointment") {
             val label = newLabel.text.toString().ifBlank { "Physio review" }
             a.store.saveProfile(a.store.profile().copy(
                 appointments = a.store.profile().appointments +
-                    Appointment(newDate, label, false, UUID.randomUUID().toString())))
+                    Appointment(newDate, label, false, UUID.randomUUID().toString(),
+                        newWith.text.toString().trim())))
             a.refresh()
         }, a, 4))
         col.addView(apptCard)
@@ -89,7 +91,8 @@ object PhysioScreen {
             data class Ev(val date: LocalDate, val label: String, val icon: String)
             val evs = ArrayList<Ev>()
             profile.appointments.filter { !it.completed && !it.date.isBefore(today) }
-                .forEach { evs.add(Ev(it.date, it.label, "ic_calendar")) }
+                .forEach { evs.add(Ev(it.date, it.label +
+                    (if (it.withWhom.isNotBlank()) " · with ${it.withWhom}" else ""), "ic_calendar")) }
             val reg = ProtocolRegistry.forProfile(profile)
             reg.supportDevice?.let { device ->
                 profile.wedgePlan.removalSchedule(profile.injuryDate)
@@ -159,14 +162,18 @@ object PhysioScreen {
         col.addView(packCard)
 
         val row = Ui.row(a)
-        row.addView(Ui.weight(Ui.tonalButton(a, "Copy pack") {
+        val copyBtn = Ui.tonalButton(a, "Copy pack") {
             copyToClipboard(a, packText(pack, questions))
             Toast.makeText(a, "Copied - paste into notes or a message", Toast.LENGTH_SHORT).show()
-        }, 1f))
+        }
+        copyBtn.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+            setMargins(0, Ui.dp(a, 10), Ui.dp(a, 4), 0)
+        }
+        row.addView(copyBtn)
         val pdfBtn = Ui.tonalButton(a, "Export PDF") { a.exportPdf() }
-        val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        lp.setMargins(Ui.dp(a, 8), Ui.dp(a, 10), 0, 0)
-        pdfBtn.layoutParams = lp
+        pdfBtn.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+            setMargins(Ui.dp(a, 4), Ui.dp(a, 10), 0, 0)
+        }
         row.addView(pdfBtn)
         col.addView(row)
 
@@ -266,6 +273,58 @@ object PhysioScreen {
     private fun deleteAppointment(a: MainActivity, appt: Appointment) {
         a.store.saveProfile(a.store.profile().copy(
             appointments = a.store.profile().appointments.filterNot { it.matches(appt) }))
+    }
+
+    private fun updateAppointment(a: MainActivity, original: Appointment, updated: Appointment) {
+        a.store.saveProfile(a.store.profile().copy(
+            appointments = a.store.profile().appointments.map { if (it.matches(original)) updated else it }))
+    }
+
+    /** Edit + Remove actions shown under each appointment, side by side. */
+    private fun apptActions(a: MainActivity, appt: Appointment): View {
+        val row = Ui.row(a)
+        val edit = Ui.textButton(a, "Edit details") { a.pushOverlay("Edit appointment") { appointmentEditor(a, appt) } }
+        edit.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+            setMargins(0, Ui.dp(a, 4), Ui.dp(a, 4), 0)
+        }
+        row.addView(edit)
+        val remove = Ui.textButton(a, "Remove", Ui.WARN) {
+            Forms.confirm(a, "Remove appointment?", "\"${appt.label}\" on ${appt.date} will be deleted.") {
+                deleteAppointment(a, appt); a.refresh()
+            }
+        }
+        remove.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+            setMargins(Ui.dp(a, 4), Ui.dp(a, 4), 0, 0)
+        }
+        row.addView(remove)
+        return row
+    }
+
+    /** Overlay to change an existing appointment's date, title and who it's with. */
+    private fun appointmentEditor(a: MainActivity, appt: Appointment): View {
+        val col = Ui.column(a)
+        col.addView(Ui.backRow(a, "Edit appointment") { a.popOverlay() })
+        col.addView(Ui.caption(a, "Update the date, what it's for, and who it's with."))
+        col.addView(Ui.spacer(a, 4))
+        val card = Ui.card(a)
+        var date = appt.date
+        card.addView(Forms.dateRow(a, "Date", date) { date = it })
+        card.addView(Forms.label(a, "Title"))
+        val labelEdit = Forms.editText(a, appt.label, "e.g. Physio review")
+        card.addView(labelEdit)
+        card.addView(Forms.label(a, "Who it's with · optional"))
+        val withEdit = Forms.editText(a, appt.withWhom, "e.g. Mr Patel (consultant)")
+        card.addView(withEdit)
+        col.addView(card)
+        col.addView(Ui.fullWidth(Ui.button(a, "Save changes") {
+            updateAppointment(a, appt, appt.copy(
+                date = date,
+                label = labelEdit.text.toString().ifBlank { appt.label },
+                withWhom = withEdit.text.toString().trim()))
+            a.popOverlay()
+        }, a))
+        col.addView(Ui.spacer(a, 24))
+        return Ui.scroll(a, col)
     }
 
     /** Prefer the stable id; fall back to date+label for legacy entries without one. */

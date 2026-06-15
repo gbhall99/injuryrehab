@@ -141,7 +141,8 @@ object BackupCodec {
                 "date" to Json.of(it.date.toString()),
                 "label" to Json.of(it.label),
                 "completed" to Json.of(it.completed),
-                "id" to Json.of(it.id)
+                "id" to Json.of(it.id),
+                "with" to Json.of(it.withWhom)
             )
         }),
         "wedgePlan" to Json.obj(
@@ -180,7 +181,8 @@ object BackupCodec {
                 LocalDate.parse(it.get("date").asString()),
                 it.get("label").asString(),
                 it.opt("completed")?.asBool() ?: false,
-                it.opt("id")?.asString() ?: ""
+                it.opt("id")?.asString() ?: "",
+                it.opt("with")?.asString() ?: ""
             )
         },
         wedgePlan = j.get("wedgePlan").let {

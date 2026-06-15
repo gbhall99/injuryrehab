@@ -81,9 +81,10 @@ class AppointmentsTest {
     }
 
     @Test
-    fun appointmentIdSurvivesBackupRoundTrip() {
+    fun appointmentIdAndWithSurviveBackupRoundTrip() {
         val profile = Fixtures.profile().copy(
-            appointments = listOf(Appointment(today.plusWeeks(1), "Physio review", completed = false, id = "stable-id"))
+            appointments = listOf(Appointment(today.plusWeeks(1), "Physio review",
+                completed = false, id = "stable-id", withWhom = "Mr Patel"))
         )
         val state = AppState(
             profile = profile,
@@ -94,6 +95,8 @@ class AppointmentsTest {
             events = emptyList()
         )
         val decoded = BackupCodec.decode(BackupCodec.encode(state))
-        assertEquals("stable-id", decoded.profile.appointments.single().id)
+        val appt = decoded.profile.appointments.single()
+        assertEquals("stable-id", appt.id)
+        assertEquals("Mr Patel", appt.withWhom)
     }
 }

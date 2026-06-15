@@ -55,7 +55,9 @@ object PdfReport {
                 "(plan expects ${dev.format(profile.wedgePlan.expectedWedges(profile.injuryDate, today))}) · ${profile.weightBearing.label}")
         }
         for (a in profile.appointments) {
-            line(Style.BODY, "Appointment: ${a.date} ${a.label}${if (a.completed) " (completed)" else ""}")
+            line(Style.BODY, "Appointment: ${a.date} ${a.label}" +
+                (if (a.withWhom.isNotBlank()) " with ${a.withWhom}" else "") +
+                (if (a.completed) " (completed)" else ""))
         }
 
         line(Style.HEAD, "Medication adherence")
