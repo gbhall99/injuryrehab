@@ -51,6 +51,22 @@ class JournalAiTest {
     }
 
     @Test
+    fun parsesRedFlagWhenPresent() {
+        val raw = """{"reflection":"x","insights":[],"tips":[],"mood":"Low",
+            "metrics":{},"redFlag":true,"redFlagNote":"New calf swelling and warmth"}"""
+        val a = JournalAi.parseAnalysis(raw)
+        assertTrue(a.redFlag)
+        assertEquals("New calf swelling and warmth", a.redFlagNote)
+    }
+
+    @Test
+    fun redFlagDefaultsFalse() {
+        val a = JournalAi.parseAnalysis("""{"reflection":"x","insights":[],"tips":[],"mood":"Steady"}""")
+        assertFalse(a.redFlag)
+        assertEquals("", a.redFlagNote)
+    }
+
+    @Test
     fun missingMetricsBlockYieldsAllNulls() {
         val m = JournalAi.parseAnalysis("""{"reflection":"x","insights":[],"tips":[],"mood":"Steady"}""").metrics
         assertNull(m.pain); assertNull(m.swelling); assertNull(m.moodRating); assertNull(m.energy)

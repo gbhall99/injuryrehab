@@ -3,6 +3,7 @@ package com.recoverwell.app.screens
 import android.view.View
 import android.widget.Toast
 import com.recoverwell.app.MainActivity
+import com.recoverwell.app.ai.SecureKey
 import com.recoverwell.app.ui.Forms
 import com.recoverwell.app.ui.Ui
 
@@ -20,7 +21,8 @@ object AiScreen {
     fun enabled(a: MainActivity): Boolean =
         a.store.setting(KEY_ENABLED, "false") == "true" && a.store.setting(KEY_API, "").isNotBlank()
 
-    fun apiKey(a: MainActivity): String = a.store.setting(KEY_API, "")
+    /** The decrypted key, for making requests. */
+    fun apiKey(a: MainActivity): String = SecureKey.reveal(a.store.setting(KEY_API, ""))
 
     fun settings(a: MainActivity): View {
         val col = Ui.column(a)
@@ -43,7 +45,7 @@ object AiScreen {
         col.addView(Forms.label(a, "Groq API key"))
         val keyEdit = Forms.editText(a, apiKey(a), "Paste your key (starts with gsk_)")
         col.addView(keyEdit)
-        col.addView(Ui.caption(a, "Get a free key at console.groq.com. Stored only on this device."))
+        col.addView(Ui.caption(a, "Get a free key at console.groq.com. Stored encrypted on this device only."))
 
         // enable toggle
         col.addView(Forms.label(a, "AI features"))
@@ -52,7 +54,7 @@ object AiScreen {
 
         col.addView(Ui.fullWidth(Ui.button(a, "Save") {
             val key = keyEdit.text.toString().trim()
-            a.store.saveSetting(KEY_API, key)
+            a.store.saveSetting(KEY_API, SecureKey.protect(key))
             a.store.saveSetting(KEY_ENABLED, if (on && key.isNotBlank()) "true" else "false")
             val msg = when {
                 on && key.isBlank() -> "Add a key to turn AI on"

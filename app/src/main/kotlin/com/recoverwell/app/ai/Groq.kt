@@ -2,6 +2,7 @@ package com.recoverwell.app.ai
 
 import com.recoverwell.core.json.Json
 import java.io.File
+import java.io.IOException
 import java.io.OutputStream
 import java.net.HttpURLConnection
 import java.net.URL
@@ -16,8 +17,10 @@ import java.net.URL
  */
 object Groq {
 
-    /** Fast, capable general model on Groq; good enough for short rehab answers. */
+    /** Capable model for analysis and summaries (a touch slower). */
     const val CHAT_MODEL = "llama-3.3-70b-versatile"
+    /** Smaller, snappier model for short Q&A where latency matters most. */
+    const val CHAT_MODEL_FAST = "llama-3.1-8b-instant"
     /** Groq-hosted Whisper; fast and accurate enough for short spoken check-ins. */
     const val TRANSCRIBE_MODEL = "whisper-large-v3-turbo"
     private const val CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"
@@ -38,18 +41,31 @@ object Groq {
         return parseTranscript(postMultipart(apiKey, audio, model))
     }
 
-    /** Build the chat-completion request JSON. Pure - unit-tested. */
+    /** A single turn in a conversation. */
+    data class Message(val role: String, val content: String)
+
+    /** Multi-turn chat completion (system prompt + prior turns). */
+    fun chat(apiKey: String, system: String, turns: List<Message>,
+             model: String = CHAT_MODEL, jsonMode: Boolean = false): String {
+        if (apiKey.isBlank()) throw GroqException("No API key set")
+        return parseReply(post(CHAT_URL, apiKey, requestBodyMessages(system, turns, model, jsonMode)))
+    }
+
+    /** Build the chat-completion request JSON for a single user message. Pure - unit-tested. */
     internal fun requestBody(system: String, user: String,
-                             model: String = CHAT_MODEL, jsonMode: Boolean = false): String {
+                             model: String = CHAT_MODEL, jsonMode: Boolean = false): String =
+        requestBodyMessages(system, listOf(Message("user", user)), model, jsonMode)
+
+    /** Build the chat-completion request JSON from a system prompt + turns. Pure. */
+    internal fun requestBodyMessages(system: String, turns: List<Message>,
+                                     model: String = CHAT_MODEL, jsonMode: Boolean = false): String {
+        val messages = ArrayList<com.recoverwell.core.json.JsonValue>()
+        messages.add(Json.obj("role" to Json.of("system"), "content" to Json.of(system)))
+        for (t in turns) messages.add(Json.obj("role" to Json.of(t.role), "content" to Json.of(t.content)))
         val fields = mutableListOf(
             "model" to Json.of(model),
             "temperature" to Json.of(0.4),
-            "messages" to Json.arr(
-                listOf(
-                    Json.obj("role" to Json.of("system"), "content" to Json.of(system)),
-                    Json.obj("role" to Json.of("user"), "content" to Json.of(user))
-                )
-            )
+            "messages" to Json.arr(messages)
         )
         if (jsonMode) fields.add("response_format" to Json.obj("type" to Json.of("json_object")))
         return Json.write(Json.obj(*fields.toTypedArray()))
@@ -67,7 +83,21 @@ object Groq {
         return choices[0].get("message").get("content").asString().trim()
     }
 
-    private fun post(urlStr: String, apiKey: String, body: String): String {
+    /** Retry a network operation a couple of times on transient I/O failures. */
+    private fun <T> withRetry(attempts: Int = 3, block: () -> T): T {
+        var last: IOException? = null
+        for (i in 0 until attempts) {
+            try {
+                return block()
+            } catch (e: IOException) {
+                last = e
+                if (i < attempts - 1) try { Thread.sleep(500L * (i + 1)) } catch (ignore: InterruptedException) {}
+            }
+        }
+        throw GroqException("Network problem - check your connection and try again. (${last?.message ?: "no response"})")
+    }
+
+    private fun post(urlStr: String, apiKey: String, body: String): String = withRetry {
         val conn = (URL(urlStr).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             connectTimeout = 15000
@@ -82,13 +112,13 @@ object Groq {
             val stream = if (code in 200..299) conn.inputStream else conn.errorStream
             val text = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() } ?: ""
             if (code !in 200..299) throw GroqException(extractError(text, code))
-            return text
+            text
         } finally {
             conn.disconnect()
         }
     }
 
-    private fun postMultipart(apiKey: String, audio: File, model: String): String {
+    private fun postMultipart(apiKey: String, audio: File, model: String): String = withRetry {
         val boundary = "----recoverwell" + System.nanoTime()
         val conn = (URL(TRANSCRIBE_URL).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
@@ -113,7 +143,7 @@ object Groq {
             val stream = if (code in 200..299) conn.inputStream else conn.errorStream
             val text = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() } ?: ""
             if (code !in 200..299) throw GroqException(extractError(text, code))
-            return text
+            text
         } finally {
             conn.disconnect()
         }

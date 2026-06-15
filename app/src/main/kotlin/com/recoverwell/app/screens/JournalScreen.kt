@@ -40,6 +40,12 @@ object JournalScreen {
     private var summaryLoading = false
     private var summaryError: String? = null
 
+    private var patterns: String? = null
+    private var patternsLoading = false
+    private var patternsError: String? = null
+
+    private var editingId: String? = null
+
     private val dateFmt = DateTimeFormatter.ofPattern("EEE d MMM")
 
     fun build(a: MainActivity): View {
@@ -108,7 +114,7 @@ object JournalScreen {
             else -> {
                 if (trends.loggedToday) {
                     card.addView(Ui.text(a, "You've checked in today", 14.5f, Ui.TEXT))
-                    card.addView(Ui.caption(a, "Record again any time to add another entry."))
+                    card.addView(Ui.caption(a, "Record again to update today's entry."))
                 } else {
                     card.addView(Ui.text(a, "How has today been?", 14.5f, Ui.TEXT))
                 }
@@ -123,6 +129,11 @@ object JournalScreen {
 
         // ---- weekly AI summary (Slice 3) ------------------------------------
         if (entries.isNotEmpty()) {
+            // surface this week's cached summary (generated here or via the Monday nudge)
+            val weekStart = today.minusDays((today.dayOfWeek.value - 1).toLong())
+            if (summary == null && !summaryLoading && summaryError == null) {
+                a.store.cachedWeeklySummary(weekStart).takeIf { it.isNotBlank() }?.let { summary = it }
+            }
             col.addView(Ui.section(a, "Weekly summary"))
             val sumCard = Ui.card(a)
             when {
@@ -142,6 +153,26 @@ object JournalScreen {
             col.addView(sumCard)
         }
 
+        // ---- cross-entry pattern mining -------------------------------------
+        if (entries.size >= 3) {
+            col.addView(Ui.section(a, "Patterns"))
+            val patCard = Ui.card(a)
+            when {
+                patternsLoading -> patCard.addView(Ui.text(a, "Looking for patterns…", 14.5f, Ui.TEXT))
+                patterns != null -> {
+                    for (line in patterns!!.lines().map { it.trim().removePrefix("- ").trim() }.filter { it.isNotBlank() })
+                        patCard.addView(bullet(a, line))
+                    patCard.addView(Ui.fullWidth(Ui.textButton(a, "Refresh") { findPatterns(a, today) }, a, 4))
+                }
+                else -> {
+                    patternsError?.let { patCard.addView(Ui.text(a, it, 13.5f, Ui.WARN)) }
+                    patCard.addView(Ui.text(a, "Spot correlations across the last few weeks of logs and check-ins.", 14f, Ui.TEXT))
+                    patCard.addView(Ui.fullWidth(Ui.tonalButton(a, "Find patterns") { findPatterns(a, today) }, a))
+                }
+            }
+            col.addView(patCard)
+        }
+
         // ---- history --------------------------------------------------------
         if (entries.isNotEmpty()) {
             col.addView(Ui.section(a, "Past check-ins"))
@@ -156,6 +187,19 @@ object JournalScreen {
     private fun confirmCard(a: MainActivity, today: LocalDate, p: Pending): View {
         val log = a.store.dailyLog(today)
         val m = p.analysis.metrics
+        val wrap = Ui.column(a, 0)
+
+        if (p.analysis.redFlag) {
+            val flag = Ui.card(a, Ui.WARN_BG)
+            flag.addView(Ui.text(a, "Worth getting checked", 15f, Ui.WARN, bold = true))
+            flag.addView(Ui.text(a, p.analysis.redFlagNote.ifBlank {
+                "Something you mentioned could need medical attention." }, 14f, Ui.TEXT))
+            flag.addView(Ui.fullWidth(Ui.dangerButton(a, "See red-flag guidance") {
+                a.pushOverlay("Red flags") { RedFlagsScreen.build(a) }
+            }, a))
+            wrap.addView(flag)
+        }
+
         val card = Ui.card(a)
         card.addView(Ui.text(a, "Here's what I heard", 16f, Ui.TEXT, bold = true))
         if (p.analysis.reflection.isNotBlank()) {
@@ -201,17 +245,20 @@ object JournalScreen {
             val transcript = notesEdit.text.toString().trim().ifBlank { p.transcript }
             // one save updates today's daily log...
             a.store.saveDailyLog(log.copy(pain = pain, mood = mood, swelling = swelling, energy = energy))
-            // ...and records the journal entry (reflection/insights/tips/mood)
-            a.store.addJournalEntry(
+            // ...and records today's journal entry (one per day - replaces any earlier one)
+            a.store.upsertJournalEntry(
                 JournalEntry(UUID.randomUUID().toString(), today, transcript,
                     p.analysis.reflection, p.analysis.insights, p.analysis.tips, p.analysis.mood)
             )
+            // surface an urgent prompt on Today if the entry flagged a concerning symptom
+            if (p.analysis.redFlag) a.store.setRedFlagAlert(today, p.analysis.redFlagNote)
             pending = null
             android.widget.Toast.makeText(a, "Check-in saved", android.widget.Toast.LENGTH_SHORT).show()
             a.refresh()
         }, a))
         card.addView(Ui.fullWidth(Ui.textButton(a, "Discard") { pending = null; a.refresh() }, a, 4))
-        return card
+        wrap.addView(card)
+        return wrap
     }
 
     private fun startRecording(a: MainActivity) {
@@ -278,6 +325,7 @@ object JournalScreen {
         val context = AiContext.system(a.store.profile(), a.store.allLogs(), today)
         val logs = a.store.allLogs()
         val entries = a.store.journalEntries()
+        val weekStart = today.minusDays((today.dayOfWeek.value - 1).toLong())
         Thread {
             var text: String? = null
             var err: String? = null
@@ -290,6 +338,33 @@ object JournalScreen {
                 summaryLoading = false
                 summary = text
                 summaryError = err
+                if (text != null) a.store.saveWeeklySummary(weekStart, text)
+                a.refresh()
+            }
+        }.start()
+    }
+
+    private fun findPatterns(a: MainActivity, today: LocalDate) {
+        patternsLoading = true
+        patternsError = null
+        patterns = null
+        a.refresh()
+        val key = AiScreen.apiKey(a)
+        val context = AiContext.system(a.store.profile(), a.store.allLogs(), today)
+        val logs = a.store.allLogs()
+        val entries = a.store.journalEntries()
+        Thread {
+            var text: String? = null
+            var err: String? = null
+            try {
+                text = JournalAi.findPatterns(key, context, logs, entries, today)
+            } catch (e: Exception) {
+                err = e.message ?: "Couldn't find patterns right now."
+            }
+            a.runOnUiThread {
+                patternsLoading = false
+                patterns = text
+                patternsError = err
                 a.refresh()
             }
         }.start()
@@ -301,12 +376,33 @@ object JournalScreen {
         head.gravity = Gravity.CENTER_VERTICAL
         head.addView(Ui.weight(Ui.text(a, e.date.format(dateFmt), 13f, Ui.TEXT_DIM, bold = true), 1f))
         head.addView(Ui.text(a, e.mood.label, 12.5f, Ui.PRIMARY, bold = true))
+        head.addView(Ui.iconButton(a, "ic_edit", Ui.TEXT_DIM, desc = "Edit check-in") {
+            editingId = e.id; a.refresh()
+        })
         head.addView(Ui.iconButton(a, "ic_close", Ui.TEXT_DIM, desc = "Delete check-in") {
             Forms.confirm(a, "Delete check-in?", "This journal entry will be removed.") {
                 a.store.deleteJournalEntry(e.id); a.refresh()
             }
         })
         card.addView(head)
+
+        if (editingId == e.id) {
+            card.addView(Forms.label(a, "What you said"))
+            val tEdit = Forms.editText(a, e.transcript, "Your words", multiline = true)
+            card.addView(tEdit)
+            card.addView(Forms.label(a, "Reflection"))
+            val rEdit = Forms.editText(a, e.reflection, "Reflection", multiline = true)
+            card.addView(rEdit)
+            card.addView(Ui.fullWidth(Ui.button(a, "Save") {
+                a.store.updateJournalEntry(e.copy(
+                    transcript = tEdit.text.toString().trim(),
+                    reflection = rEdit.text.toString().trim()))
+                editingId = null; a.refresh()
+            }, a))
+            card.addView(Ui.fullWidth(Ui.textButton(a, "Cancel") { editingId = null; a.refresh() }, a, 4))
+            return card
+        }
+
         if (e.reflection.isNotBlank()) {
             card.addView(Ui.spacer(a, 2))
             card.addView(Ui.text(a, e.reflection, 14.5f, Ui.TEXT))

@@ -33,6 +33,23 @@ class GroqTest {
     }
 
     @Test
+    fun conversationBodyKeepsSystemThenTurnsInOrder() {
+        val turns = listOf(
+            Groq.Message("user", "can I jog?"),
+            Groq.Message("assistant", "not yet"),
+            Groq.Message("user", "why not?")
+        )
+        val json = Json.parse(Groq.requestBodyMessages("ground", turns, Groq.CHAT_MODEL_FAST))
+        val messages = json.get("messages").asArr()
+        assertEquals(4, messages.size) // system + 3 turns
+        assertEquals("system", messages[0].get("role").asString())
+        assertEquals("user", messages[1].get("role").asString())
+        assertEquals("assistant", messages[2].get("role").asString())
+        assertEquals("why not?", messages[3].get("content").asString())
+        assertEquals("llama-3.1-8b-instant", json.get("model").asString())
+    }
+
+    @Test
     fun parseReplyExtractsAndTrimsContent() {
         val resp = """{"choices":[{"message":{"role":"assistant","content":"  Yes, usually around week 6.  "}}]}"""
         assertEquals("Yes, usually around week 6.", Groq.parseReply(resp))

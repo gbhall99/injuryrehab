@@ -199,7 +199,38 @@ class Store private constructor(context: Context) :
 
     fun addJournalEntry(e: JournalEntry) = saveJournal(journalEntries() + e)
 
+    /** One entry per day: replace any existing entry on the same date. */
+    fun upsertJournalEntry(e: JournalEntry) = saveJournal(journalEntries().filter { it.date != e.date } + e)
+
+    /** Edit an existing entry in place (matched by id). */
+    fun updateJournalEntry(e: JournalEntry) = saveJournal(journalEntries().map { if (it.id == e.id) e else it })
+
     fun deleteJournalEntry(id: String) = saveJournal(journalEntries().filter { it.id != id })
+
+    // -- AI weekly summary cache (keyed by week-start date) --------------------
+
+    fun cachedWeeklySummary(weekStart: LocalDate): String = setting("weekly_summary_$weekStart", "")
+
+    fun saveWeeklySummary(weekStart: LocalDate, text: String) =
+        saveSetting("weekly_summary_$weekStart", text)
+
+    // -- journal red-flag alert (set when a check-in mentions urgent symptoms) -
+
+    fun redFlagAlert(): Pair<LocalDate, String>? {
+        val d = setting("journal_redflag_date", "")
+        if (d.isBlank()) return null
+        return try { LocalDate.parse(d) to setting("journal_redflag_note", "") } catch (e: Exception) { null }
+    }
+
+    fun setRedFlagAlert(date: LocalDate, note: String) {
+        saveSetting("journal_redflag_date", date.toString())
+        saveSetting("journal_redflag_note", note)
+    }
+
+    fun clearRedFlagAlert() {
+        saveSetting("journal_redflag_date", "")
+        saveSetting("journal_redflag_note", "")
+    }
 
     // -- backup / restore ----------------------------------------------------------
 

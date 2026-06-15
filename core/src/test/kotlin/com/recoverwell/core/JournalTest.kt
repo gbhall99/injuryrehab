@@ -63,6 +63,20 @@ class JournalTest {
     }
 
     @Test
+    fun journalMoodSeriesUsesMoodScoresInDateOrder() {
+        val entries = listOf(
+            entry(today, JournalMood.GREAT),          // score 5
+            entry(today.minusDays(2), JournalMood.LOW) // score 1
+        )
+        val s = com.recoverwell.core.logic.TrendMath.journalMood(entries)
+        assertEquals(1.0, s.min, 0.0)
+        assertEquals(5.0, s.max, 0.0)
+        // sorted ascending by date: oldest (LOW=1) first, today (GREAT=5) last
+        assertEquals(1.0, s.points.first().value, 0.0)
+        assertEquals(5.0, s.points.last().value, 0.0)
+    }
+
+    @Test
     fun journalSurvivesBackupRoundTrip() {
         val profile = Fixtures.profile()
         val state = AppState(

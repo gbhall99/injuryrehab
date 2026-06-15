@@ -32,7 +32,10 @@ object JournalAi {
         val insights: List<String>,
         val tips: List<String>,
         val mood: JournalMood,
-        val metrics: Metrics
+        val metrics: Metrics,
+        /** True when the entry describes possible emergency/urgent-care symptoms. */
+        val redFlag: Boolean,
+        val redFlagNote: String
     )
 
     private const val ANALYZE_RULES = """
@@ -45,17 +48,27 @@ Reply with ONLY a JSON object of this exact shape:
  "metrics":{"pain":0-10 integer or null,
             "swelling":"None|Mild|Moderate|Severe or null",
             "moodRating":1-5 integer or null,
-            "energy":1-5 integer or null}}
+            "energy":1-5 integer or null},
+ "redFlag":true or false,
+ "redFlagNote":"if redFlag, one short sentence on the concerning symptom; else empty"}
 For metrics, ONLY fill a field if the user actually described it; otherwise use null - never
-guess a value. Keep each array to at most 3 short items. Do not give medical clearance; defer
-clinical decisions to their physio. If they describe red-flag symptoms, make the first insight
-an urgent note to seek medical advice now."""
+guess a value. Set redFlag to true ONLY for symptoms needing urgent medical attention: signs
+of a blood clot (new calf pain/swelling/warmth/redness), chest pain, breathlessness, fever,
+a wound that looks infected, or sudden severe new pain. Keep each array to at most 3 short
+items. Do not give medical clearance; defer clinical decisions to their physio."""
 
     private const val SUMMARY_RULES = """
 Write a short, encouraging weekly recovery summary (about 4-6 sentences) from the data
 below: note progress, any patterns in pain/swelling/mood, and end with one gentle,
 practical suggestion. Warm and plain-language. This is not medical advice; remind them to
 raise anything concerning with their physio."""
+
+    private const val PATTERNS_RULES = """
+Look across the recovery data below (last few weeks of daily logs and journal check-ins) and
+surface up to 3 genuine patterns or correlations worth noticing (e.g. pain rising after busier
+days, mood tracking with sleep). Reply as up to 3 short bullet-style sentences, plain text, one
+per line, no numbering. If there isn't enough data for a real pattern, say so in one line. This
+is observational, not medical advice."""
 
     /** Analyze a transcript. [context] is the grounding system prompt from [AiContext]. */
     fun analyze(apiKey: String, context: String, transcript: String): Analysis =
@@ -65,6 +78,11 @@ raise anything concerning with their physio."""
     fun weeklySummary(apiKey: String, context: String, logs: List<DailyLog>,
                       entries: List<JournalEntry>, today: LocalDate): String =
         Groq.chat(apiKey, context + "\n" + SUMMARY_RULES, weeklyPrompt(logs, entries, today))
+
+    /** Surface cross-entry patterns/correlations over recent data. */
+    fun findPatterns(apiKey: String, context: String, logs: List<DailyLog>,
+                     entries: List<JournalEntry>, today: LocalDate): String =
+        Groq.chat(apiKey, context + "\n" + PATTERNS_RULES, patternsPrompt(logs, entries, today))
 
     /** Parse the model's JSON analysis, tolerating code fences / surrounding prose. */
     internal fun parseAnalysis(raw: String): Analysis {
@@ -80,7 +98,9 @@ raise anything concerning with their physio."""
                 swelling = swellingOf(str(m, "swelling")),
                 moodRating = intIn(m, "moodRating", 1, 5),
                 energy = intIn(m, "energy", 1, 5)
-            )
+            ),
+            redFlag = (json.opt("redFlag") as? JsonValue.Bool)?.value ?: false,
+            redFlagNote = json.opt("redFlagNote")?.asString()?.trim() ?: ""
         )
     }
 
@@ -119,6 +139,29 @@ raise anything concerning with their physio."""
             for (e in weekEntries) {
                 appendLine("- ${e.date} (mood ${e.mood.label}): ${e.transcript.take(280)}")
             }
+        }
+    }
+
+    /** Wider (3-week) data block for cross-entry pattern mining. Pure. */
+    internal fun patternsPrompt(logs: List<DailyLog>, entries: List<JournalEntry>, today: LocalDate): String {
+        val since = today.minusDays(20)
+        val recentLogs = logs.filter { !it.date.isBefore(since) }.sortedBy { it.date }
+        val recentEntries = entries.filter { !it.date.isBefore(since) }.sortedBy { it.date }
+        return buildString {
+            appendLine("Recovery data for the last ~3 weeks (oldest first):")
+            appendLine()
+            appendLine("Daily logs:")
+            if (recentLogs.isEmpty()) appendLine("- none recorded")
+            for (l in recentLogs) {
+                val pain = l.pain?.let { "pain $it/10" } ?: "pain n/a"
+                val swell = l.swelling?.label ?: "swelling n/a"
+                val energy = l.energy?.let { ", energy $it/5" } ?: ""
+                appendLine("- ${l.date}: $pain, $swell$energy")
+            }
+            appendLine()
+            appendLine("Journal check-ins:")
+            if (recentEntries.isEmpty()) appendLine("- none recorded")
+            for (e in recentEntries) appendLine("- ${e.date} (mood ${e.mood.label}): ${e.transcript.take(220)}")
         }
     }
 

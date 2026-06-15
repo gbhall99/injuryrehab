@@ -184,11 +184,30 @@ object TodayScreen {
             }
             Unit
         }
+        // urgent: a recent voice check-in flagged a possible red-flag symptom
+        a.store.redFlagAlert()?.let { (_, note) ->
+            prompts.add(Prompt(1, "ic_alert", "Worth getting checked",
+                note.ifBlank { "Something from a recent check-in may need medical attention." },
+                "See red-flag guidance", TONE_WARN, safety = true) {
+                a.store.clearRedFlagAlert()
+                a.pushOverlay("Red flags") { RedFlagsScreen.build(a) }
+            })
+        }
         // daily recovery-journal nudge (only when AI is on and not yet logged today)
         if (AiScreen.enabled(a) && a.store.journalEntries().none { it.date == today }) {
             prompts.add(Prompt(17, "ic_edit", "Record today's check-in",
                 "Speak freely about your day - AI reflects it back and spots patterns.",
                 "Open journal", TONE_INFO) { a.pushOverlay("Recovery journal") { JournalScreen.build(a) } })
+        }
+        // Monday: offer the weekly AI recovery summary if not already generated
+        if (AiScreen.enabled(a) && today.dayOfWeek == java.time.DayOfWeek.MONDAY &&
+            a.store.journalEntries().isNotEmpty()) {
+            val weekStart = today.minusDays((today.dayOfWeek.value - 1).toLong())
+            if (a.store.cachedWeeklySummary(weekStart).isBlank()) {
+                prompts.add(Prompt(19, "ic_progress", "Your weekly recovery summary",
+                    "Recap last week's logs and check-ins in a few sentences.",
+                    "Open journal", TONE_INFO) { a.pushOverlay("Recovery journal") { JournalScreen.build(a) } })
+            }
         }
         // milestone celebration
         com.recoverwell.core.logic.Wellbeing.recentlyReachedMilestone(profile, today)?.let { m ->

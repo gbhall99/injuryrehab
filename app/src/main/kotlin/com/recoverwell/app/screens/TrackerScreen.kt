@@ -105,7 +105,10 @@ object TrackerScreen {
 
         // ---- trends ----
         col.addView(Ui.section(a, "Trends"))
-        col.addView(Forms.choiceRow(a, listOf("Pain", "Swelling", "Mood", "Energy"), { it }, chartMetric) {
+        val metrics = if (AiScreen.enabled(a) && a.store.journalEntries().isNotEmpty())
+            listOf("Pain", "Swelling", "Mood", "Energy", "Journal")
+        else listOf("Pain", "Swelling", "Mood", "Energy")
+        col.addView(Forms.choiceRow(a, metrics, { it }, chartMetric) {
             chartMetric = it
             a.refresh()
         })
@@ -114,6 +117,7 @@ object TrackerScreen {
             "Swelling" -> TrendMath.swelling(logs)
             "Mood" -> TrendMath.mood(logs)
             "Energy" -> TrendMath.energy(logs)
+            "Journal" -> TrendMath.journalMood(a.store.journalEntries())
             else -> TrendMath.pain(logs)
         }
         val fmt = DateTimeFormatter.ofPattern("d MMM")
