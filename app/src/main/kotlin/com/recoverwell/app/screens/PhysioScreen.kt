@@ -72,8 +72,10 @@ object PhysioScreen {
         var newDate = today.plusWeeks(2)
         apptCard.addView(Ui.divider(a))
         apptCard.addView(Forms.dateRow(a, "New appointment", newDate) { newDate = it })
+        apptCard.addView(Ui.spacer(a, 8))
         val newLabel = Forms.editText(a, "", "Title, e.g. Physio review")
         apptCard.addView(newLabel)
+        apptCard.addView(Ui.spacer(a, 8))
         val newWith = Forms.editText(a, "", "Who it's with · optional, e.g. Mr Patel")
         apptCard.addView(newWith)
         apptCard.addView(Ui.fullWidth(Ui.textButton(a, "Add appointment") {
