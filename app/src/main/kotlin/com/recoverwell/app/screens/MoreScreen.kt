@@ -24,21 +24,30 @@ object MoreScreen {
     fun build(a: MainActivity): View {
         val col = Ui.column(a)
 
-        col.addView(Ui.section(a, "My recovery"))
-        col.addView(Ui.listRow(a, "ic_heart", "Injury & goal",
-            "Dates, side, boot plan, appointments") { a.pushOverlay("Injury & goal") { profileEditor(a) } })
+        // Features first (the things people come here to *use*), kept distinct
+        // from the settings below so More stops reading as one long settings list.
+        col.addView(Ui.section(a, "Recovery tools"))
+        col.addView(Ui.listRow(a, "ic_info", "Ask my recovery",
+            if (AiScreen.enabled(a)) "Ask anything - answered by AI from your recovery"
+            else "Can I drive yet? What's next? - answered offline") { a.pushOverlay("Ask my recovery") { AskScreen.build(a) } })
+        if (AiScreen.enabled(a)) {
+            col.addView(Ui.listRow(a, "ic_edit", "Recovery journal",
+                "Speak a daily check-in - AI reflects it back") { a.pushOverlay("Recovery journal") { JournalScreen.build(a) } })
+        }
+        col.addView(Ui.listRow(a, "ic_calendar", "Physio visits",
+            "Appointment pack, sign-offs and visit notes") { a.pushOverlay("Physio visits") { PhysioScreen.build(a) } })
         col.addView(Ui.listRow(a, "ic_heart", "How you're doing",
             "What's normal to feel, reassurance, milestones") { a.pushOverlay("How you're doing") { WellbeingScreen.build(a) } })
         col.addView(Ui.listRow(a, "ic_info", "What to expect",
             "Plain-language guidance for this stage") { a.pushOverlay("What to expect") { WhatToExpectScreen.build(a) } })
         col.addView(Ui.listRow(a, "ic_exercises", "Stay fit",
             "Keep-fit conditioning + a weekly goal") { a.pushOverlay("Stay fit") { StayFitScreen.build(a) } })
-        col.addView(Ui.listRow(a, "ic_info", "Ask my recovery",
-            "Can I drive yet? What's next? - answered offline") { a.pushOverlay("Ask my recovery") { AskScreen.build(a) } })
+
+        col.addView(Ui.section(a, "Your plan"))
+        col.addView(Ui.listRow(a, "ic_heart", "Injury & goal",
+            "Dates, side, boot plan, appointments") { a.pushOverlay("Injury & goal") { profileEditor(a) } })
         col.addView(Ui.listRow(a, "ic_calendar", "Phase dates",
             "Adjust timings agreed with your physio") { a.pushOverlay("Phase dates") { phaseDatesEditor(a) } })
-        col.addView(Ui.listRow(a, "ic_edit", "Physio visits",
-            "Appointment pack, sign-offs and visit notes") { a.pushOverlay("Physio visits") { PhysioScreen.build(a) } })
 
         // a single Reminders hub gathers medications, daily-care, exercise and
         // check-in nudges and the reliability checker (previously four+ sibling rows)
@@ -51,6 +60,11 @@ object MoreScreen {
             iconBg = if (blocked) Ui.DANGER_BG else Ui.PRIMARY_CONTAINER) {
             a.pushOverlay("Reminders") { remindersHub(a) }
         })
+
+        col.addView(Ui.section(a, "AI features"))
+        col.addView(Ui.listRow(a, "ic_info", "AI assistant",
+            if (AiScreen.enabled(a)) "On - natural-language answers via Groq"
+            else "Off - turn on natural-language answers") { a.pushOverlay("AI features") { AiScreen.settings(a) } })
 
         col.addView(Ui.section(a, "Appearance"))
         val themeCard = Ui.card(a)

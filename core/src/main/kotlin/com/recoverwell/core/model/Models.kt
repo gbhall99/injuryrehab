@@ -29,7 +29,9 @@ data class Appointment(
     val completed: Boolean,
     /** Stable identity so completing/removing one targets exactly that entry.
      *  Blank on legacy backups predating the field; matched by date+label then. */
-    val id: String = ""
+    val id: String = "",
+    /** Who the appointment is with, e.g. "Mr Patel (consultant)". Optional. */
+    val withWhom: String = ""
 )
 
 /**
@@ -227,6 +229,34 @@ data class PhysioNote(
     val id: String,
     val date: LocalDate,
     val text: String
+)
+
+/** Overall tone the AI inferred from a spoken journal entry, ordered low->high. */
+enum class JournalMood(val score: Int, val label: String) {
+    LOW(1, "Low"), MIXED(2, "Mixed"), STEADY(3, "Steady"), POSITIVE(4, "Positive"), GREAT(5, "Great");
+
+    companion object {
+        /** Tolerant lookup by enum name or display label; defaults to [MIXED]. */
+        fun from(s: String?): JournalMood {
+            val t = s?.trim().orEmpty()
+            return values().firstOrNull { it.name.equals(t, true) || it.label.equals(t, true) } ?: MIXED
+        }
+    }
+}
+
+/**
+ * One daily "Rosebud-style" spoken check-in: the transcript of what the user
+ * said, plus the AI's reflection, observed insights, suggested tips and an
+ * inferred mood. Audio is transcribed then discarded - only text is kept.
+ */
+data class JournalEntry(
+    val id: String,
+    val date: LocalDate,
+    val transcript: String,
+    val reflection: String,
+    val insights: List<String>,
+    val tips: List<String>,
+    val mood: JournalMood
 )
 
 /**

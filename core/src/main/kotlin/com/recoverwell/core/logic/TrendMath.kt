@@ -1,6 +1,7 @@
 package com.recoverwell.core.logic
 
 import com.recoverwell.core.model.DailyLog
+import com.recoverwell.core.model.JournalEntry
 import java.time.LocalDate
 
 /** Chart-ready series extraction from daily logs. Pure math, UI-agnostic. */
@@ -21,6 +22,9 @@ object TrendMath {
 
     fun energy(logs: List<DailyLog>): Series =
         series("Energy (1-5)", logs.mapNotNull { l -> l.energy?.let { Point(l.date, it.toDouble()) } }, 1.0, 5.0)
+
+    fun journalMood(entries: List<JournalEntry>): Series =
+        series("Journal mood (1-5)", entries.map { Point(it.date, it.mood.score.toDouble()) }, 1.0, 5.0)
 
     private fun series(label: String, points: List<Point>, min: Double, max: Double) =
         Series(label, points.sortedBy { it.date }, min, max)

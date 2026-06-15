@@ -17,7 +17,8 @@ data class AppState(
     val selfTestResults: List<SelfTestResult> = emptyList(),
     /** Ids of return-to-sport rungs the user recorded physio clearance for. */
     val rtsSignoffs: List<String> = emptyList(),
-    val physioNotes: List<PhysioNote> = emptyList()
+    val physioNotes: List<PhysioNote> = emptyList(),
+    val journalEntries: List<JournalEntry> = emptyList()
 )
 
 /**
@@ -40,7 +41,8 @@ object BackupCodec {
             "events" to Json.arr(state.events.map { eventJson(it) }),
             "selfTestResults" to Json.arr(state.selfTestResults.map { selfTestJson(it) }),
             "rtsSignoffs" to Json.strings(state.rtsSignoffs),
-            "physioNotes" to Json.arr(state.physioNotes.map { physioNoteJson(it) })
+            "physioNotes" to Json.arr(state.physioNotes.map { physioNoteJson(it) }),
+            "journalEntries" to Json.arr(state.journalEntries.map { journalEntryJson(it) })
         )
     )
 
@@ -60,9 +62,33 @@ object BackupCodec {
             selfTestResults = (root.opt("selfTestResults")?.asArr() ?: emptyList()).map { selfTestFrom(it) },
             rtsSignoffs = (root.opt("rtsSignoffs")?.asArr() ?: emptyList()).map { it.asString() },
             // v<4 backups predate the physio loop
-            physioNotes = (root.opt("physioNotes")?.asArr() ?: emptyList()).map { physioNoteFrom(it) }
+            physioNotes = (root.opt("physioNotes")?.asArr() ?: emptyList()).map { physioNoteFrom(it) },
+            // the AI recovery journal is newer still; absent in older backups
+            journalEntries = (root.opt("journalEntries")?.asArr() ?: emptyList()).map { journalEntryFrom(it) }
         )
     }
+
+    // -- journal entry ------------------------------------------------------
+
+    fun journalEntryJson(e: JournalEntry): JsonValue = Json.obj(
+        "id" to Json.of(e.id),
+        "date" to Json.of(e.date.toString()),
+        "transcript" to Json.of(e.transcript),
+        "reflection" to Json.of(e.reflection),
+        "insights" to Json.strings(e.insights),
+        "tips" to Json.strings(e.tips),
+        "mood" to Json.of(e.mood.name)
+    )
+
+    fun journalEntryFrom(j: JsonValue): JournalEntry = JournalEntry(
+        id = j.get("id").asString(),
+        date = LocalDate.parse(j.get("date").asString()),
+        transcript = j.opt("transcript")?.asString() ?: "",
+        reflection = j.opt("reflection")?.asString() ?: "",
+        insights = (j.opt("insights")?.asArr() ?: emptyList()).map { it.asString() },
+        tips = (j.opt("tips")?.asArr() ?: emptyList()).map { it.asString() },
+        mood = JournalMood.from(j.opt("mood")?.asString())
+    )
 
     // -- physio note --------------------------------------------------------
 
@@ -115,7 +141,8 @@ object BackupCodec {
                 "date" to Json.of(it.date.toString()),
                 "label" to Json.of(it.label),
                 "completed" to Json.of(it.completed),
-                "id" to Json.of(it.id)
+                "id" to Json.of(it.id),
+                "with" to Json.of(it.withWhom)
             )
         }),
         "wedgePlan" to Json.obj(
@@ -154,7 +181,8 @@ object BackupCodec {
                 LocalDate.parse(it.get("date").asString()),
                 it.get("label").asString(),
                 it.opt("completed")?.asBool() ?: false,
-                it.opt("id")?.asString() ?: ""
+                it.opt("id")?.asString() ?: "",
+                it.opt("with")?.asString() ?: ""
             )
         },
         wedgePlan = j.get("wedgePlan").let {
