@@ -84,7 +84,16 @@ class MainActivity : Activity() {
                 Ui.dp(this@MainActivity, 12), Ui.dp(this@MainActivity, 6))
         }
         appBarTitle = Ui.display(this, Tab.TODAY.label)
+        // three quick-action icons share the bar, so keep the title to one line
+        appBarTitle.maxLines = 1
+        appBarTitle.ellipsize = android.text.TextUtils.TruncateAt.END
         appBar.addView(Ui.weight(appBarTitle, 1f))
+        // Two everyday tools sit one tap from every screen, next to the always-on
+        // red-flags safety button: ask a question, or open the daily journal.
+        appBar.addView(Ui.iconButton(this, "ic_chat", Ui.PRIMARY, Ui.PRIMARY_CONTAINER,
+            desc = "Ask my recovery - answers about your plan") { openAsk() })
+        appBar.addView(Ui.iconButton(this, "ic_edit", Ui.PRIMARY, Ui.PRIMARY_CONTAINER,
+            desc = "Recovery journal - daily check-in") { openJournal() })
         appBar.addView(Ui.iconButton(this, "ic_alert", Ui.DANGER, Ui.DANGER_BG, desc = "Red flags - urgent symptoms") {
             pushOverlay("Red flags") { RedFlagsScreen.build(this) }
         })
@@ -210,6 +219,18 @@ class MainActivity : Activity() {
         overlays.add(factory)
         overlayTitles.add(title)
         render(animated = true)
+    }
+
+    /** Quick access from the app bar: open the AI Q&A. No-op if already on top. */
+    fun openAsk() {
+        if (overlayTitles.lastOrNull() == "Ask my recovery") return
+        pushOverlay("Ask my recovery") { AskScreen.build(this) }
+    }
+
+    /** Quick access from the app bar: open the recovery journal. No-op if already on top. */
+    fun openJournal() {
+        if (overlayTitles.lastOrNull() == "Recovery journal") return
+        pushOverlay("Recovery journal") { JournalScreen.build(this) }
     }
 
     fun popOverlay() {
