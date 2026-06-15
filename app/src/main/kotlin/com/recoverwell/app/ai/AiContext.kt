@@ -2,6 +2,7 @@ package com.recoverwell.app.ai
 
 import com.recoverwell.core.logic.PhaseEngine
 import com.recoverwell.core.model.DailyLog
+import com.recoverwell.core.model.JournalEntry
 import com.recoverwell.core.model.Profile
 import com.recoverwell.core.protocol.ProtocolRegistry
 import java.time.LocalDate
@@ -13,7 +14,8 @@ import java.time.LocalDate
  */
 object AiContext {
 
-    fun system(profile: Profile, logs: List<DailyLog>, today: LocalDate): String {
+    fun system(profile: Profile, logs: List<DailyLog>, today: LocalDate,
+               journal: List<JournalEntry> = emptyList()): String {
         val proto = ProtocolRegistry.forProfile(profile)
         val phase = PhaseEngine.currentPhase(profile, today)
         val week = PhaseEngine.weeksSinceInjury(profile, today)
@@ -21,6 +23,7 @@ object AiContext {
         val pains = recent.mapNotNull { it.pain }
         val avgPain = if (pains.isNotEmpty()) "%.1f/10".format(pains.average()) else "no recent entries"
         val worstSwell = recent.mapNotNull { it.swelling }.maxByOrNull { it.score }?.label ?: "not recorded"
+        val lastEntry = journal.maxByOrNull { it.date }
 
         return buildString {
             appendLine("You are a calm, encouraging recovery assistant inside the RecoverWell app.")
@@ -29,6 +32,10 @@ object AiContext {
             appendLine("- Week $week since injury; Phase ${phase.number} (${phase.title}).")
             appendLine("- Recent average pain: $avgPain. Worst recent swelling: $worstSwell.")
             if (profile.goal.isNotBlank()) appendLine("- Their goal: ${profile.goal}.")
+            if (lastEntry != null) {
+                appendLine("- Latest journal check-in (${lastEntry.date}, mood ${lastEntry.mood.label}): " +
+                    lastEntry.transcript.take(280))
+            }
             appendLine()
             appendLine("Rules:")
             appendLine("- Be concise (a few short sentences), warm and practical.")

@@ -1,9 +1,11 @@
 package com.recoverwell.app.ai
 
 import com.recoverwell.core.json.Json
+import com.recoverwell.core.json.JsonValue
 import com.recoverwell.core.model.DailyLog
 import com.recoverwell.core.model.JournalEntry
 import com.recoverwell.core.model.JournalMood
+import com.recoverwell.core.model.Swelling
 import java.time.LocalDate
 
 /**
@@ -14,11 +16,23 @@ import java.time.LocalDate
  */
 object JournalAi {
 
+    /**
+     * Structured daily-log values the user mentioned out loud. Every field is
+     * nullable: only set what was actually said, so we never invent a number.
+     */
+    data class Metrics(
+        val pain: Int?,
+        val swelling: Swelling?,
+        val moodRating: Int?,
+        val energy: Int?
+    )
+
     data class Analysis(
         val reflection: String,
         val insights: List<String>,
         val tips: List<String>,
-        val mood: JournalMood
+        val mood: JournalMood,
+        val metrics: Metrics
     )
 
     private const val ANALYZE_RULES = """
@@ -27,10 +41,15 @@ Reply with ONLY a JSON object of this exact shape:
 {"reflection":"1-2 warm sentences reflecting back what they shared",
  "insights":["short observations or patterns, max 3"],
  "tips":["1-3 short, practical suggestions suited to their current phase"],
- "mood":"one of: Low, Mixed, Steady, Positive, Great"}
-Keep each array to at most 3 short items. Do not give medical clearance; defer clinical
-decisions to their physio. If they describe red-flag symptoms, make the first insight an
-urgent note to seek medical advice now."""
+ "mood":"one of: Low, Mixed, Steady, Positive, Great",
+ "metrics":{"pain":0-10 integer or null,
+            "swelling":"None|Mild|Moderate|Severe or null",
+            "moodRating":1-5 integer or null,
+            "energy":1-5 integer or null}}
+For metrics, ONLY fill a field if the user actually described it; otherwise use null - never
+guess a value. Keep each array to at most 3 short items. Do not give medical clearance; defer
+clinical decisions to their physio. If they describe red-flag symptoms, make the first insight
+an urgent note to seek medical advice now."""
 
     private const val SUMMARY_RULES = """
 Write a short, encouraging weekly recovery summary (about 4-6 sentences) from the data
@@ -50,12 +69,33 @@ raise anything concerning with their physio."""
     /** Parse the model's JSON analysis, tolerating code fences / surrounding prose. */
     internal fun parseAnalysis(raw: String): Analysis {
         val json = Json.parse(extractJsonObject(raw))
+        val m = json.opt("metrics")
         return Analysis(
             reflection = json.opt("reflection")?.asString()?.trim() ?: "",
             insights = strList(json, "insights"),
             tips = strList(json, "tips"),
-            mood = JournalMood.from(json.opt("mood")?.asString())
+            mood = JournalMood.from(json.opt("mood")?.asString()),
+            metrics = Metrics(
+                pain = intIn(m, "pain", 0, 10),
+                swelling = swellingOf(str(m, "swelling")),
+                moodRating = intIn(m, "moodRating", 1, 5),
+                energy = intIn(m, "energy", 1, 5)
+            )
         )
+    }
+
+    /** Numeric field, only when present as a real number and within range. */
+    private fun intIn(json: JsonValue?, key: String, min: Int, max: Int): Int? {
+        val n = (json?.opt(key) as? JsonValue.Num)?.value?.toInt() ?: return null
+        return if (n in min..max) n else null
+    }
+
+    private fun str(json: JsonValue?, key: String): String? =
+        (json?.opt(key) as? JsonValue.Str)?.value?.trim()?.takeIf { it.isNotBlank() }
+
+    private fun swellingOf(s: String?): Swelling? {
+        if (s == null) return null
+        return Swelling.values().firstOrNull { it.label.equals(s, true) || it.name.equals(s, true) }
     }
 
     /** Build the user-message data block for the weekly summary. Pure. */

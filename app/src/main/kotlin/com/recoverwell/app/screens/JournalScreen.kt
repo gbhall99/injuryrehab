@@ -2,6 +2,7 @@ package com.recoverwell.app.screens
 
 import android.view.Gravity
 import android.view.View
+import android.widget.EditText
 import com.recoverwell.app.MainActivity
 import com.recoverwell.app.ai.AiContext
 import com.recoverwell.app.ai.Groq
@@ -11,15 +12,18 @@ import com.recoverwell.app.ui.Forms
 import com.recoverwell.app.ui.Ui
 import com.recoverwell.core.logic.JournalTrends
 import com.recoverwell.core.model.JournalEntry
+import com.recoverwell.core.model.Swelling
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 /**
- * The "Rosebud-style" recovery journal: record a short spoken check-in, which is
- * transcribed (Whisper) and analyzed (chat) by Groq into a reflection, insights,
- * tips and a mood. Entries persist (and back up); a weekly AI summary and simple
- * mood trend tie them together. Requires the user to have opted into AI features.
+ * The "Rosebud-style" recovery journal, and the voice front-end to the daily
+ * check-in: record a spoken update, which Groq transcribes (Whisper) and turns
+ * into a reflection, insights, tips, a mood AND any daily metrics the user
+ * mentioned (pain/swelling/mood/energy). Those are shown pre-filled and editable
+ * so one spoken check-in fills today's log and creates a journal entry together.
+ * A weekly AI summary and mood trend tie entries together. Requires AI opt-in.
  */
 object JournalScreen {
 
@@ -27,6 +31,10 @@ object JournalScreen {
     private var recording = false
     private var processing = false
     private var error: String? = null
+
+    /** A finished analysis awaiting the user's confirmation before it's saved. */
+    private class Pending(val transcript: String, val analysis: JournalAi.Analysis)
+    private var pending: Pending? = null
 
     private var summary: String? = null
     private var summaryLoading = false
@@ -41,7 +49,7 @@ object JournalScreen {
 
         if (!AiScreen.enabled(a)) {
             col.addView(Ui.caption(a, "The recovery journal uses AI to turn a spoken check-in into " +
-                "insights and tips. Turn on AI features to use it."))
+                "your daily log plus insights and tips. Turn on AI features to use it."))
             col.addView(Ui.fullWidth(Ui.button(a, "Set up AI features") {
                 a.pushOverlay("AI features") { AiScreen.settings(a) }
             }, a))
@@ -49,8 +57,15 @@ object JournalScreen {
             return Ui.scroll(a, col)
         }
 
-        col.addView(Ui.caption(a, "Speak freely about your day - how the leg felt, wins, worries. " +
-            "We transcribe it, reflect it back, and spot patterns. Audio is deleted after; only text is kept."))
+        // confirmation step takes over the screen until saved or discarded
+        pending?.let {
+            col.addView(confirmCard(a, today, it))
+            col.addView(Ui.spacer(a, 24))
+            return Ui.scroll(a, col)
+        }
+
+        col.addView(Ui.caption(a, "Speak freely about your day - how the leg felt, pain, swelling, wins, " +
+            "worries. We turn it into your daily check-in plus a reflection. Audio is deleted after; only text is kept."))
         col.addView(Ui.spacer(a, 8))
 
         val entries = a.store.journalEntries().sortedByDescending { it.date }
@@ -84,7 +99,7 @@ object JournalScreen {
             }
             recording -> {
                 card.addView(Ui.text(a, "Recording…", 15.5f, Ui.WARN, bold = true))
-                card.addView(Ui.caption(a, "Speak freely, then stop when you're done."))
+                card.addView(Ui.caption(a, "Mention pain, swelling, mood or energy if you can - then stop."))
                 card.addView(Ui.fullWidth(Ui.button(a, "Stop & analyze") { stopAndAnalyze(a, today) }, a))
                 card.addView(Ui.fullWidth(Ui.textButton(a, "Cancel") {
                     recorder?.cancel(); recorder = null; recording = false; error = null; a.refresh()
@@ -137,6 +152,68 @@ object JournalScreen {
         return Ui.scroll(a, col)
     }
 
+    /** Editable, pre-filled daily check-in + reflection, shown after analysis. */
+    private fun confirmCard(a: MainActivity, today: LocalDate, p: Pending): View {
+        val log = a.store.dailyLog(today)
+        val m = p.analysis.metrics
+        val card = Ui.card(a)
+        card.addView(Ui.text(a, "Here's what I heard", 16f, Ui.TEXT, bold = true))
+        if (p.analysis.reflection.isNotBlank()) {
+            card.addView(Ui.spacer(a, 2))
+            card.addView(Ui.text(a, p.analysis.reflection, 14.5f, Ui.TEXT))
+        }
+        card.addView(Ui.spacer(a, 4))
+        card.addView(Ui.caption(a, "Check your daily numbers below - I filled in what you mentioned. Edit anything, then save."))
+
+        // pain (always present; prefer what was heard, else today's, else yesterday's)
+        card.addView(Forms.label(a, "Pain"))
+        var pain = m.pain ?: log.pain ?: (a.store.dailyLog(today.minusDays(1)).pain ?: 0)
+        card.addView(Forms.scaleSlider(a, 10, pain, "0 · None", "10 · Worst") { pain = it })
+
+        var mood: Int? = m.moodRating ?: log.mood
+        card.addView(Forms.label(a, "Mood · optional"))
+        card.addView(Forms.choiceRow(a, (1..5).toList(), { "$it" }, mood) { mood = it })
+
+        var swelling: Swelling? = m.swelling ?: log.swelling
+        card.addView(Forms.label(a, "Swelling · optional"))
+        card.addView(Forms.choiceRow(a, Swelling.values().toList(), { it.label }, swelling) { swelling = it })
+
+        var energy: Int? = m.energy ?: log.energy
+        card.addView(Forms.label(a, "Energy · optional"))
+        card.addView(Forms.choiceRow(a, (1..5).toList(), { "$it" }, energy) { energy = it })
+
+        card.addView(Forms.label(a, "What you said"))
+        val notesEdit: EditText = Forms.editText(a, p.transcript, "Your words", multiline = true)
+        card.addView(notesEdit)
+
+        if (p.analysis.insights.isNotEmpty()) {
+            card.addView(Ui.spacer(a, 6))
+            card.addView(Ui.text(a, "Noticed", 12.5f, Ui.TEXT_DIM, bold = true))
+            for (i in p.analysis.insights) card.addView(bullet(a, i))
+        }
+        if (p.analysis.tips.isNotEmpty()) {
+            card.addView(Ui.spacer(a, 6))
+            card.addView(Ui.text(a, "Try", 12.5f, Ui.TEXT_DIM, bold = true))
+            for (t in p.analysis.tips) card.addView(bullet(a, t))
+        }
+
+        card.addView(Ui.fullWidth(Ui.button(a, "Save check-in") {
+            val transcript = notesEdit.text.toString().trim().ifBlank { p.transcript }
+            // one save updates today's daily log...
+            a.store.saveDailyLog(log.copy(pain = pain, mood = mood, swelling = swelling, energy = energy))
+            // ...and records the journal entry (reflection/insights/tips/mood)
+            a.store.addJournalEntry(
+                JournalEntry(UUID.randomUUID().toString(), today, transcript,
+                    p.analysis.reflection, p.analysis.insights, p.analysis.tips, p.analysis.mood)
+            )
+            pending = null
+            android.widget.Toast.makeText(a, "Check-in saved", android.widget.Toast.LENGTH_SHORT).show()
+            a.refresh()
+        }, a))
+        card.addView(Ui.fullWidth(Ui.textButton(a, "Discard") { pending = null; a.refresh() }, a, 4))
+        return card
+    }
+
     private fun startRecording(a: MainActivity) {
         a.requestMic { granted ->
             if (!granted) {
@@ -169,23 +246,23 @@ object JournalScreen {
         val key = AiScreen.apiKey(a)
         val context = AiContext.system(a.store.profile(), a.store.allLogs(), today)
         Thread {
+            var result: JournalAi.Analysis? = null
+            var transcript = ""
             var err: String? = null
             try {
-                val transcript = Groq.transcribe(key, file)
+                transcript = Groq.transcribe(key, file)
                 if (transcript.isBlank()) throw Groq.GroqException("Didn't catch any speech - try again.")
-                val analysis = JournalAi.analyze(key, context, transcript)
-                a.store.addJournalEntry(
-                    JournalEntry(UUID.randomUUID().toString(), today, transcript,
-                        analysis.reflection, analysis.insights, analysis.tips, analysis.mood)
-                )
+                result = JournalAi.analyze(key, context, transcript)
             } catch (e: Exception) {
                 err = e.message ?: "Something went wrong analyzing your check-in."
             } finally {
                 file.delete()
             }
+            val analysis = result
             a.runOnUiThread {
                 processing = false
                 recorder = null
+                if (analysis != null) pending = Pending(transcript, analysis)
                 error = err
                 a.refresh()
             }

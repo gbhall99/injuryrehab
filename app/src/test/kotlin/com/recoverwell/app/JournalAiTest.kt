@@ -29,6 +29,34 @@ class JournalAiTest {
     }
 
     @Test
+    fun extractsDailyMetricsWhenMentioned() {
+        val raw = """{"reflection":"x","insights":[],"tips":[],"mood":"Mixed",
+            "metrics":{"pain":4,"swelling":"Mild","moodRating":3,"energy":2}}"""
+        val m = JournalAi.parseAnalysis(raw).metrics
+        assertEquals(4, m.pain)
+        assertEquals(Swelling.MILD, m.swelling)
+        assertEquals(3, m.moodRating)
+        assertEquals(2, m.energy)
+    }
+
+    @Test
+    fun nullAndOutOfRangeMetricsAreIgnored() {
+        val raw = """{"reflection":"x","insights":[],"tips":[],"mood":"Mixed",
+            "metrics":{"pain":99,"swelling":null,"moodRating":null,"energy":7}}"""
+        val m = JournalAi.parseAnalysis(raw).metrics
+        assertNull("pain out of 0-10 range dropped", m.pain)
+        assertNull(m.swelling)
+        assertNull(m.moodRating)
+        assertNull("energy out of 1-5 range dropped", m.energy)
+    }
+
+    @Test
+    fun missingMetricsBlockYieldsAllNulls() {
+        val m = JournalAi.parseAnalysis("""{"reflection":"x","insights":[],"tips":[],"mood":"Steady"}""").metrics
+        assertNull(m.pain); assertNull(m.swelling); assertNull(m.moodRating); assertNull(m.energy)
+    }
+
+    @Test
     fun toleratesCodeFencesAndProse() {
         val raw = "Sure! Here you go:\n```json\n{\"reflection\":\"ok\",\"insights\":[],\"tips\":[],\"mood\":\"Steady\"}\n```"
         val a = JournalAi.parseAnalysis(raw)

@@ -100,7 +100,7 @@ object AskScreen {
         }
         loading = true
         a.refresh()
-        val system = AiContext.system(profile, a.store.allLogs(), today)
+        val system = AiContext.system(profile, a.store.allLogs(), today, a.store.journalEntries())
         val key = AiScreen.apiKey(a)
         Thread {
             var ok: String? = null

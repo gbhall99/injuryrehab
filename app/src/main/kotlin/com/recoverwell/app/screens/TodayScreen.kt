@@ -469,6 +469,12 @@ object TodayScreen {
                 a.refresh()
             }, a, 2))
         }
+        // voice front-end: speak your day and let AI fill the check-in for you
+        if (date == today && AiScreen.enabled(a)) {
+            card.addView(Ui.fullWidth(Ui.textButton(a, "🎙  Speak your check-in instead") {
+                a.pushOverlay("Recovery journal") { JournalScreen.build(a) }
+            }, a, 2))
+        }
         return card
     }
 
