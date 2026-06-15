@@ -18,6 +18,9 @@ import java.time.LocalDate
  */
 object TwinScreen {
 
+    // remembers whether the static phase reference (boot setup + do/don't) is open
+    private var referenceExpanded = false
+
     fun build(a: MainActivity): View {
         val today = LocalDate.now()
         val profile = a.store.profile()
@@ -62,45 +65,7 @@ object TwinScreen {
         heroCard.addView(heroRow)
         col.addView(heroCard)
 
-        // ---- your boot / cast: how it's set up and operated ----
-        protocol.supportDevice?.let { device ->
-            col.addView(Ui.section(a, "Your ${device.name.lowercase()}"))
-            val card = Ui.card(a)
-            val head = Ui.row(a)
-            head.gravity = android.view.Gravity.CENTER_VERTICAL
-            head.addView(Ui.iconBadge(a, "ic_boot", boxDp = 36))
-            val ht = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
-            ht.setPadding(Ui.dp(a, 12), 0, Ui.dp(a, 8), 0)
-            ht.addView(Ui.text(a, device.name, 15.5f, Ui.TEXT, bold = true))
-            ht.addView(Ui.caption(a, if (device.kind == com.recoverwell.core.protocol.DeviceKind.CAST)
-                "Set in equinus by your clinic"
-            else "Now at ${device.format(profile.currentWedges)} · ${device.unitNamePlural}"))
-            head.addView(Ui.weight(ht, 1f))
-            head.addView(Ui.textButton(a, "Change") { a.pushOverlay("Injury & goal") { MoreScreen.profileEditor(a) } })
-            card.addView(head)
-            if (device.operation.isNotBlank()) {
-                card.addView(Ui.spacer(a, 6))
-                card.addView(Ui.text(a, device.operation, 14f, Ui.TEXT))
-            }
-            col.addView(card)
-            if (device.setupNotes.isNotEmpty()) {
-                val notes = Ui.card(a)
-                notes.addView(Ui.text(a, "Setting it up & wearing it", 13.5f, Ui.TEXT_DIM, bold = true))
-                device.setupNotes.forEachIndexed { i, n ->
-                    notes.addView(Ui.spacer(a, if (i == 0) 6 else 8))
-                    val r = Ui.row(a)
-                    r.gravity = android.view.Gravity.TOP
-                    r.addView(Ui.icon(a, "ic_check", 16, Ui.PRIMARY))
-                    val t = Ui.text(a, n, 14f, Ui.TEXT)
-                    t.setPadding(Ui.dp(a, 10), 0, 0, 0)
-                    r.addView(Ui.weight(t, 1f))
-                    notes.addView(r)
-                }
-                col.addView(notes)
-            }
-        }
-
-        // ---- warnings ----
+        // ---- watch-outs (off-plan risk; always visible) ----
         val recent = a.store.allLogs().filter { !it.date.isBefore(today.minusDays(7)) }
         val warnings = Capability.warnings(profile, recent, today)
         if (warnings.isNotEmpty()) {
@@ -119,7 +84,8 @@ object TwinScreen {
             }
         }
 
-        // ---- movement checks ----
+        // ---- movement checks: the live "what can I do right now" (always visible,
+        // the highest-value, most-used part of this screen) ----
         col.addView(Ui.section(a, "Can I..."))
         val checksCard = Ui.card(a)
         Capability.movementChecks(profile, today).forEachIndexed { i, c ->
@@ -140,36 +106,86 @@ object TwinScreen {
         }
         col.addView(checksCard)
 
-        // ---- do / don't ----
-        col.addView(Ui.section(a, "OK in this phase"))
-        val doCard = Ui.card(a)
-        snap.allowed.forEachIndexed { i, s ->
-            if (i > 0) doCard.addView(Ui.spacer(a, 6))
-            val r = Ui.row(a)
-            r.addView(Ui.icon(a, "ic_check", 17, Ui.DONE))
-            val t = Ui.text(a, s, 14f)
-            t.setPadding(Ui.dp(a, 10), 0, 0, 0)
-            r.addView(Ui.weight(t, 1f))
-            doCard.addView(r)
-        }
-        col.addView(doCard)
-
-        col.addView(Ui.section(a, "Not yet"))
-        val dontCard = Ui.card(a)
-        snap.notAllowed.forEachIndexed { i, s ->
-            if (i > 0) dontCard.addView(Ui.spacer(a, 6))
-            val r = Ui.row(a)
-            r.addView(Ui.icon(a, "ic_close", 17, Ui.DANGER))
-            val t = Ui.text(a, s, 14f)
-            t.setPadding(Ui.dp(a, 10), 0, 0, 0)
-            r.addView(Ui.weight(t, 1f))
-            dontCard.addView(r)
-        }
-        col.addView(dontCard)
-
         col.addView(Ui.fullWidth(Ui.dangerButton(a, "Open red flags") {
             a.pushOverlay("Red flags") { RedFlagsScreen.build(a) }
         }, a))
+
+        // ---- phase reference: boot setup + do/don't. Learned in the early weeks
+        // and rarely changes, so it's tucked behind a disclosure to keep this
+        // screen about what's live today (usability testing found the static
+        // content went stale while the capability view above stayed valuable). ----
+        col.addView(Ui.fullWidth(Ui.textButton(a,
+            if (referenceExpanded) "Hide phase reference" else "Show phase reference · boot setup, do & don't") {
+            referenceExpanded = !referenceExpanded
+            a.refresh()
+        }, a))
+
+        if (referenceExpanded) {
+            // your boot / cast: how it's set up and operated
+            protocol.supportDevice?.let { device ->
+                col.addView(Ui.section(a, "Your ${device.name.lowercase()}"))
+                val card = Ui.card(a)
+                val head = Ui.row(a)
+                head.gravity = android.view.Gravity.CENTER_VERTICAL
+                head.addView(Ui.iconBadge(a, "ic_boot", boxDp = 36))
+                val ht = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
+                ht.setPadding(Ui.dp(a, 12), 0, Ui.dp(a, 8), 0)
+                ht.addView(Ui.text(a, device.name, 15.5f, Ui.TEXT, bold = true))
+                ht.addView(Ui.caption(a, if (device.kind == com.recoverwell.core.protocol.DeviceKind.CAST)
+                    "Set in equinus by your clinic"
+                else "Now at ${device.format(profile.currentWedges)} · ${device.unitNamePlural}"))
+                head.addView(Ui.weight(ht, 1f))
+                head.addView(Ui.textButton(a, "Change") { a.pushOverlay("Injury & goal") { MoreScreen.profileEditor(a) } })
+                card.addView(head)
+                if (device.operation.isNotBlank()) {
+                    card.addView(Ui.spacer(a, 6))
+                    card.addView(Ui.text(a, device.operation, 14f, Ui.TEXT))
+                }
+                col.addView(card)
+                if (device.setupNotes.isNotEmpty()) {
+                    val notes = Ui.card(a)
+                    notes.addView(Ui.text(a, "Setting it up & wearing it", 13.5f, Ui.TEXT_DIM, bold = true))
+                    device.setupNotes.forEachIndexed { i, n ->
+                        notes.addView(Ui.spacer(a, if (i == 0) 6 else 8))
+                        val r = Ui.row(a)
+                        r.gravity = android.view.Gravity.TOP
+                        r.addView(Ui.icon(a, "ic_check", 16, Ui.PRIMARY))
+                        val t = Ui.text(a, n, 14f, Ui.TEXT)
+                        t.setPadding(Ui.dp(a, 10), 0, 0, 0)
+                        r.addView(Ui.weight(t, 1f))
+                        notes.addView(r)
+                    }
+                    col.addView(notes)
+                }
+            }
+
+            // do / don't for this phase
+            col.addView(Ui.section(a, "OK in this phase"))
+            val doCard = Ui.card(a)
+            snap.allowed.forEachIndexed { i, s ->
+                if (i > 0) doCard.addView(Ui.spacer(a, 6))
+                val r = Ui.row(a)
+                r.addView(Ui.icon(a, "ic_check", 17, Ui.DONE))
+                val t = Ui.text(a, s, 14f)
+                t.setPadding(Ui.dp(a, 10), 0, 0, 0)
+                r.addView(Ui.weight(t, 1f))
+                doCard.addView(r)
+            }
+            col.addView(doCard)
+
+            col.addView(Ui.section(a, "Not yet"))
+            val dontCard = Ui.card(a)
+            snap.notAllowed.forEachIndexed { i, s ->
+                if (i > 0) dontCard.addView(Ui.spacer(a, 6))
+                val r = Ui.row(a)
+                r.addView(Ui.icon(a, "ic_close", 17, Ui.DANGER))
+                val t = Ui.text(a, s, 14f)
+                t.setPadding(Ui.dp(a, 10), 0, 0, 0)
+                r.addView(Ui.weight(t, 1f))
+                dontCard.addView(r)
+            }
+            col.addView(dontCard)
+        }
 
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)

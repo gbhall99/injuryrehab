@@ -165,7 +165,7 @@ object TodayScreen {
         // physio appointment prep / capture / re-book
         run {
             val outlook = com.recoverwell.core.logic.Appointments.outlook(profile.appointments, today)
-            val soon = outlook.next?.takeIf { it.date.isBefore(today.plusDays(4)) }
+            val soon = outlook.next?.takeIf { it.date.isBefore(today.plusDays(8)) }
             val toCapture = outlook.overdue.maxByOrNull { it.date }
             if (soon != null) {
                 val days = java.time.temporal.ChronoUnit.DAYS.between(today, soon.date)
@@ -322,9 +322,30 @@ object TodayScreen {
             })
         }
 
+        // ---- your recovery (standing destinations, promoted from More) ---------
+        // Usability testing found the three highest-value features buried in the
+        // settings-shaped More tab: ask, the voice journal, and physio visit prep.
+        // They now have a stable home one tap from Today.
+        col.addView(Ui.section(a, "Your recovery"))
+        col.addView(Ui.listRow(a, "ic_info", "Ask about your recovery",
+            if (AiScreen.enabled(a)) "Can I drive yet? What's next? - answered by AI"
+            else "Can I drive yet? What's next? - answered offline") {
+            a.pushOverlay("Ask my recovery") { AskScreen.build(a) }
+        })
+        if (AiScreen.enabled(a)) {
+            col.addView(Ui.listRow(a, "ic_edit", "Recovery journal",
+                "Speak your day - AI reflects it back and spots patterns") {
+                a.pushOverlay("Recovery journal") { JournalScreen.build(a) }
+            })
+        }
+        col.addView(Ui.listRow(a, "ic_calendar", "Physio visits",
+            "Appointment pack, sign-offs and visit notes") {
+            a.pushOverlay("Physio visits") { PhysioScreen.build(a) }
+        })
+
         // ---- more for you (discretionary, below the daily task) ----------------
         // contextual prompts and the timely recovery surfaces only; standing
-        // destinations (Ask, Stay fit, How you're doing) live in the More tab.
+        // destinations now live in the "Your recovery" section above.
         val moreRows = ArrayList<View>()
         for (p in rest.drop(1).take(2)) moreRows.add(promptRow(a, p))
         val rts = com.recoverwell.core.logic.ReturnToSport.progress(

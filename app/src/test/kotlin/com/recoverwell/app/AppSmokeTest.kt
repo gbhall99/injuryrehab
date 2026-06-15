@@ -77,7 +77,10 @@ class ScreensSmokeTest : SmokeBase() {
         activity.show(MainActivity.Tab.TWIN)
         texts = allText(activity.window.decorView).joinToString("\n")
         assertTrue(texts.has("Achilles"))
-        assertTrue(texts.has("Not yet"))
+        // the live capability view is always visible; the static do/don't ("Not yet")
+        // now lives behind the "phase reference" disclosure
+        assertTrue(texts.has("Can I"))
+        assertTrue(texts.has("phase reference"))
 
         activity.show(MainActivity.Tab.MORE)
         texts = allText(activity.window.decorView).joinToString("\n")
