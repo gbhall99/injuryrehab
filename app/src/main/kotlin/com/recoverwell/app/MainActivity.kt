@@ -88,15 +88,25 @@ class MainActivity : Activity() {
         appBarTitle.maxLines = 1
         appBarTitle.ellipsize = android.text.TextUtils.TruncateAt.END
         appBar.addView(Ui.weight(appBarTitle, 1f))
-        // Two everyday tools sit one tap from every screen, next to the always-on
-        // red-flags safety button: ask a question, or open the daily journal.
-        appBar.addView(Ui.iconButton(this, "ic_chat", Ui.PRIMARY, Ui.PRIMARY_CONTAINER,
-            desc = "Ask my recovery - answers about your plan") { openAsk() })
-        appBar.addView(Ui.iconButton(this, "ic_edit", Ui.PRIMARY, Ui.PRIMARY_CONTAINER,
-            desc = "Recovery journal - daily check-in") { openJournal() })
-        appBar.addView(Ui.iconButton(this, "ic_alert", Ui.DANGER, Ui.DANGER_BG, desc = "Red flags - urgent symptoms") {
+        // Two everyday tools live in one rounded container so they read as a
+        // single pair, with the always-on red-flags safety button set apart.
+        val tools = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = GradientDrawable().apply {
+                cornerRadius = Ui.dpF(this@MainActivity, 22f)
+                setColor(Ui.PRIMARY_CONTAINER)
+            }
+        }
+        tools.addView(barIcon("ic_chat", "Ask my recovery - answers about your plan") { openAsk() })
+        tools.addView(barIcon("ic_edit", "Recovery journal - daily check-in") { openJournal() })
+        appBar.addView(tools)
+        val flags = Ui.iconButton(this, "ic_alert", Ui.DANGER, Ui.DANGER_BG,
+            desc = "Red flags - urgent symptoms") {
             pushOverlay("Red flags") { RedFlagsScreen.build(this) }
-        })
+        }
+        (flags.layoutParams as LinearLayout.LayoutParams).marginStart = Ui.dp(this, 8)
+        appBar.addView(flags)
         root.addView(appBar)
 
         content = FrameLayout(this)
@@ -232,6 +242,10 @@ class MainActivity : Activity() {
         if (overlayTitles.lastOrNull() == "Recovery journal") return
         pushOverlay("Recovery journal") { JournalScreen.build(this) }
     }
+
+    /** A flat app-bar icon: the surrounding tools pill supplies the background. */
+    private fun barIcon(name: String, desc: String, onClick: () -> Unit): View =
+        Ui.iconButton(this, name, Ui.ON_PRIMARY_CONTAINER, 0, desc, onClick)
 
     fun popOverlay() {
         if (overlays.isNotEmpty()) {
