@@ -84,10 +84,29 @@ class MainActivity : Activity() {
                 Ui.dp(this@MainActivity, 12), Ui.dp(this@MainActivity, 6))
         }
         appBarTitle = Ui.display(this, Tab.TODAY.label)
+        // three quick-action icons share the bar, so keep the title to one line
+        appBarTitle.maxLines = 1
+        appBarTitle.ellipsize = android.text.TextUtils.TruncateAt.END
         appBar.addView(Ui.weight(appBarTitle, 1f))
-        appBar.addView(Ui.iconButton(this, "ic_alert", Ui.DANGER, Ui.DANGER_BG, desc = "Red flags - urgent symptoms") {
+        // Two everyday tools live in one rounded container so they read as a
+        // single pair, with the always-on red-flags safety button set apart.
+        val tools = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = GradientDrawable().apply {
+                cornerRadius = Ui.dpF(this@MainActivity, 22f)
+                setColor(Ui.PRIMARY_CONTAINER)
+            }
+        }
+        tools.addView(barIcon("ic_chat", "Ask my recovery - answers about your plan") { openAsk() })
+        tools.addView(barIcon("ic_edit", "Recovery journal - daily check-in") { openJournal() })
+        appBar.addView(tools)
+        val flags = Ui.iconButton(this, "ic_alert", Ui.DANGER, Ui.DANGER_BG,
+            desc = "Red flags - urgent symptoms") {
             pushOverlay("Red flags") { RedFlagsScreen.build(this) }
-        })
+        }
+        (flags.layoutParams as LinearLayout.LayoutParams).marginStart = Ui.dp(this, 8)
+        appBar.addView(flags)
         root.addView(appBar)
 
         content = FrameLayout(this)
@@ -211,6 +230,22 @@ class MainActivity : Activity() {
         overlayTitles.add(title)
         render(animated = true)
     }
+
+    /** Quick access from the app bar: open the AI Q&A. No-op if already on top. */
+    fun openAsk() {
+        if (overlayTitles.lastOrNull() == "Ask my recovery") return
+        pushOverlay("Ask my recovery") { AskScreen.build(this) }
+    }
+
+    /** Quick access from the app bar: open the recovery journal. No-op if already on top. */
+    fun openJournal() {
+        if (overlayTitles.lastOrNull() == "Recovery journal") return
+        pushOverlay("Recovery journal") { JournalScreen.build(this) }
+    }
+
+    /** A flat app-bar icon: the surrounding tools pill supplies the background. */
+    private fun barIcon(name: String, desc: String, onClick: () -> Unit): View =
+        Ui.iconButton(this, name, Ui.ON_PRIMARY_CONTAINER, 0, desc, onClick)
 
     fun popOverlay() {
         if (overlays.isNotEmpty()) {

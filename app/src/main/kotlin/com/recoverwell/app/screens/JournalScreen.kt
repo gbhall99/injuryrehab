@@ -96,6 +96,10 @@ object JournalScreen {
         }
 
         // ---- record control -------------------------------------------------
+        // "checked in today" agrees with the Today screen: it's true if today's
+        // daily log has a check-in, regardless of which flow recorded it (manual
+        // button or spoken). The streak/mood header above stays entry-based.
+        val checkedInToday = trends.loggedToday || a.store.dailyLog(today).pain != null
         col.addView(Ui.section(a, "Today's check-in"))
         val card = Ui.card(a)
         when {
@@ -112,7 +116,7 @@ object JournalScreen {
                 }, a, 4))
             }
             else -> {
-                if (trends.loggedToday) {
+                if (checkedInToday) {
                     card.addView(Ui.text(a, "You've checked in today", 14.5f, Ui.TEXT))
                     card.addView(Ui.caption(a, "Record again to update today's entry."))
                 } else {
@@ -243,8 +247,10 @@ object JournalScreen {
 
         card.addView(Ui.fullWidth(Ui.button(a, "Save check-in") {
             val transcript = notesEdit.text.toString().trim().ifBlank { p.transcript }
-            // one save updates today's daily log...
-            a.store.saveDailyLog(log.copy(pain = pain, mood = mood, swelling = swelling, energy = energy))
+            // one save updates today's daily log (mirroring the spoken words into
+            // the log's notes, so the manual and voice flows write the same fields)...
+            a.store.saveDailyLog(log.copy(
+                pain = pain, mood = mood, swelling = swelling, energy = energy, notes = transcript))
             // ...and records today's journal entry (one per day - replaces any earlier one)
             a.store.upsertJournalEntry(
                 JournalEntry(UUID.randomUUID().toString(), today, transcript,
