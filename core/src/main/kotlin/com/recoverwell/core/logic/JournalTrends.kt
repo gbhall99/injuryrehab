@@ -39,10 +39,8 @@ object JournalTrends {
             cursor = cursor.minusDays(1)
         }
 
-        val recent = entries.filter { !it.date.isBefore(today.minusDays(6)) }
-        val prior = entries.filter {
-            it.date.isBefore(today.minusDays(6)) && !it.date.isBefore(today.minusDays(13))
-        }
+        // recent week vs the week before (shared, future-bounded windows)
+        val (recent, prior) = TrendMath.twoWindows(entries, today) { it.date }
         val recentAvg = recent.takeIf { it.isNotEmpty() }?.map { it.mood.score }?.average()
         val priorAvg = prior.takeIf { it.isNotEmpty() }?.map { it.mood.score }?.average()
         val direction = when {

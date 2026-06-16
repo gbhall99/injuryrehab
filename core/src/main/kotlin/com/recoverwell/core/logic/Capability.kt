@@ -135,7 +135,8 @@ object Capability {
             )
         }
 
-        val sustainedHighPain = recentLogs.filter { !it.date.isBefore(today.minusDays(6)) }
+        val sustainedHighPain = recentLogs
+            .filter { !it.date.isBefore(today.minusDays(6)) && !it.date.isAfter(today) }
             .mapNotNull { it.pain }.let { it.size >= 3 && it.all { p -> p >= 6 } }
         if (sustainedHighPain) {
             out.add(

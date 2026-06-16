@@ -36,6 +36,7 @@ class MainActivity : Activity() {
     private lateinit var content: FrameLayout
     private lateinit var tabBar: LinearLayout
     private lateinit var appBar: LinearLayout
+    private lateinit var tools: LinearLayout
     private lateinit var disclaimer: android.widget.TextView
     private lateinit var appBarTitle: android.widget.TextView
     var currentTab = Tab.TODAY
@@ -43,6 +44,9 @@ class MainActivity : Activity() {
     // each overlay's own title for the app bar (null falls back to the tab name,
     // so the bar never shows a generic "RecoverWell" over a named screen)
     private val overlayTitles = ArrayList<String?>()
+    // optional teardown run when an overlay is removed (e.g. reset a screen's
+    // singleton state / release the mic), parallel to [overlays]
+    private val overlayDisposers = ArrayList<(() -> Unit)?>()
 
     private var pendingExport: ByteArray? = null
     private var pendingExportToast = ""
@@ -90,7 +94,7 @@ class MainActivity : Activity() {
         appBar.addView(Ui.weight(appBarTitle, 1f))
         // Two everyday tools live in one rounded container so they read as a
         // single pair, with the always-on red-flags safety button set apart.
-        val tools = LinearLayout(this).apply {
+        tools = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             background = GradientDrawable().apply {
@@ -156,6 +160,8 @@ class MainActivity : Activity() {
 
         Reminders.reschedule(this)
         CrashGuard.offerReport(this)
+        // clear any check-in audio left behind by a process killed mid-recording
+        com.recoverwell.app.ai.VoiceRecorder.sweepCache(this)
 
         if (!store.profile().onboardingComplete) {
             pushOverlay { Onboarding.build(this) }
@@ -218,29 +224,33 @@ class MainActivity : Activity() {
 
     fun show(tab: Tab) {
         currentTab = tab
+        // leaving every overlay: run their teardowns (reset screen state, free the mic)
+        overlayDisposers.forEach { it?.invoke() }
         overlays.clear()
         overlayTitles.clear()
+        overlayDisposers.clear()
         render(animated = true)
     }
 
     fun refresh() = render(animated = false)
 
-    fun pushOverlay(title: String? = null, factory: () -> View) {
+    fun pushOverlay(title: String? = null, onDispose: (() -> Unit)? = null, factory: () -> View) {
         overlays.add(factory)
         overlayTitles.add(title)
+        overlayDisposers.add(onDispose)
         render(animated = true)
     }
 
-    /** Quick access from the app bar: open the AI Q&A. No-op if already on top. */
+    /** Quick access (app bar + Today/More): open the AI Q&A. No-op if already on top. */
     fun openAsk() {
         if (overlayTitles.lastOrNull() == "Ask my recovery") return
-        pushOverlay("Ask my recovery") { AskScreen.build(this) }
+        pushOverlay("Ask my recovery", onDispose = { AskScreen.reset() }) { AskScreen.build(this) }
     }
 
-    /** Quick access from the app bar: open the recovery journal. No-op if already on top. */
+    /** Quick access (app bar + Today/More): open the recovery journal. No-op if already on top. */
     fun openJournal() {
         if (overlayTitles.lastOrNull() == "Recovery journal") return
-        pushOverlay("Recovery journal") { JournalScreen.build(this) }
+        pushOverlay("Recovery journal", onDispose = { JournalScreen.reset() }) { JournalScreen.build(this) }
     }
 
     /** A flat app-bar icon: the surrounding tools pill supplies the background. */
@@ -251,6 +261,7 @@ class MainActivity : Activity() {
         if (overlays.isNotEmpty()) {
             overlays.removeAt(overlays.size - 1)
             overlayTitles.removeAt(overlayTitles.size - 1)
+            overlayDisposers.removeAt(overlayDisposers.size - 1)?.invoke()
         }
         render(animated = true)
     }
@@ -262,6 +273,10 @@ class MainActivity : Activity() {
         tabBar.visibility = if (onboarding) View.GONE else View.VISIBLE
         disclaimer.visibility = if (onboarding) View.GONE else View.VISIBLE
         appBar.visibility = if (onboarding) View.GONE else View.VISIBLE
+        // the two tool icons duplicate what a pushed screen already offers and would
+        // squeeze a long overlay title, so show them only on the top-level tabs;
+        // the red-flags safety button stays put in every state
+        tools.visibility = if (onboarding || overlays.isNotEmpty()) View.GONE else View.VISIBLE
         appBarTitle.text = if (overlays.isNotEmpty())
             (overlayTitles.lastOrNull() ?: currentTab.label) else currentTab.label
         // an in-place refresh (e.g. checking an item off) rebuilds the screen, which
@@ -335,6 +350,9 @@ class MainActivity : Activity() {
             // onboarding stays modal as the root overlay, but screens stacked
             // on top of it (e.g. red flags) can still be backed out of
             if (!store.profile().onboardingComplete && overlays.size == 1) return
+            // confirm before back-pressing away an analyzed-but-unsaved check-in
+            if (overlayTitles.lastOrNull() == "Recovery journal" &&
+                JournalScreen.confirmDiscardOnBack(this)) return
             popOverlay()
         } else {
             @Suppress("DEPRECATION")
@@ -346,6 +364,12 @@ class MainActivity : Activity() {
         super.onResume()
         Reminders.reschedule(this)
         runAutoBackupIfDue()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // a recording can't continue reliably once backgrounded - release the mic
+        JournalScreen.releaseRecorder()
     }
 
     // ------------------------------------------------------------------

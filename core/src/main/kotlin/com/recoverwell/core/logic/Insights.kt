@@ -80,10 +80,9 @@ object Insights {
 
     /** (recentAvg, priorAvg) over the two trailing 7-day windows, or null if sparse. */
     private fun trend(logs: List<DailyLog>, today: LocalDate, value: (DailyLog) -> Double?): Pair<Double, Double>? {
-        val recent = logs.filter { !it.date.isBefore(today.minusDays(6)) && !it.date.isAfter(today) }
-            .mapNotNull(value)
-        val prior = logs.filter { !it.date.isBefore(today.minusDays(13)) && it.date.isBefore(today.minusDays(6)) }
-            .mapNotNull(value)
+        val (recentLogs, priorLogs) = TrendMath.twoWindows(logs, today) { it.date }
+        val recent = recentLogs.mapNotNull(value)
+        val prior = priorLogs.mapNotNull(value)
         if (recent.size < 3 || prior.size < 3) return null
         return recent.average() to prior.average()
     }
@@ -117,11 +116,12 @@ object Insights {
             it.type == EventType.MEDICATION && it.status == EventStatus.TAKEN &&
                 !it.date.isBefore(today.minusDays((days - 1).toLong())) && !it.date.isAfter(today)
         }
-        val pct = (taken * 100) / total
+        // shared thresholds so this and the weekly digest agree on "slipping"
+        val pct = TrendMath.adherence(taken, total)
         return when {
-            pct >= 90 -> Insight(Tone.POSITIVE, "Strong medication adherence",
+            pct >= TrendMath.ADHERENCE_STRONG -> Insight(Tone.POSITIVE, "Strong medication adherence",
                 "You've taken about $pct% of your doses this week. Clot prevention works best taken consistently - nicely done.")
-            pct in 1..59 -> Insight(Tone.CAUTION, "Medication adherence is slipping",
+            pct in 1 until TrendMath.ADHERENCE_SLIPPING -> Insight(Tone.CAUTION, "Medication adherence is slipping",
                 "Only about $pct% of this week's doses are logged as taken. Consistency matters for clot prevention - consider adjusting your reminders.")
             else -> null
         }

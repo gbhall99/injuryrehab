@@ -1,6 +1,7 @@
 package com.recoverwell.app.ai
 
 import com.recoverwell.core.json.Json
+import com.recoverwell.core.json.JsonValue
 import java.io.File
 import java.io.IOException
 import java.io.OutputStream
@@ -73,14 +74,19 @@ object Groq {
 
     /** Extract the transcript text from a Whisper response. Pure - unit-tested. */
     internal fun parseTranscript(responseJson: String): String =
-        Json.parse(responseJson).opt("text")?.asString()?.trim()
+        ((Json.parse(responseJson).opt("text") as? JsonValue.Str)?.value)?.trim()
             ?: throw GroqException("No transcription returned")
 
-    /** Extract the assistant text from a chat-completion response. Pure - unit-tested. */
+    /**
+     * Extract the assistant text from a chat-completion response. Pure - unit-tested.
+     * Stays null-safe so a malformed-but-200 body surfaces as a friendly GroqException
+     * rather than a raw ClassCastException reaching the UI.
+     */
     internal fun parseReply(responseJson: String): String {
         val choices = Json.parse(responseJson).opt("choices")?.asArr().orEmpty()
         if (choices.isEmpty()) throw GroqException("Empty response from Groq")
-        return choices[0].get("message").get("content").asString().trim()
+        return ((choices[0].opt("message")?.opt("content")) as? JsonValue.Str)?.value?.trim()
+            ?: throw GroqException("Unexpected response from Groq")
     }
 
     /** Retry a network operation a couple of times on transient I/O failures. */

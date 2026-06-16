@@ -48,6 +48,37 @@ object JournalScreen {
 
     private val dateFmt = DateTimeFormatter.ofPattern("EEE d MMM")
 
+    /** Release the mic if a recording is in progress (e.g. when backgrounding). */
+    fun releaseRecorder() {
+        recorder?.cancel(); recorder = null; recording = false
+    }
+
+    /**
+     * Clear all transient state when leaving the screen, so reopening starts fresh
+     * instead of resurfacing a half-finished recording, edit or analysis. Invoked
+     * by the overlay teardown in [MainActivity].
+     */
+    fun reset() {
+        releaseRecorder()
+        processing = false; pending = null; editingId = null; error = null
+        summary = null; summaryLoading = false; summaryError = null
+        patterns = null; patternsLoading = false; patternsError = null
+    }
+
+    /**
+     * If an analyzed-but-unsaved check-in is pending, confirm before a back-press
+     * discards it. Returns true if it handled the back (a dialog is now showing).
+     */
+    fun confirmDiscardOnBack(a: MainActivity): Boolean {
+        if (pending == null) return false
+        Forms.confirm(a, "Discard this check-in?",
+            "You recorded a check-in that hasn't been saved yet. Going back will discard it.") {
+            pending = null
+            a.popOverlay()
+        }
+        return true
+    }
+
     fun build(a: MainActivity): View {
         val today = LocalDate.now()
         val col = Ui.column(a)
@@ -234,16 +265,7 @@ object JournalScreen {
         val notesEdit: EditText = Forms.editText(a, p.transcript, "Your words", multiline = true)
         card.addView(notesEdit)
 
-        if (p.analysis.insights.isNotEmpty()) {
-            card.addView(Ui.spacer(a, 6))
-            card.addView(Ui.text(a, "Noticed", 12.5f, Ui.TEXT_DIM, bold = true))
-            for (i in p.analysis.insights) card.addView(bullet(a, i))
-        }
-        if (p.analysis.tips.isNotEmpty()) {
-            card.addView(Ui.spacer(a, 6))
-            card.addView(Ui.text(a, "Try", 12.5f, Ui.TEXT_DIM, bold = true))
-            for (t in p.analysis.tips) card.addView(bullet(a, t))
-        }
+        insightsAndTips(a, card, p.analysis.insights, p.analysis.tips)
 
         card.addView(Ui.fullWidth(Ui.button(a, "Save check-in") {
             val transcript = notesEdit.text.toString().trim().ifBlank { p.transcript }
@@ -317,7 +339,7 @@ object JournalScreen {
                 recorder = null
                 if (analysis != null) pending = Pending(transcript, analysis)
                 error = err
-                a.refresh()
+                if (!a.isFinishing && !a.isDestroyed) a.refresh()
             }
         }.start()
     }
@@ -345,7 +367,7 @@ object JournalScreen {
                 summary = text
                 summaryError = err
                 if (text != null) a.store.saveWeeklySummary(weekStart, text)
-                a.refresh()
+                if (!a.isFinishing && !a.isDestroyed) a.refresh()
             }
         }.start()
     }
@@ -371,7 +393,7 @@ object JournalScreen {
                 patternsLoading = false
                 patterns = text
                 patternsError = err
-                a.refresh()
+                if (!a.isFinishing && !a.isDestroyed) a.refresh()
             }
         }.start()
     }
@@ -413,17 +435,23 @@ object JournalScreen {
             card.addView(Ui.spacer(a, 2))
             card.addView(Ui.text(a, e.reflection, 14.5f, Ui.TEXT))
         }
-        if (e.insights.isNotEmpty()) {
+        insightsAndTips(a, card, e.insights, e.tips)
+        return card
+    }
+
+    /** The shared "Noticed"/"Try" bullet blocks, used by the confirm and history cards. */
+    private fun insightsAndTips(a: MainActivity, card: android.view.ViewGroup,
+                                insights: List<String>, tips: List<String>) {
+        if (insights.isNotEmpty()) {
             card.addView(Ui.spacer(a, 6))
             card.addView(Ui.text(a, "Noticed", 12.5f, Ui.TEXT_DIM, bold = true))
-            for (i in e.insights) card.addView(bullet(a, i))
+            for (i in insights) card.addView(bullet(a, i))
         }
-        if (e.tips.isNotEmpty()) {
+        if (tips.isNotEmpty()) {
             card.addView(Ui.spacer(a, 6))
             card.addView(Ui.text(a, "Try", 12.5f, Ui.TEXT_DIM, bold = true))
-            for (t in e.tips) card.addView(bullet(a, t))
+            for (t in tips) card.addView(bullet(a, t))
         }
-        return card
     }
 
     private fun bullet(a: MainActivity, text: String): View {

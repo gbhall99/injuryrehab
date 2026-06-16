@@ -233,6 +233,22 @@ object Ui {
             addView(iv, lp)
         }
 
+    /** 26dp completion ring: filled with a tick when [done], hollow outline otherwise. */
+    fun checkRing(context: Context, done: Boolean): FrameLayout =
+        FrameLayout(context).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                if (done) setColor(DONE) else { setColor(CARD); setStroke(dp(context, 2), Palette.withAlpha(TEXT_DIM, 0x66)) }
+            }
+            layoutParams = LinearLayout.LayoutParams(dp(context, 26), dp(context, 26))
+            if (done) {
+                val iv = icon(context, "ic_check", 16, 0xFFFFFFFF.toInt())
+                val lp = FrameLayout.LayoutParams(dp(context, 16), dp(context, 16))
+                lp.gravity = Gravity.CENTER
+                addView(iv, lp)
+            }
+        }
+
     // ------------------------------------------------------------------ buttons
 
     private fun baseButton(context: Context, label: String, fg: Int, bgDrawable: RippleDrawable): TextView =
@@ -378,21 +394,7 @@ object Ui {
             lp.setMargins(0, dp(context, 4), 0, dp(context, 4))
             layoutParams = lp
         }
-        val ring = FrameLayout(context).apply {
-            val d = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                if (done) setColor(DONE) else { setColor(CARD); setStroke(dp(context, 2), Palette.withAlpha(TEXT_DIM, 0x66)) }
-            }
-            background = d
-            layoutParams = LinearLayout.LayoutParams(dp(context, 26), dp(context, 26))
-            if (done) {
-                val iv = icon(context, "ic_check", 16, 0xFFFFFFFF.toInt())
-                val lp = FrameLayout.LayoutParams(dp(context, 16), dp(context, 16))
-                lp.gravity = Gravity.CENTER
-                addView(iv, lp)
-            }
-        }
-        rowView.addView(ring)
+        rowView.addView(checkRing(context, done))
         val texts = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
         texts.setPadding(dp(context, 13), 0, dp(context, 8), 0)
         val titleView = text(context, titleText, 15.5f, if (done) TEXT_DIM else TEXT, bold = true)
@@ -462,22 +464,7 @@ object Ui {
 
         val rowView = row(context)
         rowView.setPadding(dp(context, 14), dp(context, 10), dp(context, 14), dp(context, 10))
-        val ring = FrameLayout(context).apply {
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                if (complete) setColor(DONE) else {
-                    setColor(CARD); setStroke(dp(context, 2), Palette.withAlpha(TEXT_DIM, 0x66))
-                }
-            }
-            layoutParams = LinearLayout.LayoutParams(dp(context, 26), dp(context, 26))
-            if (complete) {
-                val iv = icon(context, "ic_check", 16, 0xFFFFFFFF.toInt())
-                val lp = FrameLayout.LayoutParams(dp(context, 16), dp(context, 16))
-                lp.gravity = Gravity.CENTER
-                addView(iv, lp)
-            }
-        }
-        rowView.addView(ring)
+        rowView.addView(checkRing(context, complete))
         val texts = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
         texts.setPadding(dp(context, 13), 0, dp(context, 8), 0)
         texts.addView(text(context, titleText, 15.5f, if (complete) TEXT_DIM else TEXT, bold = true))

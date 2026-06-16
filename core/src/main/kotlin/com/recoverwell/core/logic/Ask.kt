@@ -22,7 +22,7 @@ object Ask {
         val out = ArrayList<String>()
         out.add("What can I do right now?")
         checks.firstOrNull { it.movement.contains("drive", true) }?.let { out.add("Can I drive yet?") }
-        checks.lastOrNull()?.let { out.add("Can I ${it.movement.lowercase().removePrefix("play ").let { m -> "play $m" }.replace("play play ", "play ")}?") }
+        checks.lastOrNull()?.let { out.add("Can I play ${it.movement.lowercase().removePrefix("play ")}?") }
         out.add("What are the red flags?")
         out.add("What's next?")
         return out.distinct()

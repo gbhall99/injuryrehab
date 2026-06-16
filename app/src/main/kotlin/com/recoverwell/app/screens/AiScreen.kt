@@ -47,6 +47,18 @@ object AiScreen {
         col.addView(keyEdit)
         col.addView(Ui.caption(a, "Get a free key at console.groq.com. Stored encrypted on this device only."))
 
+        // a stored-but-undecryptable key (e.g. after a lock-screen change or device
+        // restore) blanks the field above - tell the user why, so it isn't mistaken
+        // for "never set", and prompt them to paste it again.
+        if (SecureKey.isUnreadable(a.store.setting(KEY_API, ""))) {
+            val warn = Ui.card(a, Ui.WARN_BG)
+            warn.addView(Ui.text(a, "Couldn't read your saved key", 14f, Ui.WARN, bold = true))
+            warn.addView(Ui.spacer(a, 4))
+            warn.addView(Ui.text(a, "Your encrypted key can no longer be unlocked on this device. " +
+                "Please paste it again to keep using AI features.", 13.5f, Ui.TEXT))
+            col.addView(warn)
+        }
+
         // enable toggle
         col.addView(Forms.label(a, "AI features"))
         var on = a.store.setting(KEY_ENABLED, "false") == "true"

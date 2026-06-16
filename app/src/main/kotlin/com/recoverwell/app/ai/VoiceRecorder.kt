@@ -18,10 +18,25 @@ class VoiceRecorder(private val ctx: Context) {
 
     val isRecording: Boolean get() = recorder != null
 
+    companion object {
+        private const val PREFIX = "journal_"
+        /**
+         * Delete any leftover check-in recordings from the cache. The happy path
+         * deletes its own file, but a process killed mid-recording would otherwise
+         * leave audio behind - so sweep on app start to honour "audio never persists".
+         */
+        fun sweepCache(ctx: Context) {
+            try {
+                ctx.cacheDir.listFiles { f -> f.name.startsWith(PREFIX) && f.name.endsWith(".m4a") }
+                    ?.forEach { it.delete() }
+            } catch (ignore: Exception) { /* cache is OS-evictable; best-effort */ }
+        }
+    }
+
     /** Begin recording. Returns false if the mic/encoder couldn't be set up. */
     fun start(): Boolean {
         if (recorder != null) return true
-        val file = File(ctx.cacheDir, "journal_${System.currentTimeMillis()}.m4a")
+        val file = File(ctx.cacheDir, "$PREFIX${System.currentTimeMillis()}.m4a")
         @Suppress("DEPRECATION")
         val r = if (Build.VERSION.SDK_INT >= 31) MediaRecorder(ctx) else MediaRecorder()
         return try {

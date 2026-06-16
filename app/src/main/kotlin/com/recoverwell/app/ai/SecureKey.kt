@@ -52,6 +52,15 @@ object SecureKey {
         }
     }
 
+    /**
+     * True when [stored] is an encrypted value that can no longer be decrypted
+     * (e.g. the Keystore key was invalidated by a lock-screen change or a restore
+     * to a new device) - distinct from "no key set", so the UI can ask the user to
+     * re-enter rather than silently showing "no key".
+     */
+    fun isUnreadable(stored: String): Boolean =
+        stored.startsWith(PREFIX) && reveal(stored).isBlank()
+
     /** Decrypt a stored value; passes legacy plaintext through unchanged. */
     fun reveal(stored: String): String {
         if (!stored.startsWith(PREFIX)) return stored

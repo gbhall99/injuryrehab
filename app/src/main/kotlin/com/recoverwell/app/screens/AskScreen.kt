@@ -28,6 +28,12 @@ object AskScreen {
     private var error: String? = null
     private var lastQuestion: String = ""
 
+    /** Clear conversation/offline state when leaving, so reopening starts fresh. */
+    fun reset() {
+        turns.clear(); loading = false; error = null
+        lastAnswer = null; lastQuestion = ""
+    }
+
     fun build(a: MainActivity): View {
         val today = LocalDate.now()
         val profile = a.store.profile()
@@ -116,7 +122,7 @@ object AskScreen {
                     turns.add(Groq.Message("assistant", Ask.answer(q, profile, today).let { "${it.title}\n\n${it.body}" }))
                 }
                 error = err
-                a.refresh()
+                if (!a.isFinishing && !a.isDestroyed) a.refresh()
             }
         }.start()
     }

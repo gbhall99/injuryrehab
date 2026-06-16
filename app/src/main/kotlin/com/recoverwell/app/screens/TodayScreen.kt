@@ -197,7 +197,7 @@ object TodayScreen {
         if (AiScreen.enabled(a) && a.store.journalEntries().none { it.date == today }) {
             prompts.add(Prompt(17, "ic_edit", "Record today's check-in",
                 "Speak freely about your day - AI reflects it back and spots patterns.",
-                "Open journal", TONE_INFO) { a.pushOverlay("Recovery journal") { JournalScreen.build(a) } })
+                "Open journal", TONE_INFO) { a.openJournal() })
         }
         // Monday: offer the weekly AI recovery summary if not already generated
         if (AiScreen.enabled(a) && today.dayOfWeek == java.time.DayOfWeek.MONDAY &&
@@ -206,7 +206,7 @@ object TodayScreen {
             if (a.store.cachedWeeklySummary(weekStart).isBlank()) {
                 prompts.add(Prompt(19, "ic_progress", "Your weekly recovery summary",
                     "Recap last week's logs and check-ins in a few sentences.",
-                    "Open journal", TONE_INFO) { a.pushOverlay("Recovery journal") { JournalScreen.build(a) } })
+                    "Open journal", TONE_INFO) { a.openJournal() })
             }
         }
         // milestone celebration
@@ -330,12 +330,12 @@ object TodayScreen {
         col.addView(Ui.listRow(a, "ic_info", "Ask about your recovery",
             if (AiScreen.enabled(a)) "Can I drive yet? What's next? - answered by AI"
             else "Can I drive yet? What's next? - answered offline") {
-            a.pushOverlay("Ask my recovery") { AskScreen.build(a) }
+            a.openAsk()
         })
         if (AiScreen.enabled(a)) {
             col.addView(Ui.listRow(a, "ic_edit", "Recovery journal",
                 "Speak your day - AI reflects it back and spots patterns") {
-                a.pushOverlay("Recovery journal") { JournalScreen.build(a) }
+                a.openJournal()
             })
         }
         col.addView(Ui.listRow(a, "ic_calendar", "Physio visits",
@@ -512,7 +512,7 @@ object TodayScreen {
         // voice front-end: speak your day and let AI fill the check-in for you
         if (date == today && AiScreen.enabled(a)) {
             card.addView(Ui.fullWidth(Ui.textButton(a, "🎙  Speak your check-in instead") {
-                a.pushOverlay("Recovery journal") { JournalScreen.build(a) }
+                a.openJournal()
             }, a, 2))
         }
         return card

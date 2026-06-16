@@ -248,29 +248,34 @@ class Store private constructor(context: Context) :
     )
 
     fun restore(state: AppState) {
+        // One transaction for the whole wipe-and-repopulate: every putKv/save* below
+        // runs on this same connection and enlists in it, so a crash (or a malformed
+        // row) mid-restore rolls back to the prior data instead of leaving the DB
+        // half-wiped. For an offline-only app with no cloud copy, atomicity is vital.
         val db = writableDatabase
         db.beginTransaction()
         try {
             db.execSQL("DELETE FROM kv")
             db.execSQL("DELETE FROM logs")
             db.execSQL("DELETE FROM events")
+            saveProfile(state.profile)
+            saveMedications(state.medications)
+            saveTasks(state.tasks)
+            if (state.exerciseOverrides.isNotEmpty())
+                putKv("exerciseOverrides", Json.write(Json.arr(state.exerciseOverrides.values.map(BackupCodec::overrideJson))))
+            state.dailyLogs.forEach { saveDailyLog(it) }
+            state.events.forEach { addEvent(it) }
+            if (state.selfTestResults.isNotEmpty())
+                putKv("selfTestResults", Json.write(Json.arr(state.selfTestResults.map(BackupCodec::selfTestJson))))
+            if (state.rtsSignoffs.isNotEmpty())
+                putKv("rtsSignoffs", Json.write(Json.strings(state.rtsSignoffs)))
+            if (state.physioNotes.isNotEmpty())
+                putKv("physioNotes", Json.write(Json.arr(state.physioNotes.map(BackupCodec::physioNoteJson))))
+            if (state.journalEntries.isNotEmpty())
+                putKv("journalEntries", Json.write(Json.arr(state.journalEntries.map(BackupCodec::journalEntryJson))))
             db.setTransactionSuccessful()
         } finally {
             db.endTransaction()
         }
-        saveProfile(state.profile)
-        saveMedications(state.medications)
-        saveTasks(state.tasks)
-        state.exerciseOverrides.values.forEach { saveExerciseOverride(it) }
-        state.dailyLogs.forEach { saveDailyLog(it) }
-        state.events.forEach { addEvent(it) }
-        if (state.selfTestResults.isNotEmpty())
-            putKv("selfTestResults", Json.write(Json.arr(state.selfTestResults.map(BackupCodec::selfTestJson))))
-        if (state.rtsSignoffs.isNotEmpty())
-            putKv("rtsSignoffs", Json.write(Json.strings(state.rtsSignoffs)))
-        if (state.physioNotes.isNotEmpty())
-            putKv("physioNotes", Json.write(Json.arr(state.physioNotes.map(BackupCodec::physioNoteJson))))
-        if (state.journalEntries.isNotEmpty())
-            putKv("journalEntries", Json.write(Json.arr(state.journalEntries.map(BackupCodec::journalEntryJson))))
     }
 }
