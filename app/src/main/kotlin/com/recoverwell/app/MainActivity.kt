@@ -131,13 +131,17 @@ class MainActivity : Activity() {
         root.addView(tabBar)
         rebuildTabBar()
 
-        // edge-to-edge (enforced from targetSdk 35): keep content clear of bars
+        // edge-to-edge (enforced from targetSdk 35): keep content clear of bars,
+        // and - with adjustResize - lift the whole UI above the on-screen keyboard
+        // so inputs and the content below them are never trapped behind it.
         root.setOnApplyWindowInsetsListener { v, insets ->
             val top: Int
             val bottom: Int
             if (android.os.Build.VERSION.SDK_INT >= 30) {
                 val bars = insets.getInsets(android.view.WindowInsets.Type.systemBars())
-                top = bars.top; bottom = bars.bottom
+                val ime = insets.getInsets(android.view.WindowInsets.Type.ime())
+                top = bars.top
+                bottom = maxOf(bars.bottom, ime.bottom)
             } else {
                 @Suppress("DEPRECATION")
                 top = insets.systemWindowInsetTop

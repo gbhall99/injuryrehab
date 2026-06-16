@@ -101,7 +101,7 @@ object Ask {
         // support device
         protocol.supportDevice?.let { dev ->
             if (q.contains(dev.unitName) || q.contains("boot") || q.contains("heel angle") || q.contains("wedge")) {
-                val expected = profile.wedgePlan.expectedWedges(profile.injuryDate, today)
+                val expected = profile.wedgePlan.expectedWedges(profile.injuryDate, today, profile.wedgeDateOverrides)
                 return Answer("Your ${dev.name.lowercase()}",
                     "It's set to ${dev.format(profile.currentWedges)}; the plan expects " +
                         "${dev.format(expected)} around now. Only change it if your clinic has agreed.")

@@ -27,7 +27,7 @@ data class AppState(
  */
 object BackupCodec {
 
-    const val VERSION = 4
+    const val VERSION = 5
 
     fun encode(state: AppState): String = Json.write(
         Json.obj(
@@ -152,6 +152,9 @@ object BackupCodec {
             "removalIntervalDays" to Json.of(p.wedgePlan.removalIntervalDays),
             "stepSize" to Json.of(p.wedgePlan.stepSize)
         ),
+        "wedgeDateOverrides" to JsonValue.Obj(
+            p.wedgeDateOverrides.entries.associate { (k, v) -> k.toString() to Json.of(v.toString()) }
+        ),
         "currentWedges" to Json.of(p.currentWedges),
         "weightBearing" to Json.of(p.weightBearing.name),
         "physioConfirmedPhase" to Json.of(p.physioConfirmedPhase),
@@ -194,6 +197,9 @@ object BackupCodec {
                 it.opt("stepSize")?.asInt() ?: 1
             )
         },
+        // v<5 backups predate per-step pinned boot-change dates
+        wedgeDateOverrides = (j.opt("wedgeDateOverrides")?.asObj() ?: emptyMap())
+            .entries.associate { (k, v) -> k.toInt() to LocalDate.parse(v.asString()) },
         currentWedges = j.get("currentWedges").asInt(),
         weightBearing = WeightBearing.valueOf(j.get("weightBearing").asString()),
         physioConfirmedPhase = j.get("physioConfirmedPhase").asInt(),

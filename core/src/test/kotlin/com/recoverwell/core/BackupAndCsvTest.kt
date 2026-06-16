@@ -48,7 +48,7 @@ class BackupAndCsvTest {
 
     @Test
     fun backupRejectsUnsupportedVersion() {
-        val bad = BackupCodec.encode(sampleState()).replaceFirst("\"version\":4", "\"version\":99")
+        val bad = BackupCodec.encode(sampleState()).replaceFirst("\"version\":5", "\"version\":99")
         try {
             BackupCodec.decode(bad)
             fail("Expected rejection of unknown backup version")
@@ -61,7 +61,7 @@ class BackupAndCsvTest {
     fun v1BackupRestoresOntoDefaultProtocol() {
         // a v1 backup has no protocolId: it must restore as the Achilles protocol
         val v1 = BackupCodec.encode(sampleState())
-            .replaceFirst("\"version\":4", "\"version\":1")
+            .replaceFirst("\"version\":5", "\"version\":1")
             .replace("\"protocolId\":\"${ProtocolRegistry.default.id}\",", "")
         val decoded = BackupCodec.decode(v1)
         assertEquals(ProtocolRegistry.default.id, decoded.profile.protocolId)

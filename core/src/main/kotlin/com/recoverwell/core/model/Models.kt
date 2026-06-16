@@ -50,23 +50,41 @@ data class WedgePlan(
 ) {
     private val step get() = stepSize.coerceAtLeast(1)
 
-    /** Dates on which a reduction is due, with the device value after it. */
-    fun removalSchedule(injuryDate: LocalDate): List<Pair<LocalDate, Int>> {
+    /**
+     * Dates on which a reduction is due, with the device value after it.
+     *
+     * Dates default to the formula (injury date + start week + interval), but any
+     * step can be pinned to an exact clinic-agreed date via [overrides], keyed by
+     * the 0-based step index. A pinned step keeps its date even when the injury
+     * date or plan parameters change, so the two date concepts stay independent.
+     */
+    fun removalSchedule(
+        injuryDate: LocalDate,
+        overrides: Map<Int, LocalDate> = emptyMap()
+    ): List<Pair<LocalDate, Int>> {
         val out = ArrayList<Pair<LocalDate, Int>>()
         var date = injuryDate.plusDays((removalStartWeek - 1) * 7L)
         var remaining = initialWedges
+        var index = 0
         while (remaining > 0) {
             remaining = (remaining - step).coerceAtLeast(0)
-            out.add(date to remaining)
+            out.add((overrides[index] ?: date) to remaining)
             date = date.plusDays(removalIntervalDays.toLong())
+            index++
         }
         return out
     }
 
-    /** Expected device value on a given date. */
-    fun expectedWedges(injuryDate: LocalDate, on: LocalDate): Int {
+    /** Expected device value on a given date. Honours any pinned step dates. */
+    fun expectedWedges(
+        injuryDate: LocalDate,
+        on: LocalDate,
+        overrides: Map<Int, LocalDate> = emptyMap()
+    ): Int {
         var expected = initialWedges
-        for ((date, after) in removalSchedule(injuryDate)) {
+        // sort by date so a pin that moves a step out of formula order still
+        // resolves to the last reduction that has actually fallen due by [on]
+        for ((date, after) in removalSchedule(injuryDate, overrides).sortedBy { it.first }) {
             if (!on.isBefore(date)) expected = after
         }
         return expected
@@ -84,6 +102,10 @@ data class Profile(
     val goal: String,
     val appointments: List<Appointment>,
     val wedgePlan: WedgePlan,
+    /** Per-step pinned boot-change dates (key = 0-based reduction step), overriding
+     *  the formula. Lets the user fix exact clinic dates independently of the
+     *  injury date and physio appointments. */
+    val wedgeDateOverrides: Map<Int, LocalDate> = emptyMap(),
     val currentWedges: Int,
     val weightBearing: WeightBearing,
     /** Highest phase number the user has recorded physio confirmation for. */

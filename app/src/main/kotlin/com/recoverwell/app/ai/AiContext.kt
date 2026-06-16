@@ -15,7 +15,8 @@ import java.time.LocalDate
 object AiContext {
 
     fun system(profile: Profile, logs: List<DailyLog>, today: LocalDate,
-               journal: List<JournalEntry> = emptyList()): String {
+               journal: List<JournalEntry> = emptyList(),
+               memory: List<String> = emptyList()): String {
         val proto = ProtocolRegistry.forProfile(profile)
         val phase = PhaseEngine.currentPhase(profile, today)
         val week = PhaseEngine.weeksSinceInjury(profile, today)
@@ -35,6 +36,12 @@ object AiContext {
             if (lastEntry != null) {
                 appendLine("- Latest journal check-in (${lastEntry.date}, mood ${lastEntry.mood.label}): " +
                     lastEntry.transcript.take(280))
+            }
+            if (memory.isNotEmpty()) {
+                appendLine()
+                appendLine("From earlier conversations with this user (oldest first) - use for continuity " +
+                    "and don't re-ask what they've already told you:")
+                memory.takeLast(12).forEach { appendLine("- $it") }
             }
             appendLine()
             appendLine("Rules:")

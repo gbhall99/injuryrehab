@@ -48,6 +48,8 @@ object MoreScreen {
             "Dates, side, boot plan, appointments") { a.pushOverlay("Injury & goal") { profileEditor(a) } })
         col.addView(Ui.listRow(a, "ic_calendar", "Phase dates",
             "Adjust timings agreed with your physio") { a.pushOverlay("Phase dates") { phaseDatesEditor(a) } })
+        col.addView(Ui.listRow(a, "ic_boot", "Boot change dates",
+            "Pin each wedge change to your clinic's date") { a.pushOverlay("Boot change dates") { bootDatesEditor(a) } })
 
         // a single Reminders hub gathers medications, daily-care, exercise and
         // check-in nudges and the reliability checker (previously four+ sibling rows)
@@ -347,6 +349,65 @@ object MoreScreen {
             Reminders.reschedule(a)
         })
         col.addView(confirmCard)
+        col.addView(Ui.spacer(a, 24))
+        return Ui.scroll(a, col)
+    }
+
+    // ------------------------------------------------------------------
+
+    /**
+     * Pin individual boot/wedge change dates. Each step defaults to the plan's
+     * formula (anchored to the injury date); pinning one fixes it to an exact
+     * clinic-agreed date, kept independent of the injury date and appointments.
+     */
+    fun bootDatesEditor(a: MainActivity): View {
+        val col = Ui.column(a)
+        col.addView(Ui.backRow(a, "Boot change dates") { a.popOverlay() })
+        val profile = a.store.profile()
+        val device = ProtocolRegistry.deviceFor(profile)
+        if (device == null || device.kind == com.recoverwell.core.protocol.DeviceKind.CAST) {
+            col.addView(Ui.caption(a, "Your current device has no at-home reduction schedule - " +
+                "a cast is re-set by your clinic at appointments, so there are no dated boot changes to pin."))
+            col.addView(Ui.spacer(a, 24))
+            return Ui.scroll(a, col)
+        }
+        col.addView(Ui.caption(a, "Each boot change defaults to your plan's timing, anchored to your " +
+            "injury date. Pin any of them to the exact date your clinic gave you - a pinned date stays " +
+            "fixed even if you later change your injury date, phase dates or appointments."))
+
+        // formula dates (no overrides) give each step's default; pins live in the profile
+        val formula = profile.wedgePlan.removalSchedule(profile.injuryDate)
+        if (formula.isEmpty()) {
+            val card = Ui.card(a)
+            card.addView(Ui.text(a, "No boot changes are scheduled on this plan.", 14.5f, Ui.TEXT))
+            col.addView(card)
+        }
+        formula.forEachIndexed { index, pair ->
+            val defaultDate = pair.first
+            val after = pair.second
+            val pinned = profile.wedgeDateOverrides[index]
+            val card = Ui.card(a)
+            card.addView(Ui.text(a, "Change ${index + 1}: ${device.reductionVerb} to ${device.format(after)}",
+                15.5f, Ui.TEXT, bold = true))
+            card.addView(Ui.caption(a, "Default $defaultDate" + if (pinned != null) " · pinned to $pinned" else ""))
+            card.addView(Ui.spacer(a, 4))
+            card.addView(Forms.dateRow(a, "Date", pinned ?: defaultDate) { newDate ->
+                val p2 = a.store.profile()
+                a.store.saveProfile(p2.copy(wedgeDateOverrides = p2.wedgeDateOverrides + (index to newDate)))
+                Reminders.reschedule(a)
+            })
+            if (pinned != null) {
+                card.addView(Ui.fullWidth(Ui.textButton(a, "Clear pin · use default") {
+                    val p2 = a.store.profile()
+                    a.store.saveProfile(p2.copy(wedgeDateOverrides = p2.wedgeDateOverrides - index))
+                    Reminders.reschedule(a)
+                    a.refresh()
+                }, a, 2))
+            }
+            col.addView(card)
+        }
+        col.addView(Ui.caption(a, "Tip: changing the reduction schedule under \"Injury & goal\" updates " +
+            "the defaults above but leaves any pinned dates as you set them."))
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
     }

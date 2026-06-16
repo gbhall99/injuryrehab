@@ -97,7 +97,7 @@ object PhysioScreen {
                     (if (it.withWhom.isNotBlank()) " · with ${it.withWhom}" else ""), "ic_calendar")) }
             val reg = ProtocolRegistry.forProfile(profile)
             reg.supportDevice?.let { device ->
-                profile.wedgePlan.removalSchedule(profile.injuryDate)
+                profile.wedgePlan.removalSchedule(profile.injuryDate, profile.wedgeDateOverrides)
                     .filter { !it.first.isBefore(today) }
                     .forEach { (d, after) ->
                         evs.add(Ev(d, "Boot change: ${device.reductionVerb} to ${device.format(after)}", "ic_boot"))
@@ -227,6 +227,8 @@ object PhysioScreen {
             "If your physio re-timed a phase") { a.pushOverlay("Phase dates") { MoreScreen.phaseDatesEditor(a) } })
         col.addView(Ui.listRow(a, "ic_boot", "Adjust boot / injury plan",
             "Boot angle, schedule, weight-bearing") { a.pushOverlay("Injury & goal") { MoreScreen.profileEditor(a) } })
+        col.addView(Ui.listRow(a, "ic_calendar", "Boot change dates",
+            "Pin each wedge change to the date your physio set") { a.pushOverlay("Boot change dates") { MoreScreen.bootDatesEditor(a) } })
         col.addView(Ui.listRow(a, "ic_edit", "Add a visit note",
             "What your physio said - kept in your backup") { a.pushOverlay("Visit note") { captureNote(a) } })
 

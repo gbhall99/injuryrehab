@@ -81,7 +81,7 @@ object ScheduleEngine {
     /** Device-reduction items due on [date] per the editable plan (boot wedges etc.). */
     fun wedgeChangesOn(profile: Profile, date: LocalDate): List<ChecklistItem> {
         val device = ProtocolRegistry.forProfile(profile).supportDevice ?: return emptyList()
-        return profile.wedgePlan.removalSchedule(profile.injuryDate)
+        return profile.wedgePlan.removalSchedule(profile.injuryDate, profile.wedgeDateOverrides)
             .filter { it.first == date }
             .map { (d, after) ->
                 ChecklistItem(

@@ -67,6 +67,27 @@ class ScheduleEngineTest {
     }
 
     @Test
+    fun pinnedWedgeDateMovesThatChangeOffTheFormula() {
+        val formulaDate = injury.plusDays(14)   // step 0 default
+        val pinnedDate = injury.plusDays(20)    // clinic-agreed override
+        val pinned = profile.copy(wedgeDateOverrides = mapOf(0 to pinnedDate))
+
+        // the first change no longer falls on its formula date...
+        assertTrue(ScheduleEngine.wedgeChangesOn(pinned, formulaDate).isEmpty())
+        // ...it lands on the pinned date instead, with the same target value
+        val moved = ScheduleEngine.wedgeChangesOn(pinned, pinnedDate)
+        assertEquals(1, moved.size)
+        assertTrue(moved[0].title, moved[0].title.contains("25°"))
+
+        // expectedWedges honours the pin: still 30° the day before, 25° on/after it
+        assertEquals(30, pinned.wedgePlan.expectedWedges(injury, pinnedDate.minusDays(1), pinned.wedgeDateOverrides))
+        assertEquals(25, pinned.wedgePlan.expectedWedges(injury, pinnedDate, pinned.wedgeDateOverrides))
+
+        // other steps stay on the formula, independent of the pinned one
+        assertEquals(1, ScheduleEngine.wedgeChangesOn(pinned, injury.plusDays(21)).size)
+    }
+
+    @Test
     fun exerciseOverridesApplied() {
         val overrides = mapOf(
             "p1_slr" to com.recoverwell.core.model.ExerciseOverride("p1_slr", sets = 5, reps = 8, holdSeconds = null, sessionsPerDay = 1, enabled = true),
