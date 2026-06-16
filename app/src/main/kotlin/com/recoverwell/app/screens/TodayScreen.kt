@@ -384,7 +384,7 @@ object TodayScreen {
                 val spec = ProtocolRegistry.forProfile(a.store.profile())
                     .phases.flatMap { it.exercises }.find { it.id == item.refId }
                 if (spec != null) {
-                    a.pushOverlay(spec.name) { ExercisesScreen.exerciseDetail(a, spec, item.slotKey) }
+                    a.pushOverlay(spec.name) { ExercisesScreen.exerciseDetail(a, spec) }
                 } else {
                     record(a, item, EventStatus.DONE)
                 }

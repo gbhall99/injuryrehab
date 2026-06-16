@@ -83,8 +83,7 @@ object MoreScreen {
         col.addView(Ui.section(a, "Exercise videos"))
         val videoCard = Ui.card(a)
         val inApp = a.store.setting("video_inapp", "true") != "false"
-        videoCard.addView(Forms.choiceRow(a, listOf(true, false),
-            { if (it) "Play in-app" else "Open YouTube" }, inApp) { choice ->
+        videoCard.addView(Forms.toggle(a, inApp, "Play in-app", "Open YouTube") { choice ->
             a.store.saveSetting("video_inapp", if (choice) "true" else "false")
         })
         videoCard.addView(Ui.spacer(a, 4))
@@ -488,23 +487,7 @@ object MoreScreen {
 
         col.addView(Ui.section(a, "Reminder times"))
         val timesCard = Ui.card(a)
-        fun rebuildTimes() {
-            timesCard.removeAllViews()
-            times.sorted().forEachIndexed { i, t ->
-                val row = Ui.row(a)
-                row.addView(Ui.weight(Forms.timeButton(a, t) { new -> times[i] = new }, 1f))
-                row.addView(Ui.iconButton(a, "ic_close", Ui.TEXT_DIM, desc = "Remove time") {
-                    times.removeAt(i)
-                    rebuildTimes()
-                })
-                timesCard.addView(row)
-            }
-            timesCard.addView(Ui.fullWidth(Ui.textButton(a, "Add a time") {
-                times.add(LocalTime.of(12, 0))
-                rebuildTimes()
-            }, a, 4))
-        }
-        rebuildTimes()
+        Forms.timeListEditor(a, timesCard, times)
         col.addView(timesCard)
 
         col.addView(Ui.fullWidth(Ui.button(a, "Save") {
@@ -607,21 +590,7 @@ object MoreScreen {
 
         col.addView(Ui.section(a, "Reminder times"))
         val timesCard = Ui.card(a)
-        fun rebuildTimes() {
-            timesCard.removeAllViews()
-            times.sorted().forEachIndexed { i, t ->
-                val row = Ui.row(a)
-                row.addView(Ui.weight(Forms.timeButton(a, t) { new -> times[i] = new }, 1f))
-                row.addView(Ui.iconButton(a, "ic_close", Ui.TEXT_DIM, desc = "Remove time") {
-                    times.removeAt(i); rebuildTimes()
-                })
-                timesCard.addView(row)
-            }
-            timesCard.addView(Ui.fullWidth(Ui.textButton(a, "Add a time") {
-                times.add(LocalTime.of(12, 0)); rebuildTimes()
-            }, a, 4))
-        }
-        rebuildTimes()
+        Forms.timeListEditor(a, timesCard, times)
         col.addView(timesCard)
 
         col.addView(Ui.fullWidth(Ui.button(a, "Save") {
@@ -646,63 +615,56 @@ object MoreScreen {
 
     // ------------------------------------------------------------------
 
-    // ------------------------------------------------------------------
+    private fun exerciseReminderEditor(a: MainActivity): View = reminderEditor(
+        a,
+        title = "Exercise reminders",
+        intro = "A single gentle nudge each day to do your rehab exercises. " +
+            "Doing them little and often is what rebuilds the tendon - the reminder just helps the habit stick.",
+        cardLabel = "Daily exercise reminder",
+        settingKey = "exercise_reminder",
+        defaultValue = "10:00",
+        fallback = LocalTime.of(10, 0),
+        footer = "The nudge appears only on days your current phase has exercises, " +
+            "and never replaces medication reminders."
+    )
 
-    private fun exerciseReminderEditor(a: MainActivity): View {
+    private fun checkInReminderEditor(a: MainActivity): View = reminderEditor(
+        a,
+        title = "Daily check-in reminder",
+        intro = "A gentle once-a-day nudge to log how it feels. You can log your pain " +
+            "in one tap straight from the notification - no need to open the app.",
+        cardLabel = "Daily check-in reminder",
+        settingKey = "checkin_reminder",
+        defaultValue = "off",
+        fallback = LocalTime.of(20, 0),
+        footer = "The notification offers Good / Manageable / Sore for a one-tap pain log; " +
+            "tap the notification itself to add more detail."
+    )
+
+    /** Shared scaffold for the single-daily-time reminder editors (exercise / check-in). */
+    private fun reminderEditor(
+        a: MainActivity,
+        title: String,
+        intro: String,
+        cardLabel: String,
+        settingKey: String,
+        defaultValue: String,
+        fallback: LocalTime,
+        footer: String
+    ): View {
         val col = Ui.column(a)
-        col.addView(Ui.backRow(a, "Exercise reminders") { a.popOverlay() })
-        col.addView(Ui.caption(a, "A single gentle nudge each day to do your rehab exercises. " +
-            "Doing them little and often is what rebuilds the tendon - the reminder just helps the habit stick."))
+        col.addView(Ui.backRow(a, title) { a.popOverlay() })
+        col.addView(Ui.caption(a, intro))
         col.addView(Ui.spacer(a, 4))
 
-        var time = Reminders.parseTime(a.store.setting("exercise_reminder", "10:00"))
-            ?: LocalTime.of(10, 0)
-        var enabled = Reminders.parseTime(a.store.setting("exercise_reminder", "10:00")) != null
+        var time = Reminders.parseTime(a.store.setting(settingKey, defaultValue)) ?: fallback
+        var enabled = Reminders.parseTime(a.store.setting(settingKey, defaultValue)) != null
 
         val card = Ui.card(a)
-        card.addView(Forms.label(a, "Daily exercise reminder"))
+        card.addView(Forms.label(a, cardLabel))
         val timeCard = Ui.card(a)
         fun persist() {
-            a.store.saveSetting("exercise_reminder", if (enabled)
-                "%02d:%02d".format(time.hour, time.minute) else "off")
-            Reminders.reschedule(a)
-        }
-        fun rebuild() {
-            timeCard.removeAllViews()
-            if (enabled) {
-                timeCard.addView(Forms.timeButton(a, time) { t -> time = t; persist() })
-            } else {
-                timeCard.addView(Ui.caption(a, "Reminder is off. Turn it on to pick a time."))
-            }
-        }
-        card.addView(Forms.choiceRow(a, listOf(true, false), { if (it) "On" else "Off" }, enabled) {
-            enabled = it; persist(); rebuild()
-        })
-        rebuild()
-        card.addView(timeCard)
-        col.addView(card)
-
-        col.addView(Ui.caption(a, "The nudge appears only on days your current phase has exercises, " +
-            "and never replaces medication reminders."))
-        col.addView(Ui.spacer(a, 24))
-        return Ui.scroll(a, col)
-    }
-
-    private fun checkInReminderEditor(a: MainActivity): View {
-        val col = Ui.column(a)
-        col.addView(Ui.backRow(a, "Daily check-in reminder") { a.popOverlay() })
-        col.addView(Ui.caption(a, "A gentle once-a-day nudge to log how it feels. You can log your pain " +
-            "in one tap straight from the notification - no need to open the app."))
-        col.addView(Ui.spacer(a, 4))
-
-        var time = Reminders.parseTime(a.store.setting("checkin_reminder", "off")) ?: LocalTime.of(20, 0)
-        var enabled = Reminders.parseTime(a.store.setting("checkin_reminder", "off")) != null
-
-        val card = Ui.card(a)
-        card.addView(Forms.label(a, "Daily check-in reminder"))
-        val timeCard = Ui.card(a)
-        fun persist() {
-            a.store.saveSetting("checkin_reminder", if (enabled)
+            a.store.saveSetting(settingKey, if (enabled)
                 "%02d:%02d".format(time.hour, time.minute) else "off")
             Reminders.reschedule(a)
         }
@@ -711,15 +673,12 @@ object MoreScreen {
             if (enabled) timeCard.addView(Forms.timeButton(a, time) { t -> time = t; persist() })
             else timeCard.addView(Ui.caption(a, "Reminder is off. Turn it on to pick a time."))
         }
-        card.addView(Forms.choiceRow(a, listOf(true, false), { if (it) "On" else "Off" }, enabled) {
-            enabled = it; persist(); rebuild()
-        })
+        card.addView(Forms.toggle(a, enabled) { enabled = it; persist(); rebuild() })
         rebuild()
         card.addView(timeCard)
         col.addView(card)
 
-        col.addView(Ui.caption(a, "The notification offers Good / Manageable / Sore for a one-tap pain log; " +
-            "tap the notification itself to add more detail."))
+        col.addView(Ui.caption(a, footer))
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
     }
