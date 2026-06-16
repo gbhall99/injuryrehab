@@ -52,7 +52,7 @@ object PdfReport {
         line(Style.BODY, "Current phase: ${phase.number} - ${phase.title}")
         protocol.supportDevice?.let { dev ->
             line(Style.BODY, "${dev.name}: ${dev.format(profile.currentWedges)} " +
-                "(plan expects ${dev.format(profile.wedgePlan.expectedWedges(profile.injuryDate, today))}) · ${profile.weightBearing.label}")
+                "(plan expects ${dev.format(profile.wedgePlan.expectedWedges(profile.injuryDate, today, profile.wedgeDateOverrides))}) · ${profile.weightBearing.label}")
         }
         for (a in profile.appointments) {
             line(Style.BODY, "Appointment: ${a.date} ${a.label}" +

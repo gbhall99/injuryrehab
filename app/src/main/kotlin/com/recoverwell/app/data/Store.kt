@@ -207,6 +207,32 @@ class Store private constructor(context: Context) :
 
     fun deleteJournalEntry(id: String) = saveJournal(journalEntries().filter { it.id != id })
 
+    // -- Ask my recovery: persisted conversation + cross-chat memory -----------
+    // The active transcript survives leaving the screen so a conversation resumes
+    // where it left off. The memory bank is a compact, longer-lived record of past
+    // exchanges that persists across "Clear" so the assistant keeps continuity
+    // between separate chats. Both live in kv (device-only), like other AI caches.
+
+    fun askTurns(): List<Pair<String, String>> =
+        getKv("ask_turns")?.let {
+            Json.parse(it).asArr().map { o -> o.get("role").asString() to o.get("content").asString() }
+        } ?: emptyList()
+
+    fun saveAskTurns(turns: List<Pair<String, String>>) =
+        putKv("ask_turns", Json.write(Json.arr(turns.takeLast(40).map {
+            Json.obj("role" to Json.of(it.first), "content" to Json.of(it.second))
+        })))
+
+    fun clearAskTurns() = saveAskTurns(emptyList())
+
+    fun askMemory(): List<String> =
+        getKv("ask_memory")?.let { Json.parse(it).asArr().map { v -> v.asString() } } ?: emptyList()
+
+    fun saveAskMemory(notes: List<String>) =
+        putKv("ask_memory", Json.write(Json.strings(notes.takeLast(24))))
+
+    fun clearAskMemory() = saveAskMemory(emptyList())
+
     // -- AI weekly summary cache (keyed by week-start date) --------------------
 
     fun cachedWeeklySummary(weekStart: LocalDate): String = setting("weekly_summary_$weekStart", "")

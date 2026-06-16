@@ -37,7 +37,7 @@ object Capability {
         val protocol = ProtocolRegistry.forProfile(profile)
         val phase = PhaseEngine.currentPhase(profile, today)
         val weeks = PhaseEngine.weeksSinceInjury(profile, today)
-        val expected = profile.wedgePlan.expectedWedges(profile.injuryDate, today)
+        val expected = profile.wedgePlan.expectedWedges(profile.injuryDate, today, profile.wedgeDateOverrides)
         val boot = phase.deviceUsage?.replace("{n}", profile.currentWedges.toString())
             ?: protocol.supportDevice?.let { "No ${it.name.lowercase()} needed in this phase" }
             ?: "No support device for this protocol"
@@ -63,7 +63,7 @@ object Capability {
     fun warnings(profile: Profile, recentLogs: List<DailyLog>, today: LocalDate): List<Warning> {
         val out = ArrayList<Warning>()
         val phase = PhaseEngine.currentPhase(profile, today)
-        val expected = profile.wedgePlan.expectedWedges(profile.injuryDate, today)
+        val expected = profile.wedgePlan.expectedWedges(profile.injuryDate, today, profile.wedgeDateOverrides)
         val latest = recentLogs.maxByOrNull { it.date }
 
         if (latest?.swelling == Swelling.SEVERE) {
