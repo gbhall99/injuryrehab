@@ -42,4 +42,25 @@ object TrendMath {
     /** Percentage of scheduled occurrences marked done/taken, for adherence stats. */
     fun adherence(done: Int, total: Int): Int =
         if (total <= 0) 0 else ((done * 100.0) / total).toInt()
+
+    /** At/above this percentage, adherence is "strong". Shared so every feature agrees. */
+    const val ADHERENCE_STRONG = 90
+    /** Below this percentage (but above 0), adherence is "slipping". */
+    const val ADHERENCE_SLIPPING = 80
+
+    /**
+     * Split [items] into the trailing [windowDays] window and the equal window
+     * just before it, both bounded so future-dated items never leak into the
+     * "recent" side. Shared by every recent-vs-prior comparison so the windows
+     * (and the future-date guard) can't drift between features. Pure.
+     */
+    fun <T> twoWindows(
+        items: List<T>, today: LocalDate, windowDays: Int = 7, date: (T) -> LocalDate
+    ): Pair<List<T>, List<T>> {
+        val recentStart = today.minusDays((windowDays - 1).toLong())
+        val priorStart = today.minusDays((2L * windowDays - 1))
+        val recent = items.filter { !date(it).isBefore(recentStart) && !date(it).isAfter(today) }
+        val prior = items.filter { !date(it).isBefore(priorStart) && date(it).isBefore(recentStart) }
+        return recent to prior
+    }
 }

@@ -166,7 +166,8 @@ is observational, not medical advice."""
     }
 
     private fun strList(json: com.recoverwell.core.json.JsonValue, key: String): List<String> =
-        (json.opt(key)?.asArr() ?: emptyList()).map { it.asString().trim() }.filter { it.isNotBlank() }.take(3)
+        (json.opt(key)?.asArr() ?: emptyList())
+            .mapNotNull { (it as? JsonValue.Str)?.value?.trim() }.filter { it.isNotBlank() }.take(3)
 
     /** Models sometimes wrap JSON in prose or ```fences```; grab the outer object. */
     internal fun extractJsonObject(raw: String): String {

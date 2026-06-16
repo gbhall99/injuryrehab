@@ -56,7 +56,9 @@ object ExerciseVideo {
             Regex("/shorts/($id)"),
             Regex("/live/($id)")
         )) p.find(s)?.let { return it.groupValues[1] }
-        return Regex(id).find(s)?.value
+        // last resort: an id that sits as a whole path/query token (delimiter-bounded),
+        // so we don't grab an arbitrary 11-char slice of some unrelated parameter.
+        return Regex("[/=]($id)(?:[?&#/]|$)").find(s)?.groupValues?.get(1)
     }
 }
 

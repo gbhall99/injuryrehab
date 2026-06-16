@@ -48,7 +48,8 @@ object BackupCodec {
 
     fun decode(text: String): AppState {
         val root = Json.parse(text)
-        val version = root.opt("version")?.asInt() ?: 0
+        // treat a missing version as the oldest schema (v1) rather than rejecting it
+        val version = root.opt("version")?.asInt() ?: 1
         require(version in 1..VERSION) { "Unsupported backup version: $version" }
         return AppState(
             profile = profileFrom(root.get("profile")),

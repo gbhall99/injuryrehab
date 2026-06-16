@@ -38,12 +38,12 @@ object WeeklyDigest {
             it.type == EventType.MEDICATION && it.status == EventStatus.TAKEN &&
                 !it.date.isBefore(weekAgo) && !it.date.isAfter(today)
         }
-        val adherence = if (total <= 0) 0 else (taken * 100) / total
+        val adherence = TrendMath.adherence(taken, total)
 
-        // pain trend
-        val recent = logs.filter { !it.date.isBefore(weekAgo) }.mapNotNull { it.pain }
-        val prior = logs.filter { !it.date.isBefore(today.minusDays(13)) && it.date.isBefore(weekAgo) }
-            .mapNotNull { it.pain }
+        // pain trend over the trailing week vs the week before (shared, future-bounded windows)
+        val (recentLogs, priorLogs) = TrendMath.twoWindows(logs, today) { it.date }
+        val recent = recentLogs.mapNotNull { it.pain }
+        val prior = priorLogs.mapNotNull { it.pain }
         val (trend, painDetail) = when {
             recent.isEmpty() -> Trend.NONE to "No pain entries this week."
             prior.size < 2 -> Trend.STEADY to "Average pain ${avg(recent)}/10 this week."
@@ -75,7 +75,7 @@ object WeeklyDigest {
         val gate = PhaseEngine.nextPhaseGate(profile, today)
         val phase = PhaseEngine.currentPhase(profile, today)
         val focus = when {
-            adherence in 1..79 -> "Tighten up your medication routine - consistency protects against clots."
+            adherence in 1 until TrendMath.ADHERENCE_SLIPPING -> "Tighten up your medication routine - consistency protects against clots."
             trend == Trend.UP -> "Ease off a little; if pain keeps rising, tell your physio."
             gate.readyToConfirm -> "Ask your physio whether you're ready for phase ${gate.nextPhase!!.number}."
             else -> phase.goals.firstOrNull() ?: "Keep following your plan."

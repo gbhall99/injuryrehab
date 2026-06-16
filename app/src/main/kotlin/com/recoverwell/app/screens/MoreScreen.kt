@@ -29,10 +29,10 @@ object MoreScreen {
         col.addView(Ui.section(a, "Recovery tools"))
         col.addView(Ui.listRow(a, "ic_info", "Ask my recovery",
             if (AiScreen.enabled(a)) "Ask anything - answered by AI from your recovery"
-            else "Can I drive yet? What's next? - answered offline") { a.pushOverlay("Ask my recovery") { AskScreen.build(a) } })
+            else "Can I drive yet? What's next? - answered offline") { a.openAsk() })
         if (AiScreen.enabled(a)) {
             col.addView(Ui.listRow(a, "ic_edit", "Recovery journal",
-                "Speak a daily check-in - AI reflects it back") { a.pushOverlay("Recovery journal") { JournalScreen.build(a) } })
+                "Speak a daily check-in - AI reflects it back") { a.openJournal() })
         }
         col.addView(Ui.listRow(a, "ic_calendar", "Physio visits",
             "Appointment pack, sign-offs and visit notes") { a.pushOverlay("Physio visits") { PhysioScreen.build(a) } })
