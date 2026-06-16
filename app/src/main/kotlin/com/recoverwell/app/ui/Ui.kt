@@ -108,6 +108,20 @@ object Ui {
         return view
     }
 
+    /** Two equal-width buttons side by side, with the standard gap between them. */
+    fun buttonPair(context: Context, left: View, right: View, marginTopDp: Int = 10): LinearLayout {
+        val row = row(context)
+        val gap = dp(context, 4)
+        val top = dp(context, marginTopDp)
+        left.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            .apply { setMargins(0, top, gap, 0) }
+        right.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            .apply { setMargins(gap, top, 0, 0) }
+        row.addView(left)
+        row.addView(right)
+        return row
+    }
+
     // ------------------------------------------------------------------ type
 
     fun text(

@@ -3,7 +3,6 @@ package com.recoverwell.app.screens
 import android.content.Context
 import android.view.Gravity
 import android.view.View
-import android.widget.LinearLayout
 import android.widget.Toast
 import com.recoverwell.app.MainActivity
 import com.recoverwell.app.notify.Reminders
@@ -104,8 +103,7 @@ object PhysioScreen {
                     }
             }
             for (ph in reg.phases) {
-                val start = profile.phaseStartOverrides[ph.number]
-                    ?: profile.injuryDate.plusWeeks(ph.startWeek.toLong())
+                val start = PhaseEngine.phaseStartDate(profile, ph)
                 if (!start.isBefore(today)) evs.add(Ev(start, "Phase ${ph.number}: ${ph.title}", "ic_flag"))
             }
             val upcomingEvents = evs.sortedBy { it.date }.take(6)
@@ -163,21 +161,12 @@ object PhysioScreen {
         }, a, 4))
         col.addView(packCard)
 
-        val row = Ui.row(a)
         val copyBtn = Ui.tonalButton(a, "Copy pack") {
             copyToClipboard(a, packText(pack, questions))
             Toast.makeText(a, "Copied - paste into notes or a message", Toast.LENGTH_SHORT).show()
         }
-        copyBtn.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-            setMargins(0, Ui.dp(a, 10), Ui.dp(a, 4), 0)
-        }
-        row.addView(copyBtn)
         val pdfBtn = Ui.tonalButton(a, "Export PDF") { a.exportPdf() }
-        pdfBtn.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-            setMargins(Ui.dp(a, 4), Ui.dp(a, 10), 0, 0)
-        }
-        row.addView(pdfBtn)
-        col.addView(row)
+        col.addView(Ui.buttonPair(a, copyBtn, pdfBtn))
 
         // ---- current numbers ------------------------------------------------
         col.addView(Ui.section(a, "Your current numbers"))
@@ -286,22 +275,13 @@ object PhysioScreen {
 
     /** Edit + Remove actions shown under each appointment, side by side. */
     private fun apptActions(a: MainActivity, appt: Appointment): View {
-        val row = Ui.row(a)
         val edit = Ui.textButton(a, "Edit details") { a.pushOverlay("Edit appointment") { appointmentEditor(a, appt) } }
-        edit.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-            setMargins(0, Ui.dp(a, 4), Ui.dp(a, 4), 0)
-        }
-        row.addView(edit)
         val remove = Ui.textButton(a, "Remove", Ui.WARN) {
             Forms.confirm(a, "Remove appointment?", "\"${appt.label}\" on ${appt.date} will be deleted.") {
                 deleteAppointment(a, appt); a.refresh()
             }
         }
-        remove.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-            setMargins(Ui.dp(a, 4), Ui.dp(a, 4), 0, 0)
-        }
-        row.addView(remove)
-        return row
+        return Ui.buttonPair(a, edit, remove, marginTopDp = 4)
     }
 
     /** Overlay to change an existing appointment's date, title and who it's with. */

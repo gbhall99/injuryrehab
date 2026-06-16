@@ -103,6 +103,39 @@ object Forms {
         return btn
     }
 
+    /**
+     * Editable list of reminder times rendered into [card]: each existing time is a
+     * picker plus a remove button, followed by an "Add a time" button. Mutates
+     * [times] in place. Shared by the medication and task editors.
+     */
+    fun timeListEditor(ctx: Activity, card: LinearLayout, times: MutableList<LocalTime>) {
+        fun rebuild() {
+            card.removeAllViews()
+            times.sorted().forEachIndexed { i, t ->
+                val row = Ui.row(ctx)
+                row.addView(Ui.weight(timeButton(ctx, t) { new -> times[i] = new }, 1f))
+                row.addView(Ui.iconButton(ctx, "ic_close", Ui.TEXT_DIM, desc = "Remove time") {
+                    times.removeAt(i); rebuild()
+                })
+                card.addView(row)
+            }
+            card.addView(Ui.fullWidth(Ui.textButton(ctx, "Add a time") {
+                times.add(LocalTime.of(12, 0)); rebuild()
+            }, ctx, 4))
+        }
+        rebuild()
+    }
+
+    /** On/off segmented row - the common boolean case of [choiceRow]. */
+    fun toggle(
+        ctx: Activity,
+        current: Boolean,
+        onLabel: String = "On",
+        offLabel: String = "Off",
+        onSelect: (Boolean) -> Unit
+    ): LinearLayout =
+        choiceRow(ctx, listOf(true, false), { if (it) onLabel else offLabel }, current, onSelect)
+
     /** Single-select row of segmented chips. */
     fun <T> choiceRow(
         ctx: Activity,

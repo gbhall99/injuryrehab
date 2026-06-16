@@ -78,7 +78,7 @@ object ExercisesScreen {
                 meta + if (o?.enabled == false) " · disabled" else "",
                 iconTint = if (locked) Ui.TEXT_DIM else Ui.PRIMARY,
                 iconBg = if (locked) Ui.SURFACE_HIGH else Ui.PRIMARY_CONTAINER
-            ) { a.pushOverlay(spec.name) { exerciseDetail(a, spec, null) } }
+            ) { a.pushOverlay(spec.name) { exerciseDetail(a, spec) } }
             col.addView(row)
         }
 
@@ -86,8 +86,8 @@ object ExercisesScreen {
         return Ui.scroll(a, col)
     }
 
-    /** Detail overlay with the animated demo. [sessionSlot] non-null when opened from Today. */
-    fun exerciseDetail(a: MainActivity, spec: ExerciseSpec, sessionSlot: String?): View {
+    /** Detail overlay with the animated demo. */
+    fun exerciseDetail(a: MainActivity, spec: ExerciseSpec): View {
         val today = LocalDate.now()
         val overrides = a.store.exerciseOverrides()
         val effective = ScheduleEngine.mergedExercises(listOf(spec), overrides).firstOrNull() ?: spec
@@ -271,9 +271,6 @@ object ExercisesScreen {
             .show()
     }
 
-    private fun DemoLibraryCaption(demoId: String): String =
-        com.recoverwell.draw.DemoLibrary.demos[demoId]?.caption ?: ""
-
     /**
      * Guided session: counts reps set by set, runs hold countdowns, and logs
      * the session as done at the end. One giant tap target throughout.
@@ -405,9 +402,7 @@ object ExercisesScreen {
         col.addView(card)
 
         col.addView(Ui.section(a, "Include in daily plan"))
-        col.addView(Forms.choiceRow(a, listOf(true, false), { if (it) "Enabled" else "Disabled" }, enabled) {
-            enabled = it
-        })
+        col.addView(Forms.toggle(a, enabled, "Enabled", "Disabled") { enabled = it })
 
         col.addView(Ui.spacer(a, 12))
         col.addView(Ui.fullWidth(Ui.button(a, "Save changes") {

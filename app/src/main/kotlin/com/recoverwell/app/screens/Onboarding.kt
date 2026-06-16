@@ -121,8 +121,7 @@ object Onboarding {
                 "in More › Reminders."))
             for (task in careTasks) {
                 careCard.addView(Forms.label(a, task.title))
-                careCard.addView(Forms.choiceRow(a, listOf(true, false),
-                    { if (it) "On" else "Off" }, task.active) { on ->
+                careCard.addView(Forms.toggle(a, task.active) { on ->
                     a.store.saveTasks(a.store.tasks().map { if (it.id == task.id) it.copy(active = on) else it })
                     Reminders.reschedule(a)
                 })
