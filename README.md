@@ -47,7 +47,7 @@ progressive wedge reduction — built around a real recovery that started on
   elevation days); *Adaptive reminders* learn the time you actually take a dose
   and offer to move the reminder to match; *Pace* projects whether you are
   ahead of or behind the typical timeline from your physio-confirmed phases;
-  and *Ask my recovery* answers "Can I drive yet?", "What's next?" and red-flag
+  and the *Recovery coach* answers "Can I drive yet?", "What's next?" and red-flag
   questions offline, deep-linking into the right screen.
 - **Engagement** — an optional once-a-day exercise nudge (only on days your
   current phase has exercises), and a **weekly digest** on the Progress tab:
@@ -79,7 +79,7 @@ progressive wedge reduction — built around a real recovery that started on
   Protocol copy uses `{sport}` placeholders resolved once per profile, so the
   chosen sport flows through *everything* — the milestone timeline ("Return to
   running"), the digital-twin "Can I play …?" check, phase guidance, and the
-  offline "Ask my recovery" answers — not just the program screen.
+  offline *Recovery coach* answers — not just the program screen.
 - **Physio loop** — an auto-generated "bring to your appointment" pack
   (pending phase gates, return-to-sport sign-offs due, caution-tone insights,
   pace vs the typical timeline, plus your own questions) with a current-numbers

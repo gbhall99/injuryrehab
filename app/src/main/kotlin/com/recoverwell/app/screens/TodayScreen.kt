@@ -330,7 +330,7 @@ object TodayScreen {
         // settings-shaped More tab: ask, the voice journal, and physio visit prep.
         // They now have a stable home one tap from Today.
         col.addView(Ui.section(a, "Your recovery"))
-        col.addView(Ui.listRow(a, "ic_info", "Ask about your recovery",
+        col.addView(Ui.listRow(a, "ic_ask", "Recovery coach",
             if (AiScreen.enabled(a)) "Can I drive yet? What's next? - answered by AI"
             else "Can I drive yet? What's next? - answered offline") {
             a.openAsk()
@@ -492,7 +492,7 @@ object TodayScreen {
         val today = LocalDate.now()
         val log = a.store.dailyLog(date)
         val card = Ui.card(a)
-        card.addView(Ui.text(a, if (date == today) "How's it feeling today?" else "Log for $date",
+        card.addView(Ui.text(a, if (date == today) "How's your pain today?" else "Log for $date",
             16f, Ui.TEXT, bold = true))
         card.addView(Ui.caption(a, "Pain is all that's needed - add detail if you like."))
         card.addView(Ui.spacer(a, 4))

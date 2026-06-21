@@ -44,7 +44,7 @@ object Journeys {
             listOf("Average pain is down 2 points vs last week", "(6 → 4). A good sign the tendon is settling."))
         insight(Palette.DONE_BG, Palette.DONE, "ic_check", "Elevation seems to help your swelling",
             listOf("On days you logged elevation, swelling tended", "to be lower (1.1 vs 2.0). Worth keeping up."))
-        insight(Palette.INFO_CONTAINER, Palette.ON_INFO_CONTAINER, "ic_info", "Ask my recovery",
+        insight(Palette.INFO_CONTAINER, Palette.ON_INFO_CONTAINER, "ic_ask", "Recovery coach",
             listOf("Can I drive yet? What's next? - answered offline"))
         m.disclaimerStrip(); m.bottomNav(2)
         m.save(out, "journey_smart$sfx")
@@ -310,7 +310,7 @@ object Journeys {
         val m = ScreenMock()
         m.fill(); m.statusBar(); m.appBar("Settings", withAlert = false)
         m.section("Recovery tools")
-        m.listRow("ic_info", "Ask my recovery", "Can I drive yet? What's next?")
+        m.listRow("ic_ask", "Recovery coach", "Can I drive yet? What's next?")
         m.listRow("ic_edit", "Recovery journal", "Speak a daily check-in")
         m.listRow("ic_calendar", "Physio visits", "Appointment pack and visit notes")
         m.section("Your plan")

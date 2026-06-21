@@ -102,7 +102,7 @@ class MainActivity : Activity() {
                 setColor(Ui.PRIMARY_CONTAINER)
             }
         }
-        tools.addView(barIcon("ic_chat", "Ask my recovery - answers about your plan") { openAsk() })
+        tools.addView(barIcon("ic_ask", "Recovery coach - answers about your plan") { openAsk() })
         tools.addView(barIcon("ic_edit", "Recovery journal - daily check-in") { openJournal() })
         appBar.addView(tools)
         val flags = Ui.iconButton(this, "ic_alert", Ui.DANGER, Ui.DANGER_BG,
@@ -247,8 +247,8 @@ class MainActivity : Activity() {
 
     /** Quick access (app bar + Today/More): open the AI Q&A. No-op if already on top. */
     fun openAsk() {
-        if (overlayTitles.lastOrNull() == "Ask my recovery") return
-        pushOverlay("Ask my recovery", onDispose = { AskScreen.reset() }) { AskScreen.build(this) }
+        if (overlayTitles.lastOrNull() == "Recovery coach") return
+        pushOverlay("Recovery coach", onDispose = { AskScreen.reset() }) { AskScreen.build(this) }
     }
 
     /** Quick access (app bar + Today/More): open the recovery journal. No-op if already on top. */

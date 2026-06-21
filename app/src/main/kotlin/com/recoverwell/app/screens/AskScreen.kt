@@ -13,7 +13,7 @@ import com.recoverwell.core.logic.Ask
 import java.time.LocalDate
 
 /**
- * "Ask my recovery".
+ * "Recovery coach".
  *
  * Offline by default: deterministic answers from the active protocol's data
  * (see [Ask]). When AI is enabled (see [AiScreen]), it becomes a grounded,
@@ -66,7 +66,7 @@ object AskScreen {
         }
 
         val header = Ui.column(a).apply { setPadding(paddingLeft, paddingTop, paddingRight, 0) }
-        header.addView(Ui.backRow(a, "Ask my recovery") { a.popOverlay() })
+        header.addView(Ui.backRow(a, "Recovery coach") { a.popOverlay() })
         val head = Ui.row(a)
         head.addView(Ui.weight(Ui.caption(a, "A grounded chat about your recovery. General guidance, " +
             "not a substitute for your physio."), 1f))
@@ -196,7 +196,7 @@ object AskScreen {
 
     private fun buildOffline(a: MainActivity, profile: com.recoverwell.core.model.Profile, today: LocalDate): View {
         val col = Ui.column(a)
-        col.addView(Ui.backRow(a, "Ask my recovery") { a.popOverlay() })
+        col.addView(Ui.backRow(a, "Recovery coach") { a.popOverlay() })
         col.addView(Ui.caption(a, "Answered from your protocol, fully offline. Not a substitute for your physio."))
         col.addView(Ui.spacer(a, 8))
 

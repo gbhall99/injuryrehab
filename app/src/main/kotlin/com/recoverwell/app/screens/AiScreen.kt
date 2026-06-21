@@ -27,7 +27,7 @@ object AiScreen {
     fun settings(a: MainActivity): View {
         val col = Ui.column(a)
         col.addView(Ui.backRow(a, "AI features") { a.popOverlay() })
-        col.addView(Ui.caption(a, "Optional. Lets \"Ask my recovery\" answer in natural language, " +
+        col.addView(Ui.caption(a, "Optional. Lets \"Recovery coach\" answer in natural language, " +
             "powered by Groq. Everything else in the app stays fully offline."))
         col.addView(Ui.spacer(a, 8))
 
