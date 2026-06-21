@@ -57,6 +57,17 @@ class Store private constructor(context: Context) :
 
     fun saveSetting(key: String, value: String) = putKv("setting_$key", value)
 
+    /** Daily exercise sessions the user chose at setup (1-3); each is the full routine. */
+    fun exerciseSessions(): Int =
+        com.recoverwell.core.logic.ScheduleEngine.clampSessions(
+            setting("exercise_sessions", "3").toIntOrNull()
+                ?: com.recoverwell.core.logic.ScheduleEngine.EXERCISE_SESSIONS_PER_DAY
+        )
+
+    fun saveExerciseSessions(n: Int) =
+        saveSetting("exercise_sessions",
+            com.recoverwell.core.logic.ScheduleEngine.clampSessions(n).toString())
+
     // -- profile ----------------------------------------------------------
 
     fun profile(): Profile =

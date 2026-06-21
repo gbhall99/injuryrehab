@@ -39,6 +39,23 @@ class ScheduleEngineTest {
     }
 
     @Test
+    fun exerciseSessionsAreConfigurableAndClamped() {
+        val date = injury.plusDays(3)
+        fun exerciseCount(sessions: Int) = ScheduleEngine
+            .dailyChecklist(profile, meds, tasks, emptyMap(), emptyList(), date, sessions)
+            .count { it.kind == ScheduleEngine.ItemKind.EXERCISE }
+        // 5 phase-1 exercises × the chosen number of daily sessions
+        assertEquals(5 * 1, exerciseCount(1))
+        assertEquals(5 * 2, exerciseCount(2))
+        assertEquals(5 * 3, exerciseCount(3))
+        // out-of-range choices clamp into 1..3 rather than producing junk
+        assertEquals(5 * 1, exerciseCount(0))
+        assertEquals(5 * 3, exerciseCount(9))
+        assertEquals(1, ScheduleEngine.clampSessions(-4))
+        assertEquals(3, ScheduleEngine.clampSessions(7))
+    }
+
+    @Test
     fun eventStatusReflectedInChecklist() {
         val date = injury.plusDays(3)
         val events = listOf(

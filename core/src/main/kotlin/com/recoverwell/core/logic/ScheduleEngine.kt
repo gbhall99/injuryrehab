@@ -15,8 +15,15 @@ object ScheduleEngine {
 
     enum class ItemKind { MEDICATION, TASK, WEDGE_CHANGE, EXERCISE, CHECKIN }
 
-    /** Uniform number of daily exercise sessions; each session is the full routine. */
+    /** Default number of daily exercise sessions; each session is the full routine. */
     const val EXERCISE_SESSIONS_PER_DAY = 3
+
+    /** The user may choose 1-3 daily sessions (guided at setup, editable later). */
+    const val MIN_EXERCISE_SESSIONS = 1
+    const val MAX_EXERCISE_SESSIONS = 3
+
+    /** Keep a chosen session count inside the supported range. */
+    fun clampSessions(n: Int): Int = n.coerceIn(MIN_EXERCISE_SESSIONS, MAX_EXERCISE_SESSIONS)
 
     data class ChecklistItem(
         val kind: ItemKind,
@@ -103,7 +110,8 @@ object ScheduleEngine {
         tasks: List<RehabTask>,
         overrides: Map<String, ExerciseOverride>,
         events: List<EventLog>,
-        date: LocalDate
+        date: LocalDate,
+        sessionsPerDay: Int = EXERCISE_SESSIONS_PER_DAY
     ): List<ChecklistItem> {
         val phase = PhaseEngine.currentPhase(profile, date)
         val statusOf = { type: EventType, refId: String, slot: String ->
@@ -161,7 +169,7 @@ object ScheduleEngine {
         // than each exercise carrying its own 2x/3x/4x count.
         val exercises = mergedExercises(phase.exercises, overrides)
         if (exercises.isNotEmpty()) {
-            for (session in 1..EXERCISE_SESSIONS_PER_DAY) {
+            for (session in 1..clampSessions(sessionsPerDay)) {
                 val slot = "session$session"
                 for (ex in exercises) {
                     items.add(
@@ -207,7 +215,8 @@ object ScheduleEngine {
         horizonDays: Int = 3,
         exerciseReminderTime: LocalTime? = null,
         overrides: Map<String, ExerciseOverride> = emptyMap(),
-        checkInTime: LocalTime? = null
+        checkInTime: LocalTime? = null,
+        sessionsPerDay: Int = EXERCISE_SESSIONS_PER_DAY
     ): List<Reminder> {
         val out = ArrayList<Reminder>()
         for (offset in 0..horizonDays) {
@@ -228,11 +237,13 @@ object ScheduleEngine {
             if (exerciseReminderTime != null) {
                 val exercises = mergedExercises(phase.exercises, overrides)
                 val at = LocalDateTime.of(date, exerciseReminderTime)
+                val sessions = clampSessions(sessionsPerDay)
                 if (exercises.isNotEmpty() && at.isAfter(now)) out.add(
                     Reminder(
                         at, ItemKind.EXERCISE, EXERCISE_SESSION_REF, EXERCISE_SESSION_REF,
                         "Rehab exercises",
-                        "${exercises.size} exercise${if (exercises.size == 1) "" else "s"} in today's plan. " +
+                        "${exercises.size} exercise${if (exercises.size == 1) "" else "s"} across " +
+                            "$sessions session${if (sessions == 1) "" else "s"} in today's plan. " +
                             "A few focused minutes keeps your recovery on track."
                     )
                 )

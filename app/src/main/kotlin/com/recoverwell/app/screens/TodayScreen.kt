@@ -33,7 +33,8 @@ object TodayScreen {
         val week = PhaseEngine.weeksSinceInjury(profile, today)
         val items = ScheduleEngine.dailyChecklist(
             profile, a.store.medications(), a.store.tasks(),
-            a.store.exerciseOverrides(), a.store.eventsOn(today), today
+            a.store.exerciseOverrides(), a.store.eventsOn(today), today,
+            a.store.exerciseSessions()
         )
         val doneCount = items.count { it.isDone }
         val dayProgress = if (items.isEmpty()) 0f else doneCount.toFloat() / items.size

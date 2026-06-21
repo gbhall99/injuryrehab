@@ -6,6 +6,7 @@ import com.recoverwell.app.MainActivity
 import com.recoverwell.app.notify.Reminders
 import com.recoverwell.app.ui.Forms
 import com.recoverwell.app.ui.Ui
+import com.recoverwell.core.logic.ScheduleEngine
 import com.recoverwell.core.model.*
 import com.recoverwell.core.protocol.Defaults
 import com.recoverwell.core.protocol.ProtocolRegistry
@@ -681,6 +682,17 @@ object MoreScreen {
         rebuild()
         card.addView(timeCard)
         col.addView(card)
+
+        // sessions per day (1-3): the same setting chosen at guided setup
+        val sessCard = Ui.card(a)
+        sessCard.addView(Forms.label(a, "Exercise sessions per day"))
+        sessCard.addView(Ui.caption(a, "How many times a day you run the full routine. Little and often " +
+            "rebuilds the tendon - change only as your physio advises."))
+        var sessions = a.store.exerciseSessions()
+        sessCard.addView(Forms.choiceRow(a,
+            (ScheduleEngine.MIN_EXERCISE_SESSIONS..ScheduleEngine.MAX_EXERCISE_SESSIONS).toList(),
+            { "$it" }, sessions) { sessions = it; a.store.saveExerciseSessions(it); Reminders.reschedule(a) })
+        col.addView(sessCard)
 
         col.addView(Ui.caption(a, "The nudge appears only on days your current phase has exercises, " +
             "and never replaces medication reminders."))
