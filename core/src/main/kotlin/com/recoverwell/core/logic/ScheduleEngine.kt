@@ -228,8 +228,8 @@ object ScheduleEngine {
                 if (at.isAfter(now)) out.add(
                     Reminder(
                         at, ItemKind.CHECKIN, DAILY_CHECKIN_REF, DAILY_CHECKIN_REF,
-                        "How's it feeling today?",
-                        "A 10-second check-in keeps your recovery trends accurate. How's the pain right now?"
+                        "How's your pain today?",
+                        "A 10-second check-in keeps your recovery trends accurate. What's your pain level right now?"
                     )
                 )
             }

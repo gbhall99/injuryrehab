@@ -28,7 +28,7 @@ object MoreScreen {
         // Features first (the things people come here to *use*), kept distinct
         // from the settings below so More stops reading as one long settings list.
         col.addView(Ui.section(a, "Recovery tools"))
-        col.addView(Ui.listRow(a, "ic_info", "Ask my recovery",
+        col.addView(Ui.listRow(a, "ic_ask", "Recovery coach",
             if (AiScreen.enabled(a)) "Ask anything - answered by AI from your recovery"
             else "Can I drive yet? What's next? - answered offline") { a.openAsk() })
         if (AiScreen.enabled(a)) {

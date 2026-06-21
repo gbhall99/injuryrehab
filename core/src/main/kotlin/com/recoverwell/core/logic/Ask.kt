@@ -5,7 +5,7 @@ import com.recoverwell.core.protocol.ProtocolRegistry
 import java.time.LocalDate
 
 /**
- * "Ask my recovery": a fully offline, deterministic question-answerer. It maps
+ * "Recovery coach": a fully offline, deterministic question-answerer. It maps
  * a free-text question (or a suggested one) onto the active protocol's own data
  * - movement checks, red flags, phase info and the support device - and never
  * invents anything. Safe because every answer is the protocol's own content.

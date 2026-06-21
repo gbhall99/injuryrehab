@@ -216,7 +216,7 @@ class Store private constructor(context: Context) :
 
     fun deleteJournalEntry(id: String) = saveJournal(journalEntries().filter { it.id != id })
 
-    // -- Ask my recovery: persisted conversation + cross-chat memory -----------
+    // -- Recovery coach: persisted conversation + cross-chat memory ------------
     // The active transcript survives leaving the screen so a conversation resumes
     // where it left off. The memory bank is a compact, longer-lived record of past
     // exchanges that persists across "Clear" so the assistant keeps continuity
