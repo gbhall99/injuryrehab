@@ -170,7 +170,7 @@ object ExercisesScreen {
         if (effective.holdSeconds > 0) {
             tile(if (effective.holdSeconds >= 60) "${effective.holdSeconds / 60}m" else "${effective.holdSeconds}s", "hold")
         }
-        tile("${ScheduleEngine.EXERCISE_SESSIONS_PER_DAY}×", "per day")
+        tile("${a.store.exerciseSessions()}×", "per day")
         col.addView(stats)
         col.addView(Ui.fullWidth(Ui.textButton(a, "Adjust prescription") {
             a.pushOverlay { editOverride(a, spec) }
@@ -232,7 +232,7 @@ object ExercisesScreen {
                 ))
             } else {
                 col.addView(Ui.section(a, "Today's sessions"))
-                for (session in 1..ScheduleEngine.EXERCISE_SESSIONS_PER_DAY) {
+                for (session in 1..a.store.exerciseSessions()) {
                     val slot = "session$session"
                     val done = events.lastOrNull {
                         it.refId == spec.id && it.slotKey == slot
@@ -326,7 +326,7 @@ object ExercisesScreen {
         fun finish() {
             // log into the first session slot not yet done today
             val events = a.store.eventsOn(LocalDate.now())
-            val slot = (1..ScheduleEngine.EXERCISE_SESSIONS_PER_DAY).map { "session$it" }.firstOrNull { sl ->
+            val slot = (1..a.store.exerciseSessions()).map { "session$it" }.firstOrNull { sl ->
                 events.lastOrNull { it.refId == spec.id && it.slotKey == sl }?.status != EventStatus.DONE
             } ?: "session1"
             Reminders.recordEvent(a, ScheduleEngine.ItemKind.EXERCISE, spec.id, slot, EventStatus.DONE)
@@ -414,7 +414,7 @@ object ExercisesScreen {
         col.addView(Ui.spacer(a, 4))
         col.addView(Ui.caption(
             a, "Protocol default: ${ScheduleEngine.exercisePrescription(spec)} · done in each of " +
-                "${ScheduleEngine.EXERCISE_SESSIONS_PER_DAY} daily sessions. Change only as your physio advises."))
+                "${a.store.exerciseSessions()} daily sessions. Change only as your physio advises."))
         col.addView(Ui.spacer(a, 8))
         val card = Ui.card(a)
         card.addView(Forms.stepper(a, "Sets", sets, 1, 10) { sets = it })

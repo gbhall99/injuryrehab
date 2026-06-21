@@ -62,7 +62,8 @@ object Reminders {
             store.profile(), store.medications(), store.tasks(), LocalDateTime.now(),
             exerciseReminderTime = exerciseTime,
             overrides = store.exerciseOverrides(),
-            checkInTime = checkInTime
+            checkInTime = checkInTime,
+            sessionsPerDay = store.exerciseSessions()
         ).take(MAX_SCHEDULED)
 
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager

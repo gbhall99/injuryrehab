@@ -50,10 +50,17 @@ class OnboardingFlowTest {
         texts = allText(decor).joinToString("\n").lowercase()
         assertTrue("step 2 shows", texts.contains("medication reminders"))
 
-        // medication -> Today
+        // medication -> daily rhythm
         assertTrue(clickByText(decor, "Confirm & continue"))
+        texts = allText(decor).joinToString("\n").lowercase()
+        assertTrue("step 3 shows", texts.contains("daily rhythm"))
+
+        // daily rhythm -> Today
+        assertTrue(clickByText(decor, "Finish setup"))
         texts = allText(decor).joinToString("\n").lowercase()
         assertTrue("today shows", texts.contains("done today"))
         assertTrue(activity.store.profile().onboardingComplete)
+        // the check-in anchor is on by default after guided setup
+        assertEquals("20:00", activity.store.setting("checkin_reminder", "off"))
     }
 }
