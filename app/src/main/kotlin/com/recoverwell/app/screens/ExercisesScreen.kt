@@ -86,8 +86,9 @@ object ExercisesScreen {
         return Ui.scroll(a, col)
     }
 
-    /** Detail overlay with the animated demo. */
-    fun exerciseDetail(a: MainActivity, spec: ExerciseSpec): View {
+    /** Detail overlay with the animated demo. [sessionSlot] is set when opened
+     *  from a specific Today exercise session, so logging targets that session. */
+    fun exerciseDetail(a: MainActivity, spec: ExerciseSpec, sessionSlot: String? = null): View {
         val today = LocalDate.now()
         val overrides = a.store.exerciseOverrides()
         val effective = ScheduleEngine.mergedExercises(listOf(spec), overrides).firstOrNull() ?: spec
@@ -209,24 +210,45 @@ object ExercisesScreen {
             col.addView(Ui.fullWidth(Ui.button(a, "Start guided session") {
                 a.pushOverlay { guidedSession(a, spec) }
             }, a))
-            col.addView(Ui.section(a, "Today's sessions"))
             val events = a.store.eventsOn(today)
-            for (session in 1..ScheduleEngine.EXERCISE_SESSIONS_PER_DAY) {
-                val slot = "session$session"
+            if (sessionSlot != null) {
+                // opened from a specific Today session: one contextual control that
+                // logs this exercise for that session, then returns to the session list
+                val num = sessionSlot.removePrefix("session").toIntOrNull()
+                val label = num?.let { "session $it" } ?: "this session"
                 val done = events.lastOrNull {
-                    it.refId == spec.id && it.slotKey == slot
+                    it.refId == spec.id && it.slotKey == sessionSlot
                 }?.status == EventStatus.DONE
                 col.addView(Ui.fullWidth(
-                    if (done) Ui.tonalButton(a, "Session $session done · undo") {
-                        Forms.confirm(a, "Undo", "Mark session $session as not done?") {
-                            Reminders.recordEvent(a, ScheduleEngine.ItemKind.EXERCISE, spec.id, slot, EventStatus.SKIPPED)
-                            a.refresh()
+                    if (done) Ui.tonalButton(a, "Done for $label · undo") {
+                        Forms.confirm(a, "Undo", "Mark this exercise as not done for $label?") {
+                            Reminders.recordEvent(a, ScheduleEngine.ItemKind.EXERCISE, spec.id, sessionSlot, EventStatus.SKIPPED)
+                            a.popOverlay()
                         }
-                    } else Ui.button(a, "Mark session $session done") {
-                        Reminders.recordEvent(a, ScheduleEngine.ItemKind.EXERCISE, spec.id, slot, EventStatus.DONE)
+                    } else Ui.button(a, "Mark done for $label") {
+                        Reminders.recordEvent(a, ScheduleEngine.ItemKind.EXERCISE, spec.id, sessionSlot, EventStatus.DONE)
                         a.popOverlay()
                     }, a
                 ))
+            } else {
+                col.addView(Ui.section(a, "Today's sessions"))
+                for (session in 1..ScheduleEngine.EXERCISE_SESSIONS_PER_DAY) {
+                    val slot = "session$session"
+                    val done = events.lastOrNull {
+                        it.refId == spec.id && it.slotKey == slot
+                    }?.status == EventStatus.DONE
+                    col.addView(Ui.fullWidth(
+                        if (done) Ui.tonalButton(a, "Session $session done · undo") {
+                            Forms.confirm(a, "Undo", "Mark session $session as not done?") {
+                                Reminders.recordEvent(a, ScheduleEngine.ItemKind.EXERCISE, spec.id, slot, EventStatus.SKIPPED)
+                                a.refresh()
+                            }
+                        } else Ui.button(a, "Mark session $session done") {
+                            Reminders.recordEvent(a, ScheduleEngine.ItemKind.EXERCISE, spec.id, slot, EventStatus.DONE)
+                            a.popOverlay()
+                        }, a
+                    ))
+                }
             }
         } else if (spec.phase > currentPhase) {
             val warn = Ui.card(a, Ui.WARN_BG)
