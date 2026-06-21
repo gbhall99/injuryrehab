@@ -304,7 +304,9 @@ object TodayScreen {
                 val done = sess.count { it.isDone }
                 col.addView(Ui.progressRow(a, "Exercise session ${idx + 1}",
                     "$total exercise${if (total == 1) "" else "s"}", done, total) {
-                    onItemTapped(a, sess.firstOrNull { !it.isDone } ?: sess.last())
+                    a.pushOverlay("Exercise session ${idx + 1}") {
+                        exerciseSession(a, idx + 1, key, sess.map { it.refId })
+                    }
                 })
             }
         }
@@ -370,6 +372,31 @@ object TodayScreen {
         return Ui.scroll(a, col)
     }
 
+    /**
+     * The exercises that make up one Today session. Each session repeats the same
+     * routine, so this lists every exercise individually - tap one to learn it and
+     * log it for this session. Replaces the old behaviour where tapping a session
+     * jumped straight into the first exercise, making every session look identical.
+     */
+    private fun exerciseSession(a: MainActivity, number: Int, slotKey: String, refIds: List<String>): View {
+        val col = Ui.column(a)
+        col.addView(Ui.backRow(a, "Exercise session $number") { a.popOverlay() })
+        col.addView(Ui.caption(a, "Your routine for this session - tap an exercise to see how " +
+            "to do it and log it. Each daily session is the same set."))
+        col.addView(Ui.spacer(a, 4))
+        val allExercises = ProtocolRegistry.forProfile(a.store.profile()).phases.flatMap { it.exercises }
+        val events = a.store.eventsOn(LocalDate.now())
+        for (refId in refIds) {
+            val spec = allExercises.find { it.id == refId } ?: continue
+            val done = events.lastOrNull { it.refId == refId && it.slotKey == slotKey }?.status == EventStatus.DONE
+            col.addView(Ui.checkRow(a, spec.name, ScheduleEngine.exercisePrescription(spec), null, done, null) {
+                a.pushOverlay(spec.name) { ExercisesScreen.exerciseDetail(a, spec, slotKey) }
+            })
+        }
+        col.addView(Ui.spacer(a, 24))
+        return Ui.scroll(a, col)
+    }
+
     private fun onItemTapped(a: MainActivity, item: ScheduleEngine.ChecklistItem) {
         when (item.kind) {
             ScheduleEngine.ItemKind.MEDICATION -> {
@@ -380,15 +407,6 @@ object TodayScreen {
                     .setNegativeButton("Missed") { _, _ -> record(a, item, EventStatus.MISSED) }
                     .setNeutralButton("Cancel", null)
                     .show()
-            }
-            ScheduleEngine.ItemKind.EXERCISE -> {
-                val spec = ProtocolRegistry.forProfile(a.store.profile())
-                    .phases.flatMap { it.exercises }.find { it.id == item.refId }
-                if (spec != null) {
-                    a.pushOverlay(spec.name) { ExercisesScreen.exerciseDetail(a, spec, item.slotKey) }
-                } else {
-                    record(a, item, EventStatus.DONE)
-                }
             }
             ScheduleEngine.ItemKind.WEDGE_CHANGE -> {
                 if (item.isDone) {

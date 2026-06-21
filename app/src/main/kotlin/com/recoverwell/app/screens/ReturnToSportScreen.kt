@@ -308,7 +308,7 @@ object ReturnToSportScreen {
         }
         var painFree = true
         form.addView(Forms.label(a, "Pain-free?"))
-        form.addView(Forms.choiceRow(a, listOf(true, false), { if (it) "Yes" else "No" }, painFree) { painFree = it })
+        form.addView(Forms.toggle(a, painFree, "Yes", "No") { painFree = it })
         form.addView(Forms.label(a, "Note · optional"))
         val note = Forms.editText(a, "", "How it felt, conditions, support used", multiline = true)
         form.addView(note)

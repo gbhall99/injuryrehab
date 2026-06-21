@@ -34,7 +34,7 @@ class ExerciseDetailSmokeTest {
             val spec = phase.exercises.first()
             activity.show(MainActivity.Tab.EXERCISES)
             activity.pushOverlay {
-                com.recoverwell.app.screens.ExercisesScreen.exerciseDetail(activity, spec, null)
+                com.recoverwell.app.screens.ExercisesScreen.exerciseDetail(activity, spec)
             }
             val texts = allText(activity.window.decorView).joinToString("\n").lowercase()
             assertTrue("name for ${spec.id}", texts.contains(spec.name.lowercase()))

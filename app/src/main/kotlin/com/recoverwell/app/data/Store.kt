@@ -208,8 +208,6 @@ class Store private constructor(context: Context) :
     private fun saveJournal(entries: List<JournalEntry>) =
         putKv("journalEntries", Json.write(Json.arr(entries.map(BackupCodec::journalEntryJson))))
 
-    fun addJournalEntry(e: JournalEntry) = saveJournal(journalEntries() + e)
-
     /** One entry per day: replace any existing entry on the same date. */
     fun upsertJournalEntry(e: JournalEntry) = saveJournal(journalEntries().filter { it.date != e.date } + e)
 
