@@ -26,6 +26,17 @@ object Reminders {
     const val CHANNEL_TASKS = "tasks"
     private const val MAX_SCHEDULED = 32
 
+    // All reminders share one bundle so the shade shows a single collapsed
+    // RecoverWell group instead of a stack of separate cards.
+    private const val GROUP_KEY = "com.recoverwell.reminders"
+    private val SUMMARY_ID = "recoverwell_group_summary".hashCode()
+
+    // A reminder is only useful around its time; if it goes unactioned it
+    // auto-dismisses rather than lingering for hours. Medication windows are
+    // longer-lived than rehab tasks, so they get a more forgiving timeout.
+    private const val TIMEOUT_MED_MS = 8L * 60 * 60_000
+    private const val TIMEOUT_TASK_MS = 3L * 60 * 60_000
+
     /** Setting value "off" or "HH:mm" -> a time, or null when disabled. */
     fun parseTime(value: String): LocalTime? =
         if (value.isBlank() || value == "off") null
@@ -149,6 +160,10 @@ object Reminders {
             .setStyle(Notification.BigTextStyle().bigText(message))
             .setContentIntent(openApp)
             .setAutoCancel(true)
+            .setGroup(GROUP_KEY)
+            .setTimeoutAfter(
+                if (kind == ScheduleEngine.ItemKind.MEDICATION) TIMEOUT_MED_MS else TIMEOUT_TASK_MS
+            )
 
         // one-tap pain logging straight from the daily check-in notification
         fun painAction(label: String, pain: Int): Notification.Action {
@@ -170,6 +185,7 @@ object Reminders {
             builder.addAction(painAction("Manageable", 5))
             builder.addAction(painAction("Sore (high)", 8))
             nm.notify(notifId, builder.build())
+            refreshGroupSummary(context, nm)
             return
         }
 
@@ -199,6 +215,59 @@ object Reminders {
         }
 
         nm.notify(notifId, builder.build())
+        refreshGroupSummary(context, nm)
+    }
+
+    /**
+     * Posts/updates a single group-summary notification so 2+ active reminders
+     * collapse into one RecoverWell bundle (InboxStyle lists the pending ones).
+     * With fewer than two children the summary is removed so a lone reminder
+     * shows on its own. Safe if the platform can't enumerate active
+     * notifications (e.g. under test) - it simply skips the summary.
+     */
+    private fun refreshGroupSummary(context: Context, nm: NotificationManager) {
+        val children = runCatching {
+            nm.activeNotifications.filter {
+                it.id != SUMMARY_ID && it.notification.group == GROUP_KEY
+            }
+        }.getOrDefault(emptyList())
+
+        if (children.size < 2) {
+            nm.cancel(SUMMARY_ID)
+            return
+        }
+
+        val titles = children
+            .sortedByDescending { it.postTime }
+            .mapNotNull { it.notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() }
+        val inbox = Notification.InboxStyle().setBigContentTitle("RecoverWell reminders")
+        titles.take(6).forEach { inbox.addLine(it) }
+        if (titles.size > 6) inbox.addLine("+${titles.size - 6} more")
+
+        val openApp = PendingIntent.getActivity(
+            context, SUMMARY_ID,
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val summary = Notification.Builder(context, CHANNEL_TASKS)
+            .setSmallIcon(context.resources.getIdentifier("ic_bell", "drawable", context.packageName))
+            .setColor(0xFF2F6B4F.toInt())
+            .setContentTitle("RecoverWell reminders")
+            .setContentText("${children.size} reminders need attention")
+            .setStyle(inbox)
+            .setGroup(GROUP_KEY)
+            .setGroupSummary(true)
+            .setContentIntent(openApp)
+            .setAutoCancel(true)
+            .build()
+        nm.notify(SUMMARY_ID, summary)
+    }
+
+    /** Re-evaluate the group summary after a reminder is dismissed/actioned. */
+    fun refreshSummaryAfterDismiss(context: Context) {
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        refreshGroupSummary(context, nm)
     }
 
     /** One-off re-delivery of a snoozed reminder, 15 minutes out. */
@@ -317,6 +386,7 @@ class ActionReceiver : BroadcastReceiver() {
             Reminders.recordCheckIn(context, intent.getIntExtra("pain", 5))
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             nm.cancel(notifId)
+            Reminders.refreshSummaryAfterDismiss(context)
             return
         }
         val kind = intent.getStringExtra("kind")?.let { ScheduleEngine.ItemKind.valueOf(it) } ?: return
@@ -331,6 +401,7 @@ class ActionReceiver : BroadcastReceiver() {
             )
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             nm.cancel(notifId)
+            Reminders.refreshSummaryAfterDismiss(context)
             return
         }
         val status = intent.getStringExtra("status")?.let { EventStatus.valueOf(it) } ?: return
@@ -342,6 +413,7 @@ class ActionReceiver : BroadcastReceiver() {
         )
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.cancel(intent.getIntExtra("notifId", 0))
+        Reminders.refreshSummaryAfterDismiss(context)
     }
 }
 
