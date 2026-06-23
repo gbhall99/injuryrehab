@@ -320,6 +320,17 @@ object TodayScreen {
                 })
             }
         }
+        // one-time legend: explains why medicines list each dose while other
+        // tasks collapse to one row with a counter (logical but not obvious)
+        if (items.isNotEmpty() && a.store.setting("checklist_legend_seen", "") != "1") {
+            val legend = Ui.card(a, Ui.INFO_BG)
+            legend.addView(Ui.text(a, "Medicines show each dose; other tasks show once with a counter.",
+                13.5f, Ui.ON_INFO_BG))
+            legend.addView(Ui.fullWidth(Ui.textButton(a, "Got it") {
+                a.store.saveSetting("checklist_legend_seen", "1"); a.refresh()
+            }, a, 2))
+            col.addView(legend)
+        }
         addGroup("Medication", setOf(ScheduleEngine.ItemKind.MEDICATION))
         addCollapsedGroup("Daily care", ScheduleEngine.ItemKind.TASK)
         addExerciseSessions()

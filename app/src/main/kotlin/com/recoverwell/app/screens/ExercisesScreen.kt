@@ -129,7 +129,7 @@ object ExercisesScreen {
         watchRow.isClickable = true
         watchRow.contentDescription = "Watch a video demonstration"
         watchRow.setOnClickListener {
-            if (playInApp) a.pushOverlay { VideoScreen.build(a, spec.name, resolvedId, videoUrl) }
+            if (playInApp) VideoScreen.open(a, spec.name, resolvedId, videoUrl)
             else a.openUrl(if (resolvedId != null) "https://www.youtube.com/watch?v=$resolvedId" else videoUrl)
         }
         watchRow.addView(Ui.icon(a, "ic_play", 20, com.recoverwell.draw.Palette.ON_PRIMARY))
