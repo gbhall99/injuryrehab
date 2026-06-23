@@ -109,6 +109,9 @@ object TodayScreen {
         val allEvents = a.store.allEvents()
         val gate = PhaseEngine.nextPhaseGate(profile, today)
         val warnings = Capability.warnings(profile, recentLogs, today)
+        // "settled" once the user has a few days of check-ins; before that, Today
+        // stays minimal (hero + safety + checklist + check-in) to teach the rhythm.
+        val settled = a.store.allLogs().count { it.pain != null } >= SETTLED_AFTER_CHECKINS
 
         // urgent (red-flag) warnings are never collapsed - their own danger cards
         for (w in warnings.filter { it.severity == Capability.Severity.URGENT }) {
@@ -125,14 +128,6 @@ object TodayScreen {
                 a.pushOverlay("Red flags") { RedFlagsScreen.build(a) }
             }, a))
             col.addView(card)
-        }
-
-        // ---- daily check-in (the same shared form Progress uses) ----
-        val todayLog = a.store.dailyLog(today)
-        if (todayLog.pain != null && !checkInExpanded) {
-            col.addView(checkInSummary(a, todayLog))
-        } else {
-            col.addView(checkInCard(a, today, checkInExpanded) { checkInExpanded = false; a.refresh() })
         }
 
         val prompts = ArrayList<Prompt>()
@@ -260,13 +255,13 @@ object TodayScreen {
         }
 
         val sorted = prompts.sortedBy { it.priority }
-        // all safety prompts as full cards, then the single top non-safety as the focus
-        for (p in sorted.filter { it.safety }) col.addView(focusCard(a, p))
         val rest = sorted.filterNot { it.safety }
-        rest.firstOrNull()?.let { col.addView(focusCard(a, it)) }
+        // always-on safety prompts as full cards, directly under the hero - never
+        // gated or collapsed, so a clot/health warning is never buried
+        for (p in sorted.filter { it.safety }) col.addView(focusCard(a, p))
 
-        // ---- checklist (the daily task: kept directly under the hero/focus,
-        // above the discretionary "More for you" list, so it's never buried) ----
+        // ---- checklist (the core daily task: now directly under the hero + any
+        // safety cards, so the actions are immediate and never buried) ----
         // medication stays one row per dose (each dose is logged individually)
         fun addGroup(label: String, kinds: Set<ScheduleEngine.ItemKind>) {
             val group = items.filter { it.kind in kinds }
@@ -340,45 +335,69 @@ object TodayScreen {
             })
         }
 
-        // ---- your recovery (standing destinations, promoted from More) ---------
-        // Usability testing found the three highest-value features buried in the
-        // settings-shaped More tab: ask, the voice journal, and physio visit prep.
-        // They now have a stable home one tap from Today.
-        col.addView(Ui.section(a, "Your recovery"))
-        col.addView(Ui.listRow(a, "ic_ask", "Recovery coach",
+        // ---- daily check-in (the same shared form Progress uses), now directly
+        // below the checklist so the day's actions come first ----
+        val todayLog = a.store.dailyLog(today)
+        if (todayLog.pain != null && !checkInExpanded) {
+            col.addView(checkInSummary(a, todayLog))
+        } else {
+            col.addView(checkInCard(a, today, checkInExpanded) { checkInExpanded = false; a.refresh() })
+        }
+
+        // Calmer first run: before the user has a few check-ins logged, stop here -
+        // no focus card, no discretionary surfaces. Safety cards above still show.
+        if (!settled) {
+            col.addView(Ui.spacer(a, 24))
+            return Ui.scroll(a, col)
+        }
+
+        // the single most important non-safety prompt as the focus card
+        rest.firstOrNull()?.let { col.addView(focusCard(a, it)) }
+
+        // ---- show more for today (collapsed by default) ------------------------
+        // One merged surface: the standing destinations (coach, journal, physio -
+        // promoted out of the buried More tab) plus a few discretionary prompts,
+        // so the default view ends at the focus card but everything is one tap away.
+        val moreRows = ArrayList<View>()
+        moreRows.add(Ui.listRow(a, "ic_ask", "Recovery coach",
             if (AiScreen.enabled(a)) "Can I drive yet? What's next? - answered by AI"
             else "Can I drive yet? What's next? - answered offline") {
             a.openAsk()
         })
         if (AiScreen.enabled(a)) {
-            col.addView(Ui.listRow(a, "ic_edit", "Recovery journal",
+            moreRows.add(Ui.listRow(a, "ic_edit", "Recovery journal",
                 "Speak your day - AI reflects it back and spots patterns") {
                 a.openJournal()
             })
         }
-        col.addView(Ui.listRow(a, "ic_calendar", "Physio visits",
+        moreRows.add(Ui.listRow(a, "ic_calendar", "Physio visits",
             "Appointment pack, sign-offs and visit notes") {
             a.pushOverlay("Physio visits") { PhysioScreen.build(a) }
         })
-
-        // ---- more for you (discretionary, below the daily task) ----------------
-        // contextual prompts and the timely recovery surfaces only; standing
-        // destinations now live in the "Your recovery" section above.
-        val moreRows = ArrayList<View>()
-        for (p in rest.drop(1).take(2)) moreRows.add(promptRow(a, p))
+        // discretionary extras (capped) below the standing destinations
+        val extras = ArrayList<View>()
+        for (p in rest.drop(1).take(2)) extras.add(promptRow(a, p))
         val rts = com.recoverwell.core.logic.ReturnToSport.progress(
             profile, a.store.selfTestResults(), a.store.rtsSignoffs(), today)
         if (rts.available) {
-            moreRows.add(Ui.listRow(a, "ic_flag", rts.returnPhrase,
+            extras.add(Ui.listRow(a, "ic_flag", rts.returnPhrase,
                 (rts.currentRung?.let { "Stage: ${it.title}" } ?: "Keep building strength") +
                     " · ${rts.readinessPct}% ready") { a.pushOverlay(rts.returnPhrase) { ReturnToSportScreen.build(a) } })
         }
         com.recoverwell.core.logic.Wellbeing.expectationFor(profile, today)?.let { exp ->
-            moreRows.add(Ui.listRow(a, "ic_info", "What to expect this week", exp.title) {
+            extras.add(Ui.listRow(a, "ic_info", "What to expect this week", exp.title) {
                 a.pushOverlay("What to expect") { WhatToExpectScreen.build(a) }
             })
         }
-        if (moreRows.isNotEmpty()) {
+        moreRows.addAll(extras.take(3))
+
+        col.addView(Ui.fullWidth(Ui.textButton(a,
+            if (showMoreExpanded) "Show less"
+            else "Show more for today - coach, journal, physio & more") {
+            showMoreExpanded = !showMoreExpanded
+            a.refresh()
+        }, a))
+        if (showMoreExpanded) {
             col.addView(Ui.section(a, "More for you"))
             for (r in moreRows) col.addView(r)
         }
@@ -482,6 +501,13 @@ object TodayScreen {
 
     /** Whether the Today check-in is showing its expanded fields in place. */
     private var checkInExpanded = false
+
+    /** Whether the discretionary "more for you" surface is expanded (session-scoped). */
+    private var showMoreExpanded = false
+
+    /** Check-ins logged before Today reveals the focus card + "more for you"; until
+     *  then the home screen stays minimal so new users learn the daily rhythm. */
+    private const val SETTLED_AFTER_CHECKINS = 3
 
     /** Compact confirmation shown on Today once the day is logged. */
     private fun checkInSummary(a: MainActivity, log: com.recoverwell.core.model.DailyLog): View {
