@@ -122,7 +122,7 @@ object ScheduleEngine {
 
         val items = ArrayList<ChecklistItem>()
 
-        for (med in meds.filter { it.active }) {
+        for (med in meds.filter { it.activeOn(date) }) {
             for (t in med.times.sorted()) {
                 val slot = slotKey(t)
                 items.add(
@@ -249,7 +249,7 @@ object ScheduleEngine {
                 )
             }
 
-            for (med in meds.filter { it.active }) {
+            for (med in meds.filter { it.activeOn(date) }) {
                 for (t in med.times) {
                     val at = LocalDateTime.of(date, t)
                     if (at.isAfter(now)) out.add(

@@ -155,6 +155,22 @@ class ScheduleEngineTest {
     }
 
     @Test
+    fun courseEndStopsMedicationSchedulingAndReminders() {
+        val end = injury.plusDays(5)
+        val limited = meds.map { it.copy(courseEndDate = end) }
+        // the end date itself is inclusive - still scheduled
+        val onEnd = ScheduleEngine.dailyChecklist(profile, limited, tasks, emptyMap(), emptyList(), end)
+        assertEquals(2, onEnd.count { it.kind == ScheduleEngine.ItemKind.MEDICATION })
+        // the day after the course ends, no medication items remain
+        val after = ScheduleEngine.dailyChecklist(profile, limited, tasks, emptyMap(), emptyList(), end.plusDays(1))
+        assertEquals(0, after.count { it.kind == ScheduleEngine.ItemKind.MEDICATION })
+        // and no medication reminders are generated past the end date
+        val now = LocalDateTime.of(end, LocalTime.of(23, 0))
+        val reminders = ScheduleEngine.upcomingReminders(profile, limited, tasks, now, horizonDays = 5)
+        assertTrue(reminders.none { it.kind == ScheduleEngine.ItemKind.MEDICATION })
+    }
+
+    @Test
     fun remindersIncludeDatedWedgeChanges() {
         val now = LocalDateTime.of(injury.plusDays(13), LocalTime.of(12, 0))
         val reminders = ScheduleEngine.upcomingReminders(profile, meds, tasks, now)

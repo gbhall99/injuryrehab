@@ -677,7 +677,10 @@ object AchillesConservative {
             dose = "2.5 mg",
             times = listOf(LocalTime.of(8, 0), LocalTime.of(20, 0)),
             notes = "Clot-prevention medication prescribed after the rupture. " +
-                "Clinically important: do not stop or skip without medical advice.",
+                "Clinically important: do not stop or skip without medical advice. " +
+                "This is usually a time-limited course (often while the boot is on) - " +
+                "the end date below is an editable placeholder, so confirm with your " +
+                "clinician when to stop.",
             active = true
         )
     )
@@ -1014,8 +1017,12 @@ object AchillesConservative {
             MovementCheckSpec("Pull foot up past neutral / calf stretch", 4,
                 "Not before week 12 - tendon over-lengthening risk", "Gentle and physio-guided only"),
             MovementCheckSpec("Drive a car", 4,
-                "Generally only out of the boot and able to emergency-brake - confirm with clinic and insurer",
-                "Confirm with clinic and insurer"),
+                "Not while you're in the boot. Most people are ready once out of the boot and able to do a safe " +
+                    "emergency stop - often around the time the boot comes off. If your car is automatic and it's " +
+                    "your left leg affected, you may manage sooner.",
+                "Tell your insurer before restarting - you are not covered driving in the boot. The DVLA puts the " +
+                    "responsibility on you to stay in full control, so only drive once you can brake hard and " +
+                    "comfortably. Confirm timing with your physio."),
             MovementCheckSpec("Standing heel raises", 4,
                 "Phase 4 work - too early now", "Progress as prescribed"),
             MovementCheckSpec("Run / jump", 5,

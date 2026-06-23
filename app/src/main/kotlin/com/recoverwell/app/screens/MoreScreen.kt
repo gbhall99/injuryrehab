@@ -430,6 +430,11 @@ object MoreScreen {
             texts.addView(Ui.text(a, "${med.name} ${med.dose}" + if (!med.active) " · paused" else "",
                 15.5f, Ui.TEXT, bold = true))
             texts.addView(Ui.caption(a, "Reminders ${med.times.joinToString(", ")}"))
+            med.courseEndDate?.let { end ->
+                val ended = end.isBefore(LocalDate.now())
+                texts.addView(Ui.caption(a, if (ended) "Course ended $end - reminders stopped"
+                    else "Reminders stop after $end"))
+            }
             head.addView(Ui.weight(texts, 1f))
             card.addView(head)
             if (med.notes.isNotBlank()) {
@@ -491,13 +496,45 @@ object MoreScreen {
         Forms.timeListEditor(a, timesCard, times)
         col.addView(timesCard)
 
+        // Optional course end: lets a time-limited medicine (e.g. VTE
+        // prophylaxis) stop reminding itself rather than running forever.
+        var courseEnd: LocalDate? = med.courseEndDate
+        var reviewDate: LocalDate? = med.reviewDate
+        col.addView(Ui.section(a, "Course length"))
+        val courseCard = Ui.card(a)
+        fun rebuildCourse() {
+            courseCard.removeAllViews()
+            courseCard.addView(Ui.caption(a, "Reminders stop after the end date. Leave off for an ongoing " +
+                "medicine. Clot-prevention courses are usually time-limited - confirm the end with your clinician."))
+            val end = courseEnd
+            if (end == null) {
+                courseCard.addView(Ui.fullWidth(Ui.tonalButton(a, "Set an end date") {
+                    courseEnd = LocalDate.now().plusWeeks(10)
+                    reviewDate = LocalDate.now().plusWeeks(9)
+                    rebuildCourse()
+                }, a))
+            } else {
+                courseCard.addView(Forms.dateRow(a, "Ends after", end) { courseEnd = it })
+                courseCard.addView(Forms.dateRow(a, "Review reminder", reviewDate ?: end.minusWeeks(1)) { reviewDate = it })
+                courseCard.addView(Ui.fullWidth(Ui.textButton(a, "Make ongoing (no end date)", Ui.DANGER) {
+                    courseEnd = null
+                    reviewDate = null
+                    rebuildCourse()
+                }, a))
+            }
+        }
+        rebuildCourse()
+        col.addView(courseCard)
+
         col.addView(Ui.fullWidth(Ui.button(a, "Save") {
             val name = nameEdit.text.toString().trim().ifBlank { "Medication" }
             val updated = med.copy(
                 name = name,
                 dose = doseEdit.text.toString().trim(),
                 notes = notesEdit.text.toString().trim(),
-                times = times.sorted().ifEmpty { listOf(LocalTime.of(9, 0)) }
+                times = times.sorted().ifEmpty { listOf(LocalTime.of(9, 0)) },
+                courseEndDate = courseEnd,
+                reviewDate = reviewDate
             )
             val all = a.store.medications()
             a.store.saveMedications(

@@ -128,8 +128,28 @@ data class Medication(
     val dose: String,
     val times: List<LocalTime>,
     val notes: String,
-    val active: Boolean
-)
+    val active: Boolean,
+    /**
+     * Optional last day the medicine is taken (inclusive). VTE prophylaxis after
+     * lower-limb immobilisation is time-limited - NICE NG89 continues it only
+     * while the limb is immobilised - so a course can carry a clinician-set end
+     * after which reminders stop. Null = ongoing / no end set. A placeholder set
+     * by the app is always editable and should be confirmed with the prescriber.
+     */
+    val courseEndDate: LocalDate? = null,
+    /**
+     * Optional date to surface a "confirm whether to continue or stop" prompt,
+     * usually a few days before [courseEndDate]. Null = no review prompt.
+     */
+    val reviewDate: LocalDate? = null
+) {
+    /**
+     * Whether this medicine should still be scheduled on [date]: it must be
+     * active and not past its course end (the end date itself is inclusive).
+     */
+    fun activeOn(date: LocalDate): Boolean =
+        active && (courseEndDate == null || !date.isAfter(courseEndDate))
+}
 
 enum class TaskKind(val label: String) {
     ELEVATION("Elevation"),
