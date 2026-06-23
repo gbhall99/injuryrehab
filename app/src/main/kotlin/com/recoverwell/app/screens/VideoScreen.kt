@@ -1,6 +1,7 @@
 package com.recoverwell.app.screens
 
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
@@ -17,6 +18,31 @@ import com.recoverwell.app.ui.Ui
  * "Open in YouTube" fallback covers devices where the embed is blocked.
  */
 object VideoScreen {
+
+    /** Setting key: the user has seen the one-time "videos use data" notice. */
+    private const val NOTICE_ACK = "video_notice_ack"
+
+    /**
+     * Opens the in-app player, but the first time only, shows a one-time notice
+     * that video demonstrations stream from YouTube and use data (the rest of the
+     * app is offline). Keeps the offline expectation honest before any network use.
+     */
+    fun open(a: MainActivity, title: String, videoId: String?, searchUrl: String) {
+        if (a.store.setting(NOTICE_ACK, "") == "1") {
+            a.pushOverlay { build(a, title, videoId, searchUrl) }
+            return
+        }
+        AlertDialog.Builder(a)
+            .setTitle("Videos play from YouTube")
+            .setMessage("Exercise demonstrations stream from YouTube and use your internet or mobile data. " +
+                "Everything else in the app works fully offline.")
+            .setPositiveButton("Continue") { _, _ ->
+                a.store.saveSetting(NOTICE_ACK, "1")
+                a.pushOverlay { build(a, title, videoId, searchUrl) }
+            }
+            .setNegativeButton("Not now", null)
+            .show()
+    }
 
     /** Stops playback/audio the moment the player leaves the screen. */
     private class PlayerView(context: android.content.Context) : WebView(context) {
