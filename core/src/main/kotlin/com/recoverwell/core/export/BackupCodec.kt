@@ -27,7 +27,7 @@ data class AppState(
  */
 object BackupCodec {
 
-    const val VERSION = 5
+    const val VERSION = 6
 
     fun encode(state: AppState): String = Json.write(
         Json.obj(
@@ -221,7 +221,9 @@ object BackupCodec {
         "dose" to Json.of(m.dose),
         "times" to Json.strings(m.times.map { it.toString() }),
         "notes" to Json.of(m.notes),
-        "active" to Json.of(m.active)
+        "active" to Json.of(m.active),
+        "courseEndDate" to Json.of(m.courseEndDate?.toString()),
+        "reviewDate" to Json.of(m.reviewDate?.toString())
     )
 
     fun medFrom(j: JsonValue): Medication = Medication(
@@ -230,7 +232,10 @@ object BackupCodec {
         dose = j.get("dose").asString(),
         times = j.get("times").asArr().map { LocalTime.parse(it.asString()) },
         notes = j.opt("notes")?.asString() ?: "",
-        active = j.opt("active")?.asBool() ?: true
+        active = j.opt("active")?.asBool() ?: true,
+        // v<6 backups predate medication course end / review dates
+        courseEndDate = j.opt("courseEndDate")?.asString()?.let { LocalDate.parse(it) },
+        reviewDate = j.opt("reviewDate")?.asString()?.let { LocalDate.parse(it) }
     )
 
     // -- task -------------------------------------------------------------

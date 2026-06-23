@@ -148,6 +148,21 @@ object TodayScreen {
                 a.pushOverlay("Red flags") { RedFlagsScreen.build(a) }
             })
         }
+        // a time-limited medicine (e.g. VTE prophylaxis) reaching its review/end:
+        // prompt a clinician decision rather than silently stopping or continuing
+        for (med in a.store.medications().filter { it.active && it.reviewDate != null }) {
+            val review = med.reviewDate!!
+            val end = med.courseEndDate
+            if (!today.isBefore(review) && (end == null || !today.isAfter(end))) {
+                val endNote = end?.let { " Reminders are set to stop after $it." } ?: ""
+                prompts.add(Prompt(4, "ic_pill", "Review your ${med.name.lowercase()} course",
+                    "Your prescribed course is due for review.$endNote Confirm with your clinician whether to " +
+                        "continue or stop - never stop a clot-prevention medicine early without advice.",
+                    "Manage medication", TONE_WARN, safety = true) {
+                    a.pushOverlay("Medications") { MoreScreen.medsEditor(a) }
+                })
+            }
+        }
 
         // progression gate
         if (gate.nextPhase != null && gate.readyToConfirm) {

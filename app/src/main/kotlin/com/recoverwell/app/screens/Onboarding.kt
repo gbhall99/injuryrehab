@@ -106,7 +106,17 @@ object Onboarding {
                     "an anticoagulant. Add it if that's you, then adjust the dose and times to match " +
                     "your prescription.", 14f, Ui.ON_INFO_BG))
                 card.addView(Ui.fullWidth(Ui.tonalButton(a, "Add an anticoagulant reminder") {
-                    a.store.saveMedications(a.store.medications() + proto.prefillMedications)
+                    // Seed an editable, clinician-confirmable course end tied to the
+                    // typical boot period rather than letting reminders run forever
+                    // (VTE prophylaxis is time-limited - NICE NG89).
+                    val injuryDate = a.store.profile().injuryDate
+                    val seeded = proto.prefillMedications.map {
+                        it.copy(
+                            courseEndDate = injuryDate.plusWeeks(10),
+                            reviewDate = injuryDate.plusWeeks(9)
+                        )
+                    }
+                    a.store.saveMedications(a.store.medications() + seeded)
                     Reminders.reschedule(a)
                     a.refresh()
                 }, a))
