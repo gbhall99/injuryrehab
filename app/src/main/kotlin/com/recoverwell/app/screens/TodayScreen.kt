@@ -38,6 +38,10 @@ object TodayScreen {
         )
         val doneCount = items.count { it.isDone }
         val dayProgress = if (items.isEmpty()) 0f else doneCount.toFloat() / items.size
+        val allEvents = a.store.allEvents()
+        val medStreak = ScheduleEngine.medicationStreak(a.store.medications(), allEvents, today)
+        val exStreak = ScheduleEngine.exerciseStreak(
+            profile, a.store.exerciseOverrides(), allEvents, today)
 
         // ---- hero card -------------------------------------------------
         val hero = Ui.card(a, Ui.HERO_BG)
@@ -55,17 +59,20 @@ object TodayScreen {
             com.recoverwell.draw.Palette.withAlpha(onHero, 0xE6)))
         heroTexts.addView(Ui.spacer(a, 6))
         heroTexts.addView(Ui.text(a, "$doneCount of ${items.size} done today", 13f, onHeroDim))
-        val streak = ScheduleEngine.medicationStreak(a.store.medications(), a.store.allEvents(), today)
-        if (streak >= 2) {
-            heroTexts.addView(Ui.spacer(a, 6))
-            val streakRow = Ui.row(a)
-            streakRow.addView(Ui.icon(a, "ic_flag", 14, onHero))
-            val st = Ui.text(a, "$streak-day medication streak", 12.5f, onHero, bold = true)
-            st.setPadding(Ui.dp(a, 6), 0, 0, 0)
-            streakRow.addView(st)
-            streakRow.background = Ui.rounded(com.recoverwell.draw.Palette.withAlpha(onHero, 0x28), 14f)
-            streakRow.setPadding(Ui.dp(a, 10), Ui.dp(a, 5), Ui.dp(a, 12), Ui.dp(a, 5))
-            heroTexts.addView(streakRow, android.widget.LinearLayout.LayoutParams(
+        // streak chips: medication and exercise, side by side (each shown at 2+ days)
+        val chips = ArrayList<View>()
+        if (medStreak >= 2) chips.add(streakChip(a, "ic_flag", "$medStreak-day meds"))
+        if (exStreak >= 2) chips.add(streakChip(a, "ic_exercises", "$exStreak-day exercise"))
+        if (chips.isNotEmpty()) {
+            heroTexts.addView(Ui.spacer(a, 8))
+            val wrap = LinearLayout(a).apply { orientation = LinearLayout.HORIZONTAL }
+            chips.forEachIndexed { i, c ->
+                val lp = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                if (i > 0) lp.leftMargin = Ui.dp(a, 6)
+                wrap.addView(c, lp)
+            }
+            heroTexts.addView(wrap, LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         }
         heroRow.addView(Ui.weight(heroTexts, 1f))
@@ -106,7 +113,6 @@ object TodayScreen {
         // card; everything else collapses into a tidy "More for you" list so the
         // daily checklist below is never buried.
         val recentLogs = a.store.allLogs().filter { !it.date.isBefore(today.minusDays(7)) }
-        val allEvents = a.store.allEvents()
         val gate = PhaseEngine.nextPhaseGate(profile, today)
         val warnings = Capability.warnings(profile, recentLogs, today)
         // "settled" once the user has a few days of check-ins; before that, Today
@@ -260,6 +266,9 @@ object TodayScreen {
         // gated or collapsed, so a clot/health warning is never buried
         for (p in sorted.filter { it.safety }) col.addView(focusCard(a, p))
 
+        // ---- recovery snapshot: the key stats & timelines at a glance --------
+        col.addView(recoverySnapshot(a, profile, today, phase, dayProgress, medStreak, exStreak))
+
         // ---- checklist (the core daily task: now directly under the hero + any
         // safety cards, so the actions are immediate and never buried) ----
         // medication stays one row per dose (each dose is logged individually)
@@ -355,66 +364,216 @@ object TodayScreen {
             col.addView(checkInCard(a, today, checkInExpanded) { checkInExpanded = false; a.refresh() })
         }
 
-        // Calmer first run: before the user has a few check-ins logged, stop here -
-        // no focus card, no discretionary surfaces. Safety cards above still show.
-        if (!settled) {
-            col.addView(Ui.spacer(a, 24))
-            return Ui.scroll(a, col)
-        }
+        // Once the user has a few check-ins logged, surface the single most
+        // important non-safety prompt as the focus card (kept calm on first run).
+        if (settled) rest.firstOrNull()?.let { col.addView(focusCard(a, it)) }
 
-        // the single most important non-safety prompt as the focus card
-        rest.firstOrNull()?.let { col.addView(focusCard(a, it)) }
-
-        // ---- show more for today (collapsed by default) ------------------------
-        // One merged surface: the standing destinations (coach, journal, physio -
-        // promoted out of the buried More tab) plus a few discretionary prompts,
-        // so the default view ends at the focus card but everything is one tap away.
-        val moreRows = ArrayList<View>()
-        moreRows.add(Ui.listRow(a, "ic_ask", "Recovery coach",
-            if (AiScreen.enabled(a)) "Can I drive yet? What's next? - answered by AI"
-            else "Can I drive yet? What's next? - answered offline") {
-            a.openAsk()
-        })
-        if (AiScreen.enabled(a)) {
-            moreRows.add(Ui.listRow(a, "ic_edit", "Recovery journal",
-                "Speak your day - AI reflects it back and spots patterns") {
-                a.openJournal()
-            })
-        }
-        moreRows.add(Ui.listRow(a, "ic_calendar", "Physio visits",
-            "Appointment pack, sign-offs and visit notes") {
-            a.pushOverlay("Physio visits") { PhysioScreen.build(a) }
-        })
-        // discretionary extras (capped) below the standing destinations
-        val extras = ArrayList<View>()
-        for (p in rest.drop(1).take(2)) extras.add(promptRow(a, p))
-        val rts = com.recoverwell.core.logic.ReturnToSport.progress(
-            profile, a.store.selfTestResults(), a.store.rtsSignoffs(), today)
-        if (rts.available) {
-            extras.add(Ui.listRow(a, "ic_flag", rts.returnPhrase,
-                (rts.currentRung?.let { "Stage: ${it.title}" } ?: "Keep building strength") +
-                    " · ${rts.readinessPct}% ready") { a.pushOverlay(rts.returnPhrase) { ReturnToSportScreen.build(a) } })
-        }
-        com.recoverwell.core.logic.Wellbeing.expectationFor(profile, today)?.let { exp ->
-            extras.add(Ui.listRow(a, "ic_info", "What to expect this week", exp.title) {
-                a.pushOverlay("What to expect") { WhatToExpectScreen.build(a) }
-            })
-        }
-        moreRows.addAll(extras.take(3))
-
-        col.addView(Ui.fullWidth(Ui.textButton(a,
-            if (showMoreExpanded) "Show less"
-            else "Show more for today - coach, journal, physio & more") {
-            showMoreExpanded = !showMoreExpanded
-            a.refresh()
-        }, a))
-        if (showMoreExpanded) {
-            col.addView(Ui.section(a, "More for you"))
-            for (r in moreRows) col.addView(r)
-        }
+        // ---- "jump to" card grid: the hybrid home's always-visible navigation,
+        // promoting the destinations otherwise buried under the More tab ----
+        col.addView(jumpGrid(a, profile, today))
 
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
+    }
+
+    /** A small pill chip used on the hero for medication / exercise streaks. */
+    private fun streakChip(a: MainActivity, icon: String, label: String): View {
+        val row = Ui.row(a)
+        row.addView(Ui.icon(a, icon, 13, Ui.ON_HERO))
+        val t = Ui.text(a, label, 12f, Ui.ON_HERO, bold = true)
+        t.setPadding(Ui.dp(a, 6), 0, 0, 0)
+        row.addView(t)
+        row.background = Ui.rounded(com.recoverwell.draw.Palette.withAlpha(Ui.ON_HERO, 0x28), 14f)
+        row.setPadding(Ui.dp(a, 10), Ui.dp(a, 5), Ui.dp(a, 12), Ui.dp(a, 5))
+        return row
+    }
+
+    /**
+     * Key stats & timelines at a glance: the overall recovery-days timeline
+     * ("day X of N" toward the estimated return-to-sport date), the phase
+     * timeline, and a 2x2 grid of headline numbers (today's tasks, sport
+     * readiness, medication & exercise streaks).
+     */
+    private fun recoverySnapshot(
+        a: MainActivity, profile: com.recoverwell.core.model.Profile, today: LocalDate,
+        phase: com.recoverwell.core.model.PhaseSpec, dayProgress: Float,
+        medStreak: Int, exStreak: Int
+    ): View {
+        val card = Ui.card(a)
+        val head = Ui.row(a)
+        head.addView(Ui.icon(a, "ic_progress", 18, Ui.PRIMARY))
+        val ht = Ui.text(a, "Your recovery", 16f, Ui.TEXT, bold = true)
+        ht.setPadding(Ui.dp(a, 8), 0, 0, 0)
+        head.addView(Ui.weight(ht, 1f))
+        card.addView(head)
+        card.addView(Ui.spacer(a, 12))
+
+        // recovery-days timeline toward the estimated return date
+        val cu = java.time.temporal.ChronoUnit.DAYS
+        val target = profile.effectiveReturnDate()
+        val totalDays = cu.between(profile.injuryDate, target).coerceAtLeast(1)
+        val dayN = cu.between(profile.injuryDate, today).coerceIn(0, totalDays)
+        val pct = ((dayN.toDouble() / totalDays) * 100).toInt()
+        val dayRow = Ui.row(a)
+        dayRow.addView(Ui.text(a, "Day $dayN", 24f, Ui.TEXT, bold = true))
+        dayRow.addView(Ui.text(a, "  of $totalDays", 15f, Ui.TEXT_DIM))
+        dayRow.addView(Ui.weight(View(a), 1f))
+        dayRow.addView(Ui.pillBadge(a, "$pct%", Ui.ON_PRIMARY_CONTAINER, Ui.PRIMARY_CONTAINER))
+        card.addView(dayRow)
+        card.addView(Ui.spacer(a, 8))
+        card.addView(progressBar(a, dayN.toFloat() / totalDays))
+        card.addView(Ui.spacer(a, 6))
+        val sportName = com.recoverwell.core.logic.ReturnToSport
+            .resolveSport(profile, ProtocolRegistry.forProfile(profile))?.name ?: "sport"
+        val targetLabel = target.format(DateTimeFormatter.ofPattern("MMM yyyy"))
+        val daysLeft = totalDays - dayN
+        card.addView(Ui.caption(a, if (daysLeft <= 0)
+            "Past your estimated return date - your physio guides the real timeline."
+        else {
+            val weeksLeft = (daysLeft + 6) / 7
+            "~$weeksLeft week${if (weeksLeft == 1L) "" else "s"} to your estimated return to " +
+                "$sportName · around $targetLabel"
+        }))
+
+        // phase timeline
+        val phaseCount = ProtocolRegistry.forProfile(profile).phases.size
+        card.addView(Ui.spacer(a, 14))
+        card.addView(Ui.text(a, "Phase ${phase.number} of $phaseCount · ${phase.title}",
+            13f, Ui.TEXT_DIM, bold = true))
+        card.addView(Ui.spacer(a, 8))
+        card.addView(Ui.setDots(a, phaseCount, phase.number).apply { gravity = Gravity.START })
+
+        // headline numbers
+        val rts = com.recoverwell.core.logic.ReturnToSport.progress(
+            profile, a.store.selfTestResults(), a.store.rtsSignoffs(), today)
+        val tiles = ArrayList<View>()
+        tiles.add(Ui.statTile(a, "${(dayProgress * 100).toInt()}%", "Today's tasks"))
+        tiles.add(
+            if (rts.available) Ui.statTile(a, "${rts.readinessPct}%", "Sport-ready")
+            else Ui.statTile(a, "$pct%", "Recovery")
+        )
+        tiles.add(Ui.statTile(a, if (medStreak > 0) "$medStreak d" else "-", "Med streak"))
+        tiles.add(Ui.statTile(a, if (exStreak > 0) "$exStreak d" else "-", "Exercise streak"))
+        card.addView(Ui.spacer(a, 14))
+        card.addView(statGrid(a, tiles))
+        return card
+    }
+
+    /** Thin rounded progress bar (fraction of [frac] filled with the primary tint). */
+    private fun progressBar(a: MainActivity, frac: Float): View {
+        val f = frac.coerceIn(0f, 1f)
+        val track = LinearLayout(a).apply {
+            orientation = LinearLayout.HORIZONTAL
+            background = Ui.rounded(Ui.SURFACE_HIGH, Ui.RADIUS_SMALL)
+            clipToOutline = true
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(a, 10))
+        }
+        if (f > 0f) track.addView(View(a).apply { setBackgroundColor(Ui.PRIMARY) },
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, f))
+        if (f < 1f) track.addView(View(a),
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f - f))
+        return track
+    }
+
+    /** Lay a list of equal-width tiles out two per row. */
+    private fun statGrid(a: MainActivity, tiles: List<View>): View {
+        val colv = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
+        val gap = Ui.dp(a, 5)
+        val v = Ui.dp(a, 5)
+        var i = 0
+        while (i < tiles.size) {
+            val rowv = Ui.row(a)
+            tiles[i].layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                .apply { setMargins(0, v, gap, v) }
+            rowv.addView(tiles[i])
+            if (i + 1 < tiles.size) {
+                tiles[i + 1].layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                    .apply { setMargins(gap, v, 0, v) }
+                rowv.addView(tiles[i + 1])
+            } else {
+                rowv.addView(View(a), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                    .apply { setMargins(gap, 0, 0, 0) })
+            }
+            colv.addView(rowv)
+            i += 2
+        }
+        return colv
+    }
+
+    /** One tappable destination tile in the "jump to" grid. */
+    private fun gridCell(a: MainActivity, icon: String, title: String, sub: String, onTap: () -> Unit): View {
+        val card = Ui.tapCard(a) { onTap() }
+        card.contentDescription = title
+        card.addView(Ui.iconBadge(a, icon, boxDp = 38))
+        card.addView(Ui.spacer(a, 8))
+        // wrap-content width so these content labels are never mistaken for the
+        // full-width, centred bottom-nav tab labels (guarded by NavAlignmentTest)
+        val wrap = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        card.addView(Ui.text(a, title, 14.5f, Ui.TEXT, bold = true), wrap)
+        card.addView(Ui.text(a, sub, 12f, Ui.TEXT_DIM), LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        return card
+    }
+
+    /**
+     * The hybrid home's always-visible navigation: a 2-column grid of the main
+     * destinations, several of them otherwise buried under the More tab.
+     */
+    private fun jumpGrid(a: MainActivity, profile: com.recoverwell.core.model.Profile, today: LocalDate): View {
+        val colv = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
+        colv.addView(Ui.section(a, "Jump to"))
+        val cells = ArrayList<View>()
+        cells.add(gridCell(a, "ic_exercises", "Exercises", "Today's routine") {
+            a.show(MainActivity.Tab.EXERCISES)
+        })
+        cells.add(gridCell(a, "ic_pill", "Medication", "Doses & reminders") {
+            a.pushOverlay("Medications") { MoreScreen.medsEditor(a) }
+        })
+        cells.add(gridCell(a, "ic_ask", "Recovery coach",
+            if (AiScreen.enabled(a)) "Ask anything · AI" else "Ask anything") { a.openAsk() })
+        if (AiScreen.enabled(a)) cells.add(gridCell(a, "ic_edit", "Recovery journal", "Speak your day") {
+            a.openJournal()
+        })
+        cells.add(gridCell(a, "ic_calendar", "Physio visits", "Appointments & notes") {
+            a.pushOverlay("Physio visits") { PhysioScreen.build(a) }
+        })
+        cells.add(gridCell(a, "ic_info", "What to expect", "This stage") {
+            a.pushOverlay("What to expect") { WhatToExpectScreen.build(a) }
+        })
+        cells.add(gridCell(a, "ic_heart", "How you're doing", "Reassurance & milestones") {
+            a.pushOverlay("How you're doing") { WellbeingScreen.build(a) }
+        })
+        cells.add(gridCell(a, "ic_progress", "Stay fit", "Keep conditioning") {
+            a.pushOverlay("Stay fit") { StayFitScreen.build(a) }
+        })
+        val rts = com.recoverwell.core.logic.ReturnToSport.progress(
+            profile, a.store.selfTestResults(), a.store.rtsSignoffs(), today)
+        if (rts.available) cells.add(gridCell(a, "ic_flag", rts.returnPhrase, "${rts.readinessPct}% ready") {
+            a.pushOverlay(rts.returnPhrase) { ReturnToSportScreen.build(a) }
+        })
+
+        val gap = Ui.dp(a, 4)
+        val v = Ui.dp(a, 5)
+        var i = 0
+        while (i < cells.size) {
+            val rowv = Ui.row(a).apply { gravity = Gravity.TOP }
+            cells[i].layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                .apply { setMargins(0, v, gap, v) }
+            rowv.addView(cells[i])
+            if (i + 1 < cells.size) {
+                cells[i + 1].layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                    .apply { setMargins(gap, v, 0, v) }
+                rowv.addView(cells[i + 1])
+            } else {
+                rowv.addView(View(a), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                    .apply { setMargins(gap, 0, 0, 0) })
+            }
+            colv.addView(rowv)
+            i += 2
+        }
+        return colv
     }
 
     /**
@@ -512,9 +671,6 @@ object TodayScreen {
 
     /** Whether the Today check-in is showing its expanded fields in place. */
     private var checkInExpanded = false
-
-    /** Whether the discretionary "more for you" surface is expanded (session-scoped). */
-    private var showMoreExpanded = false
 
     /** Check-ins logged before Today reveals the focus card + "more for you"; until
      *  then the home screen stays minimal so new users learn the daily rhythm. */
@@ -618,9 +774,6 @@ object TodayScreen {
         card.addView(Ui.fullWidth(Ui.button(a, p.action) { p.onTap() }, a))
         return card
     }
-
-    private fun promptRow(a: MainActivity, p: Prompt): View =
-        Ui.listRow(a, p.icon, p.title, p.body, iconTint = toneFg(p.tone), iconBg = toneBg(p.tone)) { p.onTap() }
 
     private fun confirmGate(a: MainActivity, number: Int, title: String, today: LocalDate) {
         Forms.confirm(a, "Confirm progression",

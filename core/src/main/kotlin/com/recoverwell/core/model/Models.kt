@@ -119,8 +119,24 @@ data class Profile(
     /** Target sport for the return-to-sport program; blank = the protocol default. */
     val sportId: String = "",
     /** Chosen support device (boot/cast); blank = the protocol default. */
-    val deviceId: String = ""
-)
+    val deviceId: String = "",
+    /**
+     * Estimated date the user is aiming to be back to sport, set at first setup
+     * and editable later. Drives the overall recovery-days timeline ("day X of
+     * N"). Null = use the default estimate ([effectiveReturnDate]); always an
+     * estimate the physio's real timeline overrides.
+     */
+    val targetReturnDate: LocalDate? = null
+) {
+    /** Aimed return-to-sport date, defaulting to ~12 months post-injury. */
+    fun effectiveReturnDate(): LocalDate =
+        targetReturnDate ?: injuryDate.plusDays(DEFAULT_RETURN_DAYS)
+
+    companion object {
+        /** Default estimated recovery span when no return date is set (~1 year). */
+        const val DEFAULT_RETURN_DAYS = 365L
+    }
+}
 
 data class Medication(
     val id: String,

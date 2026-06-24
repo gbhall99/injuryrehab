@@ -218,6 +218,17 @@ object MoreScreen {
             }
             card.addView(Ui.fullWidth(sportBtn, a, 4))
         }
+
+        // Estimated return-to-sport date: drives the overall recovery-days
+        // timeline on Today ("day X of N"). Defaults to ~12 months post-injury;
+        // always an estimate the physio's real timeline overrides.
+        card.addView(Forms.label(a, "Estimated return to sport · drives your recovery timeline"))
+        card.addView(Forms.dateRow(a, "Target date",
+            p.targetReturnDate ?: p.injuryDate.plusDays(Profile.DEFAULT_RETURN_DAYS)) {
+            p = p.copy(targetReturnDate = it)
+        })
+        card.addView(Ui.caption(a, "Just an estimate you can change anytime - many people return to " +
+            "sport around 9-12 months. Your physio guides the real timeline."))
         col.addView(card)
 
         col.addView(Ui.section(a, "Boot / cast & weight-bearing"))

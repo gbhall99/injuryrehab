@@ -167,7 +167,8 @@ object BackupCodec {
         "onboardingComplete" to Json.of(p.onboardingComplete),
         "disclaimerAcknowledged" to Json.of(p.disclaimerAcknowledged),
         "sportId" to Json.of(p.sportId),
-        "deviceId" to Json.of(p.deviceId)
+        "deviceId" to Json.of(p.deviceId),
+        "targetReturnDate" to Json.of(p.targetReturnDate?.toString() ?: "")
     )
 
     fun profileFrom(j: JsonValue): Profile = Profile(
@@ -210,7 +211,10 @@ object BackupCodec {
         onboardingComplete = j.opt("onboardingComplete")?.asBool() ?: false,
         disclaimerAcknowledged = j.opt("disclaimerAcknowledged")?.asBool() ?: false,
         sportId = j.opt("sportId")?.asString() ?: "",
-        deviceId = j.opt("deviceId")?.asString() ?: ""
+        deviceId = j.opt("deviceId")?.asString() ?: "",
+        // v<11 backups predate the estimated return-to-sport date
+        targetReturnDate = j.opt("targetReturnDate")?.asString()?.takeIf { it.isNotBlank() }
+            ?.let { LocalDate.parse(it) }
     )
 
     // -- medication -----------------------------------------------------

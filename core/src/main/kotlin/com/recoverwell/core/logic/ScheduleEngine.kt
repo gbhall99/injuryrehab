@@ -85,6 +85,42 @@ object ScheduleEngine {
         return n
     }
 
+    /**
+     * Consecutive days on which at least one full exercise SESSION was completed
+     * (every exercise in that session marked done), ending today (if a session is
+     * already complete today) or yesterday. Judged against the phase active on
+     * each day and the current overrides - a motivation streak, mirroring
+     * [medicationStreak].
+     */
+    fun exerciseStreak(
+        profile: Profile,
+        overrides: Map<String, ExerciseOverride>,
+        events: List<EventLog>,
+        today: LocalDate,
+        sessionsPerDay: Int = EXERCISE_SESSIONS_PER_DAY
+    ): Int {
+        val doneByDay = events
+            .filter { it.type == EventType.EXERCISE && it.status == EventStatus.DONE }
+            .groupBy { it.date }
+        fun sessionDone(d: LocalDate): Boolean {
+            val exercises = mergedExercises(PhaseEngine.currentPhase(profile, d).exercises, overrides)
+            if (exercises.isEmpty()) return false
+            val day = doneByDay[d] ?: return false
+            for (s in 1..clampSessions(sessionsPerDay)) {
+                val slot = "session$s"
+                if (exercises.all { ex -> day.any { it.refId == ex.id && it.slotKey == slot } }) return true
+            }
+            return false
+        }
+        var day = if (sessionDone(today)) today else today.minusDays(1)
+        var n = 0
+        while (sessionDone(day)) {
+            n++
+            day = day.minusDays(1)
+        }
+        return n
+    }
+
     /** Device-reduction items due on [date] per the editable plan (boot wedges etc.). */
     fun wedgeChangesOn(profile: Profile, date: LocalDate): List<ChecklistItem> {
         val device = ProtocolRegistry.forProfile(profile).supportDevice ?: return emptyList()
