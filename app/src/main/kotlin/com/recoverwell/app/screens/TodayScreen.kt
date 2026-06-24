@@ -443,20 +443,46 @@ object TodayScreen {
         card.addView(Ui.spacer(a, 8))
         card.addView(Ui.setDots(a, phaseCount, phase.number).apply { gravity = Gravity.START })
 
-        // headline numbers
+        // headline numbers: a relevant, non-duplicative set, picked in priority
+        // order and capped at four. The medication streak only appears when meds
+        // are actually being tracked (otherwise it would read a meaningless "0").
         val rts = com.recoverwell.core.logic.ReturnToSport.progress(
             profile, a.store.selfTestResults(), a.store.rtsSignoffs(), today)
+        val logs = a.store.allLogs()
+        val hasMeds = a.store.medications().any { it.active }
+        val checkInStreak = checkInStreak(logs, today)
+        val pain7 = recentPainAvg(logs, today)
+        val weeksToGo = (daysLeft + 6) / 7
         val tiles = ArrayList<View>()
         tiles.add(Ui.statTile(a, "${(dayProgress * 100).toInt()}%", "Today's tasks"))
-        tiles.add(
-            if (rts.available) Ui.statTile(a, "${rts.readinessPct}%", "Sport-ready")
-            else Ui.statTile(a, "$pct%", "Recovery")
-        )
-        tiles.add(Ui.statTile(a, if (medStreak > 0) "$medStreak d" else "-", "Med streak"))
-        tiles.add(Ui.statTile(a, if (exStreak > 0) "$exStreak d" else "-", "Exercise streak"))
+        tiles.add(Ui.statTile(a, "$exStreak d", "Exercise streak"))
+        if (hasMeds) tiles.add(Ui.statTile(a, "$medStreak d", "Med streak"))
+        if (rts.available) tiles.add(Ui.statTile(a, "${rts.readinessPct}%", "Sport-ready"))
+        if (checkInStreak > 0) tiles.add(Ui.statTile(a, "$checkInStreak d", "Check-in streak"))
+        if (pain7 != null) tiles.add(Ui.statTile(a, "$pain7/10", "Pain · 7-day avg"))
+        tiles.add(Ui.statTile(a, "${if (weeksToGo < 0) 0 else weeksToGo}", "Weeks to go"))
+        tiles.add(Ui.statTile(a, "${PhaseEngine.weeksSinceInjury(profile, today)}", "Weeks in"))
         card.addView(Ui.spacer(a, 14))
-        card.addView(statGrid(a, tiles))
+        card.addView(statGrid(a, tiles.take(4)))
         return card
+    }
+
+    /** Consecutive days with a logged check-in (pain recorded), ending today/yesterday. */
+    private fun checkInStreak(logs: List<com.recoverwell.core.model.DailyLog>, today: LocalDate): Int {
+        val logged = logs.filter { it.pain != null }.map { it.date }.toHashSet()
+        var day = if (today in logged) today else today.minusDays(1)
+        var n = 0
+        while (day in logged) { n++; day = day.minusDays(1) }
+        return n
+    }
+
+    /** Mean pain over the last 7 days of check-ins, rounded; null if none logged. */
+    private fun recentPainAvg(logs: List<com.recoverwell.core.model.DailyLog>, today: LocalDate): Int? {
+        val recent = logs.filter {
+            it.pain != null && !it.date.isBefore(today.minusDays(6)) && !it.date.isAfter(today)
+        }.mapNotNull { it.pain }
+        if (recent.isEmpty()) return null
+        return Math.round(recent.average()).toInt()
     }
 
     /** Thin rounded progress bar (fraction of [frac] filled with the primary tint). */

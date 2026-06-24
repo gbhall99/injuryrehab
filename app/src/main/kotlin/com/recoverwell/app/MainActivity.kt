@@ -92,18 +92,20 @@ class MainActivity : Activity() {
         appBarTitle.maxLines = 1
         appBarTitle.ellipsize = android.text.TextUtils.TruncateAt.END
         appBar.addView(Ui.weight(appBarTitle, 1f))
-        // Two everyday tools live in one rounded container so they read as a
-        // single pair, with the always-on red-flags safety button set apart.
+        // Two everyday tools, each its own distinct rounded button (coach vs
+        // journal) so they read as separate actions, with the always-on
+        // red-flags safety button set further apart.
         tools = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            background = GradientDrawable().apply {
-                cornerRadius = Ui.dpF(this@MainActivity, 22f)
-                setColor(Ui.PRIMARY_CONTAINER)
-            }
         }
-        tools.addView(barIcon("ic_ask", "Recovery coach - answers about your plan") { openAsk() })
-        tools.addView(barIcon("ic_edit", "Recovery journal - daily check-in") { openJournal() })
+        val coach = Ui.iconButton(this, "ic_ask", Ui.ON_PRIMARY_CONTAINER, Ui.PRIMARY_CONTAINER,
+            "Recovery coach - answers about your plan") { openAsk() }
+        val journal = Ui.iconButton(this, "ic_edit", Ui.ON_PRIMARY_CONTAINER, Ui.PRIMARY_CONTAINER,
+            "Recovery journal - daily check-in") { openJournal() }
+        (journal.layoutParams as LinearLayout.LayoutParams).marginStart = Ui.dp(this, 8)
+        tools.addView(coach)
+        tools.addView(journal)
         appBar.addView(tools)
         val flags = Ui.iconButton(this, "ic_alert", Ui.DANGER, Ui.DANGER_BG,
             desc = "Red flags - urgent symptoms") {
@@ -258,9 +260,6 @@ class MainActivity : Activity() {
     }
 
     /** A flat app-bar icon: the surrounding tools pill supplies the background. */
-    private fun barIcon(name: String, desc: String, onClick: () -> Unit): View =
-        Ui.iconButton(this, name, Ui.ON_PRIMARY_CONTAINER, 0, desc, onClick)
-
     fun popOverlay() {
         if (overlays.isNotEmpty()) {
             overlays.removeAt(overlays.size - 1)
