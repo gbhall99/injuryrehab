@@ -367,6 +367,9 @@ class MainActivity : Activity() {
         super.onResume()
         Reminders.reschedule(this)
         runAutoBackupIfDue()
+        // re-render so changes made while we were away - notification actions
+        // (e.g. marking a dose Taken) or the widget - are reflected immediately.
+        refresh()
     }
 
     override fun onPause() {

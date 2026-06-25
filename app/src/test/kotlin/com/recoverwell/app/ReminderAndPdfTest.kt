@@ -60,6 +60,41 @@ class ReminderPipelineTest {
 }
 
 /**
+ * The generic exercise nudge's "Done" must mark a real session done, not a
+ * phantom "session_reminder" event that matches no checklist item. Kept in its
+ * own class so the Robolectric SQLite shadow gets a fresh connection.
+ */
+@RunWith(RobolectricTestRunner::class)
+@Config(manifest = "src/main/AndroidManifest.xml", sdk = [26])
+class ExerciseNudgeActionTest {
+
+    @Test
+    fun exerciseNudgeDoneMarksARealSession() {
+        val activity = Robolectric.setupActivity(MainActivity::class.java)
+        val context = RuntimeEnvironment.application
+
+        val act = Intent(context, com.recoverwell.app.notify.ActionReceiver::class.java).apply {
+            putExtra("kind", "EXERCISE")
+            putExtra("refId", com.recoverwell.core.logic.ScheduleEngine.EXERCISE_SESSION_REF)
+            putExtra("slotKey", com.recoverwell.core.logic.ScheduleEngine.EXERCISE_SESSION_REF)
+            putExtra("status", "DONE")
+            putExtra("notifId", 2)
+        }
+        com.recoverwell.app.notify.ActionReceiver().onReceive(context, act)
+
+        val events = activity.store.eventsOn(java.time.LocalDate.now())
+        assertTrue("a real session1 exercise should be DONE", events.any {
+            it.type == com.recoverwell.core.model.EventType.EXERCISE &&
+                it.slotKey == "session1" &&
+                it.status == com.recoverwell.core.model.EventStatus.DONE
+        })
+        assertFalse("no phantom session_reminder event", events.any {
+            it.refId == com.recoverwell.core.logic.ScheduleEngine.EXERCISE_SESSION_REF
+        })
+    }
+}
+
+/**
  * Verifies the PDF report's content assembly against live store data.
  * (The final native rendering via android.graphics.pdf.PdfDocument has no
  * Robolectric 3.8 shadow; it is a thin 30-line platform call exercised
