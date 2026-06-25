@@ -462,15 +462,15 @@ object TodayScreen {
         val tiles = ArrayList<View>()
         tiles.add(metricTile(a, "$exStreak-day", "Exercise streak",
             "${exerciseAdherence(profile, overrides, events, today)}% done · 7d") {
-            a.show(MainActivity.Tab.EXERCISES)
+            a.pushOverlay("Exercise history") { HistoryScreen.exercises(a) }
         })
         if (hasMeds) tiles.add(metricTile(a, "$medStreak-day", "Med streak",
             "${medAdherence(meds, events, today)}% taken · 7d") {
-            a.pushOverlay("Medications") { MoreScreen.medsEditor(a) }
+            a.pushOverlay("Medication history") { HistoryScreen.medication(a) }
         })
         tiles.add(metricTile(a, "$ciStreak-day", "Check-in streak",
             if (pain7 != null) "Pain $pain7/10 avg · 7d" else "Start logging your pain") {
-            a.show(MainActivity.Tab.TRACKER)
+            a.pushOverlay("Check-in history") { HistoryScreen.checkins(a) }
         })
         if (rts.available) tiles.add(metricTile(a, "${rts.readinessPct}%", "Sport-ready",
             rts.currentRung?.let { "Stage: ${it.title}" } ?: "Building strength") {

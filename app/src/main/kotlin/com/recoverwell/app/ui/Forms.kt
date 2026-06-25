@@ -113,11 +113,18 @@ object Forms {
             card.removeAllViews()
             times.sorted().forEachIndexed { i, t ->
                 val row = Ui.row(ctx)
-                row.addView(Ui.weight(timeButton(ctx, t) { new -> times[i] = new }, 1f))
+                // moderate corner radius (not a full stadium) so stacked time
+                // fields read as separate rows instead of pinching together
+                val tb = timeButton(ctx, t) { new -> times[i] = new }
+                tb.background = Ui.ripple(ctx, Ui.rounded(Ui.PRIMARY_CONTAINER, Ui.RADIUS_SMALL))
+                row.addView(Ui.weight(tb, 1f))
                 row.addView(Ui.iconButton(ctx, "ic_close", Ui.TEXT_DIM, desc = "Remove time") {
                     times.removeAt(i); rebuild()
                 })
-                card.addView(row)
+                val lp = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                if (i > 0) lp.topMargin = Ui.dp(ctx, 8)
+                card.addView(row, lp)
             }
             card.addView(Ui.fullWidth(Ui.textButton(ctx, "Add a time") {
                 times.add(LocalTime.of(12, 0)); rebuild()
