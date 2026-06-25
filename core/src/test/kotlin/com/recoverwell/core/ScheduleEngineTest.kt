@@ -152,6 +152,10 @@ class ScheduleEngineTest {
         assertEquals(1, ScheduleEngine.medicationStreak(meds, broken, today))
         // no active meds -> no streak
         assertEquals(0, ScheduleEngine.medicationStreak(emptyList(), events, today))
+        // afterDate bounds the streak to days strictly after it, so a cut-off two
+        // days back caps the otherwise-4-day streak at 2 (yesterday + today)
+        val full = events + taken(today, "20:00")
+        assertEquals(2, ScheduleEngine.medicationStreak(meds, full, today, afterDate = today.minusDays(2)))
     }
 
     @Test

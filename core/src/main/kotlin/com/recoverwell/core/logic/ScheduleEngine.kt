@@ -66,8 +66,12 @@ object ScheduleEngine {
      * Consecutive days on which EVERY active medication dose was taken,
      * ending today (if today is already complete) or yesterday. Judged
      * against the current schedule - good enough for a motivation streak.
+     * [afterDate], when set, bounds the streak to days strictly after it (e.g.
+     * the injury date), so it can only begin the day after the injury.
      */
-    fun medicationStreak(meds: List<Medication>, events: List<EventLog>, today: LocalDate): Int {
+    fun medicationStreak(
+        meds: List<Medication>, events: List<EventLog>, today: LocalDate, afterDate: LocalDate? = null
+    ): Int {
         val slots = meds.filter { it.active }
             .flatMap { m -> m.times.map { m.id to slotKey(it) } }
         if (slots.isEmpty()) return 0
@@ -76,9 +80,10 @@ object ScheduleEngine {
         fun complete(d: LocalDate) = slots.all { (id, slot) ->
             taken[d]?.any { it.refId == id && it.slotKey == slot } == true
         }
+        fun inRange(d: LocalDate) = afterDate == null || d.isAfter(afterDate)
         var day = if (complete(today)) today else today.minusDays(1)
         var n = 0
-        while (complete(day)) {
+        while (complete(day) && inRange(day)) {
             n++
             day = day.minusDays(1)
         }
@@ -112,9 +117,10 @@ object ScheduleEngine {
             }
             return false
         }
+        // a streak can only begin the day after the injury
         var day = if (sessionDone(today)) today else today.minusDays(1)
         var n = 0
-        while (sessionDone(day)) {
+        while (sessionDone(day) && day.isAfter(profile.injuryDate)) {
             n++
             day = day.minusDays(1)
         }

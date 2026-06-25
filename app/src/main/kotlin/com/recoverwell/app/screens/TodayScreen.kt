@@ -39,7 +39,8 @@ object TodayScreen {
         val doneCount = items.count { it.isDone }
         val dayProgress = if (items.isEmpty()) 0f else doneCount.toFloat() / items.size
         val allEvents = a.store.allEvents()
-        val medStreak = ScheduleEngine.medicationStreak(a.store.medications(), allEvents, today)
+        val medStreak = ScheduleEngine.medicationStreak(
+            a.store.medications(), allEvents, today, afterDate = profile.injuryDate)
         val exStreak = ScheduleEngine.exerciseStreak(
             profile, a.store.exerciseOverrides(), allEvents, today)
 
@@ -455,7 +456,7 @@ object TodayScreen {
         val overrides = a.store.exerciseOverrides()
         val meds = a.store.medications()
         val hasMeds = meds.any { it.active }
-        val ciStreak = checkInStreak(logs, today)
+        val ciStreak = checkInStreak(logs, today, profile.injuryDate)
         val pain7 = recentPainAvg(logs, today)
         val weeksIn = PhaseEngine.weeksSinceInjury(profile, today)
 
@@ -549,12 +550,15 @@ object TodayScreen {
         return if (expected == 0) 0 else got * 100 / expected
     }
 
-    /** Consecutive days with a logged check-in (pain recorded), ending today/yesterday. */
-    private fun checkInStreak(logs: List<com.recoverwell.core.model.DailyLog>, today: LocalDate): Int {
+    /** Consecutive days with a logged check-in (pain recorded), ending today/
+     *  yesterday and only counting days strictly after [afterDate] (the injury). */
+    private fun checkInStreak(
+        logs: List<com.recoverwell.core.model.DailyLog>, today: LocalDate, afterDate: LocalDate
+    ): Int {
         val logged = logs.filter { it.pain != null }.map { it.date }.toHashSet()
         var day = if (today in logged) today else today.minusDays(1)
         var n = 0
-        while (day in logged) { n++; day = day.minusDays(1) }
+        while (day in logged && day.isAfter(afterDate)) { n++; day = day.minusDays(1) }
         return n
     }
 
