@@ -47,6 +47,8 @@ object MoreScreen {
         col.addView(Ui.section(a, "Your plan"))
         col.addView(Ui.listRow(a, "ic_heart", "Injury & goal",
             "Dates, side, boot plan, appointments") { a.pushOverlay("Injury & goal") { profileEditor(a) } })
+        col.addView(Ui.listRow(a, "ic_pill", "Medications",
+            "Doses, times and reminders") { a.pushOverlay("Medications") { medsEditor(a) } })
         col.addView(Ui.listRow(a, "ic_calendar", "Phase dates",
             "Adjust timings agreed with your physio") { a.pushOverlay("Phase dates") { phaseDatesEditor(a) } })
         col.addView(Ui.listRow(a, "ic_boot", "Boot change dates",

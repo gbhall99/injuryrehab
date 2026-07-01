@@ -102,10 +102,10 @@ object Onboarding {
                 val card = Ui.card(a, Ui.INFO_BG)
                 card.addView(Ui.text(a, "On a blood thinner?", 15.5f, Ui.ON_INFO_BG, bold = true))
                 card.addView(Ui.spacer(a, 2))
-                card.addView(Ui.text(a, "Some people on a conservative Achilles pathway are prescribed " +
-                    "an anticoagulant. Add it if that's you, then adjust the dose and times to match " +
-                    "your prescription.", 14f, Ui.ON_INFO_BG))
-                card.addView(Ui.fullWidth(Ui.tonalButton(a, "Add an anticoagulant reminder") {
+                card.addView(Ui.text(a, "Some people recovering from an Achilles rupture are prescribed a " +
+                    "blood-thinner to prevent clots. Add it if that's you, then adjust the dose and times " +
+                    "to match your prescription.", 14f, Ui.ON_INFO_BG))
+                card.addView(Ui.fullWidth(Ui.tonalButton(a, "Add a blood-thinner reminder") {
                     // Seed an editable, clinician-confirmable course end tied to the
                     // typical boot period rather than letting reminders run forever
                     // (VTE prophylaxis is time-limited - NICE NG89).

@@ -141,7 +141,7 @@ object JournalScreen {
             recording -> {
                 card.addView(Ui.text(a, "Recording…", 15.5f, Ui.WARN, bold = true))
                 card.addView(Ui.caption(a, "Mention pain, swelling, mood or energy if you can - then stop."))
-                card.addView(Ui.fullWidth(Ui.button(a, "Stop & analyze") { stopAndAnalyze(a, today) }, a))
+                card.addView(Ui.fullWidth(Ui.button(a, "Stop & review") { stopAndAnalyze(a, today) }, a))
                 card.addView(Ui.fullWidth(Ui.textButton(a, "Cancel") {
                     recorder?.cancel(); recorder = null; recording = false; error = null; a.refresh()
                 }, a, 4))
