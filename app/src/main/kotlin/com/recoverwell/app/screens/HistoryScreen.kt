@@ -100,10 +100,12 @@ object HistoryScreen {
             val d = today.minusDays(i.toLong())
             val slots = meds.filter { it.activeOn(d) }.flatMap { m -> m.times.map { m.id to ScheduleEngine.slotKey(it) } }
             if (slots.isEmpty()) continue
-            val taken = slots.count { (id, slot) ->
-                latestStatus(events, d, EventType.MEDICATION, id, slot) == EventStatus.TAKEN
-            }
-            col.addView(Ui.listRow(a, "ic_pill", d.format(dayFmt), "$taken/${slots.size} doses taken") {
+            val statuses = slots.map { (id, slot) -> latestStatus(events, d, EventType.MEDICATION, id, slot) }
+            val taken = statuses.count { it == EventStatus.TAKEN }
+            val logged = statuses.count { it != null }
+            // an untouched past day shouldn't read as a "0/2 taken" failure
+            val sub = if (logged == 0) "Not logged" else "$taken of ${slots.size} taken"
+            col.addView(Ui.listRow(a, "ic_pill", d.format(dayFmt), sub) {
                 a.pushOverlay("Doses · ${d.format(dayFmt)}") { medDay(a, d) }
             })
         }
@@ -159,11 +161,14 @@ object HistoryScreen {
             val d = today.minusDays(i.toLong())
             val exs = ScheduleEngine.mergedExercises(PhaseEngine.currentPhase(profile, d).exercises, overrides)
             if (exs.isEmpty()) continue
+            var anyLogged = false
             val done = (1..sessions).count { s ->
                 val slot = "session$s"
+                if (exs.any { ex -> latestStatus(events, d, EventType.EXERCISE, ex.id, slot) != null }) anyLogged = true
                 exs.all { ex -> latestStatus(events, d, EventType.EXERCISE, ex.id, slot) == EventStatus.DONE }
             }
-            col.addView(Ui.listRow(a, "ic_exercises", d.format(dayFmt), "$done/$sessions sessions done") {
+            val sub = if (!anyLogged) "Not logged" else "$done of $sessions sessions done"
+            col.addView(Ui.listRow(a, "ic_exercises", d.format(dayFmt), sub) {
                 a.pushOverlay("Sessions · ${d.format(dayFmt)}") { exDay(a, d) }
             })
         }
