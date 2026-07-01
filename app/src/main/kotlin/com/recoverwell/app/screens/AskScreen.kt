@@ -70,7 +70,7 @@ object AskScreen {
         val head = Ui.row(a)
         head.addView(Ui.weight(Ui.caption(a, "A grounded chat about your recovery. General guidance, " +
             "not a substitute for your physio."), 1f))
-        if (turns.isNotEmpty()) head.addView(Ui.textButton(a, "New topic") {
+        if (turns.isNotEmpty()) head.addView(Ui.textButton(a, "Start a new chat") {
             turns.clear(); error = null; loading = false
             a.store.clearAskTurns()
             a.refresh()
@@ -108,7 +108,7 @@ object AskScreen {
             if (a.store.askMemory().isNotEmpty()) {
                 col.addView(Ui.spacer(a, 8))
                 col.addView(Ui.caption(a, "I'll remember the gist of our past chats to keep advice consistent."))
-                col.addView(Ui.fullWidth(Ui.textButton(a, "Forget remembered context", Ui.WARN) {
+                col.addView(Ui.fullWidth(Ui.textButton(a, "Forget past chats", Ui.WARN) {
                     Forms.confirm(a, "Forget remembered context?",
                         "I'll clear the summary of your previous chats. Your logs and journal stay untouched.") {
                         a.store.clearAskMemory(); a.refresh()
@@ -197,14 +197,8 @@ object AskScreen {
         col.addView(Ui.caption(a, "Answered from your protocol, fully offline. Not a substitute for your physio."))
         col.addView(Ui.spacer(a, 8))
 
-        val input = Forms.editText(a, lastQuestion, "Type a question, e.g. \"Can I drive yet?\"")
-        col.addView(input)
-        col.addView(Ui.fullWidth(Ui.button(a, "Ask") {
-            lastQuestion = input.text.toString()
-            lastAnswer = Ask.answer(lastQuestion.ifBlank { "what can I do right now" }, profile, today)
-            a.refresh()
-        }, a))
-
+        // the most recent answer sits up top; the one-tap topics are the primary
+        // path, with the free-text box offered below as an alternative
         lastAnswer?.let { col.addView(answerCard(a, it, profile, today)) }
 
         addTopicPicker(a, col, profile) { q ->
@@ -212,6 +206,15 @@ object AskScreen {
             lastAnswer = Ask.answer(q, profile, today)
             a.refresh()
         }
+
+        col.addView(Ui.section(a, "Or type your own question"))
+        val input = Forms.editText(a, lastQuestion, "e.g. \"Can I drive yet?\"")
+        col.addView(input)
+        col.addView(Ui.fullWidth(Ui.button(a, "Ask") {
+            lastQuestion = input.text.toString()
+            lastAnswer = Ask.answer(lastQuestion.ifBlank { "what can I do right now" }, profile, today)
+            a.refresh()
+        }, a))
 
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)

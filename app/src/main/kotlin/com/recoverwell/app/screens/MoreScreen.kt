@@ -113,11 +113,11 @@ object MoreScreen {
             iconBg = if (autoOn) Ui.PRIMARY_CONTAINER else Ui.SURFACE_HIGH) {
             a.pushOverlay("Automatic backup") { autoBackupEditor(a) }
         })
-        col.addView(Ui.listRow(a, "ic_export", "Full backup · JSON", "Everything, restorable") { a.exportBackup() })
+        col.addView(Ui.listRow(a, "ic_export", "Full backup", "Save everything · restorable file") { a.exportBackup() })
         col.addView(Ui.listRow(a, "ic_restore", "Restore from backup", "Replaces all current data") { a.importBackup() })
         col.addView(Ui.listRow(a, "ic_export", "PDF report", "Share progress with your physio") { a.exportPdf() })
-        col.addView(Ui.listRow(a, "ic_export", "Daily logs · CSV", "Spreadsheet-friendly") { a.exportLogsCsv() })
-        col.addView(Ui.listRow(a, "ic_export", "Medication & task log · CSV", "Adherence history") { a.exportEventsCsv() })
+        col.addView(Ui.listRow(a, "ic_export", "Daily logs", "Open in a spreadsheet") { a.exportLogsCsv() })
+        col.addView(Ui.listRow(a, "ic_export", "Medication & task history", "Open in a spreadsheet") { a.exportEventsCsv() })
 
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)

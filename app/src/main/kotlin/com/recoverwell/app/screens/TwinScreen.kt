@@ -106,7 +106,7 @@ object TwinScreen {
         }
         col.addView(checksCard)
 
-        col.addView(Ui.fullWidth(Ui.dangerButton(a, "Open red flags") {
+        col.addView(Ui.fullWidth(Ui.tonalButton(a, "When to get help · warning signs") {
             a.pushOverlay("Red flags") { RedFlagsScreen.build(a) }
         }, a))
 

@@ -5,6 +5,7 @@ import android.app.AlertDialog
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.res.ColorStateList
+import android.os.Build
 import android.text.InputType
 import android.view.Gravity
 import android.view.ViewGroup
@@ -14,9 +15,24 @@ import android.widget.SeekBar
 import android.widget.TextView
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 
 /** Form building blocks sized for one-handed use with the leg up. */
 object Forms {
+
+    private val DATE_FMT = DateTimeFormatter.ofPattern("EEE, d MMM yyyy")
+    private val TIME_FMT = DateTimeFormatter.ofPattern("h:mm a")
+
+    /** Human-friendly date: Today/Tomorrow/Yesterday, else "Tue, 1 Jul 2026". */
+    fun friendlyDate(d: LocalDate): String {
+        val today = LocalDate.now()
+        return when (d) {
+            today -> "Today"
+            today.plusDays(1) -> "Tomorrow"
+            today.minusDays(1) -> "Yesterday"
+            else -> d.format(DATE_FMT)
+        }
+    }
 
     fun label(ctx: Activity, text: String): TextView =
         Ui.text(ctx, text, 13.5f, Ui.TEXT_DIM, bold = true).apply {
@@ -78,10 +94,10 @@ object Forms {
         row.minimumHeight = Ui.dp(ctx, Ui.MIN_TOUCH_DP)
         var current = initial
         var btn: TextView? = null
-        btn = Ui.tonalButton(ctx, current.toString()) {
+        btn = Ui.tonalButton(ctx, friendlyDate(current)) {
             DatePickerDialog(ctx, { _, y, m, d ->
                 current = LocalDate.of(y, m + 1, d)
-                btn?.text = current.toString()
+                btn?.text = friendlyDate(current)
                 onChange(current)
             }, current.year, current.monthValue - 1, current.dayOfMonth).show()
         }
@@ -93,12 +109,12 @@ object Forms {
     fun timeButton(ctx: Activity, initial: LocalTime, onChange: (LocalTime) -> Unit): TextView {
         var current = initial
         var btn: TextView? = null
-        btn = Ui.tonalButton(ctx, "%02d:%02d".format(current.hour, current.minute)) {
+        btn = Ui.tonalButton(ctx, current.format(TIME_FMT)) {
             TimePickerDialog(ctx, { _, h, m ->
                 current = LocalTime.of(h, m)
-                btn?.text = "%02d:%02d".format(h, m)
+                btn?.text = current.format(TIME_FMT)
                 onChange(current)
-            }, current.hour, current.minute, true).show()
+            }, current.hour, current.minute, false).show()
         }
         return btn
     }
@@ -200,9 +216,18 @@ object Forms {
             progressTintList = ColorStateList.valueOf(Ui.PRIMARY)
             thumbTintList = ColorStateList.valueOf(Ui.PRIMARY)
             setPadding(Ui.dp(ctx, 18), Ui.dp(ctx, 10), Ui.dp(ctx, 18), Ui.dp(ctx, 10))
+            // screen-reader: a stable label plus a live value announcement
+            contentDescription = buildString {
+                append("Rating from 0")
+                minLabel?.let { append(" (").append(it).append(")") }
+                append(" to ").append(max)
+                maxLabel?.let { append(" (").append(it).append(")") }
+            }
+            if (Build.VERSION.SDK_INT >= 30) stateDescription = "${initial ?: 0} of $max"
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                     readout.text = progress.toString()
+                    if (Build.VERSION.SDK_INT >= 30) seekBar?.stateDescription = "$progress of $max"
                     onChange(progress)
                 }
                 override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
@@ -223,13 +248,21 @@ object Forms {
         return col
     }
 
-    fun confirm(ctx: Activity, title: String, message: String, onYes: () -> Unit) {
-        AlertDialog.Builder(ctx)
+    fun confirm(
+        ctx: Activity, title: String, message: String,
+        confirmLabel: String = "Confirm", destructive: Boolean = false, onYes: () -> Unit
+    ) {
+        val dialog = AlertDialog.Builder(ctx)
             .setTitle(title)
             .setMessage(message)
-            .setPositiveButton("Confirm") { _, _ -> onYes() }
+            .setPositiveButton(confirmLabel) { _, _ -> onYes() }
             .setNegativeButton("Cancel", null)
-            .show()
+            .create()
+        // tint the confirm action red when it deletes/undoes something
+        if (destructive) dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(Ui.DANGER)
+        }
+        dialog.show()
     }
 
     fun info(ctx: Activity, title: String, message: String) {

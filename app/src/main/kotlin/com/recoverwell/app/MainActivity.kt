@@ -107,11 +107,24 @@ class MainActivity : Activity() {
         tools.addView(coach)
         tools.addView(journal)
         appBar.addView(tools)
-        val flags = Ui.iconButton(this, "ic_alert", Ui.DANGER, Ui.DANGER_BG,
-            desc = "Red flags - urgent symptoms") {
-            pushOverlay("Red flags") { RedFlagsScreen.build(this) }
+        // safety action reads as a labelled danger pill (icon + "Red flags"),
+        // not a bare glyph, so its purpose is never ambiguous
+        val flags = Ui.row(this).apply {
+            background = Ui.ripple(this@MainActivity, Ui.rounded(Ui.DANGER_BG, 20f))
+            setPadding(Ui.dp(this@MainActivity, 10), Ui.dp(this@MainActivity, 6),
+                Ui.dp(this@MainActivity, 12), Ui.dp(this@MainActivity, 6))
+            isClickable = true
+            isFocusable = true
+            contentDescription = "Red flags - urgent symptoms"
+            setOnClickListener { pushOverlay("Red flags") { RedFlagsScreen.build(this@MainActivity) } }
+            addView(Ui.icon(this@MainActivity, "ic_alert", 18, Ui.DANGER))
+            addView(Ui.text(this@MainActivity, "Red flags", 13f, Ui.DANGER, bold = true).apply {
+                setPadding(Ui.dp(this@MainActivity, 6), 0, 0, 0)
+            })
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { marginStart = Ui.dp(this@MainActivity, 8); gravity = Gravity.CENTER_VERTICAL }
         }
-        (flags.layoutParams as LinearLayout.LayoutParams).marginStart = Ui.dp(this, 8)
         appBar.addView(flags)
         root.addView(appBar)
 

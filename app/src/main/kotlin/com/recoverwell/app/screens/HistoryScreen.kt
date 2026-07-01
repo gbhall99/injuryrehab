@@ -38,10 +38,10 @@ object HistoryScreen {
         col.addView(Ui.caption(a, "Every check-in you've logged. Tap any day to edit it, or " +
             "backfill a day you missed."))
 
-        col.addView(Ui.listRow(a, "ic_edit", "Log or backfill a day", "Pick any past date") {
+        col.addView(Ui.listRow(a, "ic_edit", "Add a day you missed", "Pick any past date") {
             android.app.DatePickerDialog(a, { _, y, m, d ->
                 val date = LocalDate.of(y, m + 1, d).coerceAtMost(today)
-                a.pushOverlay("Log for $date") { editLog(a, date) }
+                a.pushOverlay(date.format(dayFmt)) { editLog(a, date) }
             }, today.year, today.monthValue - 1, today.dayOfMonth).apply {
                 datePicker.maxDate = System.currentTimeMillis()
             }.show()
@@ -61,7 +61,7 @@ object HistoryScreen {
                 }.joinToString(" · ")
                 val sub = "Pain ${log.pain}/10" + if (extras.isBlank()) "" else " · $extras"
                 col.addView(Ui.listRow(a, "ic_progress", log.date.format(dayFmt), sub) {
-                    a.pushOverlay("Log for ${log.date}") { editLog(a, log.date) }
+                    a.pushOverlay(log.date.format(dayFmt)) { editLog(a, log.date) }
                 })
             }
         }
@@ -71,7 +71,7 @@ object HistoryScreen {
 
     private fun editLog(a: MainActivity, date: LocalDate): View {
         val col = Ui.column(a)
-        col.addView(Ui.backRow(a, "Log for $date") { a.popOverlay() })
+        col.addView(Ui.backRow(a, date.format(dayFmt)) { a.popOverlay() })
         col.addView(TodayScreen.checkInCard(a, date, expanded = true) {
             Toast.makeText(a, "Log saved", Toast.LENGTH_SHORT).show()
             a.popOverlay()
@@ -104,7 +104,7 @@ object HistoryScreen {
                 latestStatus(events, d, EventType.MEDICATION, id, slot) == EventStatus.TAKEN
             }
             col.addView(Ui.listRow(a, "ic_pill", d.format(dayFmt), "$taken/${slots.size} doses taken") {
-                a.pushOverlay("Doses · $d") { medDay(a, d) }
+                a.pushOverlay("Doses · ${d.format(dayFmt)}") { medDay(a, d) }
             })
         }
         col.addView(Ui.spacer(a, 24))
@@ -164,7 +164,7 @@ object HistoryScreen {
                 exs.all { ex -> latestStatus(events, d, EventType.EXERCISE, ex.id, slot) == EventStatus.DONE }
             }
             col.addView(Ui.listRow(a, "ic_exercises", d.format(dayFmt), "$done/$sessions sessions done") {
-                a.pushOverlay("Sessions · $d") { exDay(a, d) }
+                a.pushOverlay("Sessions · ${d.format(dayFmt)}") { exDay(a, d) }
             })
         }
         col.addView(Ui.spacer(a, 24))

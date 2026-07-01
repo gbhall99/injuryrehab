@@ -91,6 +91,7 @@ object TodayScreen {
             start()
         }
         ringBox.addView(ring, FrameLayout.LayoutParams(Ui.dp(a, 92), Ui.dp(a, 92)))
+        ringBox.contentDescription = "${(dayProgress * 100).toInt()}% of today's care done"
         val pct = Ui.text(a, "${(dayProgress * 100).toInt()}%", 19f, onHero, bold = true)
         val pctLp = FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         pctLp.gravity = Gravity.CENTER
@@ -267,9 +268,6 @@ object TodayScreen {
         // gated or collapsed, so a clot/health warning is never buried
         for (p in sorted.filter { it.safety }) col.addView(focusCard(a, p))
 
-        // ---- recovery snapshot: the key stats & timelines at a glance --------
-        col.addView(recoverySnapshot(a, profile, today, phase, medStreak, exStreak))
-
         // ---- checklist (the core daily task: now directly under the hero + any
         // safety cards, so the actions are immediate and never buried) ----
         // medication stays one row per dose (each dose is logged individually)
@@ -365,6 +363,10 @@ object TodayScreen {
                 gravity = Gravity.CENTER
             })
         }
+
+        // ---- recovery snapshot: the key stats & timelines, now below the day's
+        // actions so the checklist (the primary task) leads the screen ----
+        col.addView(recoverySnapshot(a, profile, today, phase, medStreak, exStreak))
 
         // Once the user has a few check-ins logged, surface the single most
         // important non-safety prompt as the focus card (kept calm on first run).
@@ -616,7 +618,7 @@ object TodayScreen {
     /** One tappable destination tile in the "jump to" grid. */
     private fun gridCell(a: MainActivity, icon: String, title: String, sub: String, onTap: () -> Unit): View {
         val card = Ui.tapCard(a) { onTap() }
-        card.contentDescription = title
+        card.contentDescription = "$title. $sub"
         card.addView(Ui.iconBadge(a, icon, boxDp = 38))
         card.addView(Ui.spacer(a, 8))
         // wrap-content width so these content labels are never mistaken for the
@@ -814,7 +816,7 @@ object TodayScreen {
         var pain = log.pain ?: (a.store.dailyLog(date.minusDays(1)).pain ?: 0)
         card.addView(Forms.scaleSlider(a, 10, pain, "0 · None", "10 · Worst") { pain = it })
         var mood: Int? = log.mood
-        card.addView(Forms.label(a, "Mood · optional"))
+        card.addView(Forms.label(a, "Mood · 1 low – 5 great · optional"))
         card.addView(Forms.choiceRow(a, (1..5).toList(), { "$it" }, log.mood) { mood = it })
 
         var swelling: Swelling? = log.swelling
@@ -823,7 +825,7 @@ object TodayScreen {
         if (expanded) {
             card.addView(Forms.label(a, "Swelling"))
             card.addView(Forms.choiceRow(a, Swelling.values().toList(), { it.label }, log.swelling) { swelling = it })
-            card.addView(Forms.label(a, "Energy"))
+            card.addView(Forms.label(a, "Energy · 1 drained – 5 energised"))
             card.addView(Forms.choiceRow(a, (1..5).toList(), { "$it" }, log.energy) { energy = it })
             card.addView(Forms.label(a, "Notes"))
             notesEdit = Forms.editText(a, log.notes ?: "", "Anything worth remembering", multiline = true)
