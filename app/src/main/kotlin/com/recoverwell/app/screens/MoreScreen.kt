@@ -45,6 +45,10 @@ object MoreScreen {
             "Keep-fit conditioning + a weekly goal") { a.pushOverlay("Stay fit") { StayFitScreen.build(a) } })
 
         col.addView(Ui.section(a, "Your plan"))
+        col.addView(Ui.listRow(a, "ic_progress", "Configure my plan",
+            "Phases, exercises, boot & weight-bearing - each set to your physio's guidance") {
+            a.pushOverlay("Configure my plan") { planEditor(a) }
+        })
         col.addView(Ui.listRow(a, "ic_heart", "Injury & goal",
             "Dates, side, boot plan, appointments") { a.pushOverlay("Injury & goal") { profileEditor(a) } })
         col.addView(Ui.listRow(a, "ic_pill", "Medications",
@@ -320,6 +324,111 @@ object MoreScreen {
     }
 
     // ------------------------------------------------------------------
+
+    /**
+     * One place to shape the whole recovery plan to the physio/consultant's
+     * actual guidance. Each aspect is INDEPENDENT - phase timing, the exercises
+     * included in each phase, the boot's reduction schedule, and weight-bearing
+     * status - so they need not move together (e.g. weight-bearing can advance
+     * while boot reduction holds). Reuses the existing per-aspect models.
+     */
+    fun planEditor(a: MainActivity): View {
+        val col = Ui.column(a)
+        col.addView(Ui.backRow(a, "Configure my plan") { a.popOverlay() })
+        col.addView(Ui.caption(a, "Your plan is made of independent parts - phase timing, the exercises " +
+            "in each phase, your boot's reduction schedule, and your weight-bearing status. They don't " +
+            "have to move together: set each to match what your physio and consultant advised."))
+
+        val profile = a.store.profile()
+        val protocol = ProtocolRegistry.forProfile(profile)
+        val current = com.recoverwell.core.logic.PhaseEngine.currentPhase(profile, LocalDate.now()).number
+
+        // weight-bearing: an independent current status
+        col.addView(Ui.section(a, "Weight-bearing now"))
+        val wbCard = Ui.card(a)
+        wbCard.addView(Ui.caption(a, "Update this whenever your physio changes it - independent of your " +
+            "boot and your phase."))
+        wbCard.addView(Forms.choiceRow(a, WeightBearing.values().toList(), { it.shortLabel }, profile.weightBearing) {
+            a.store.saveProfile(a.store.profile().copy(weightBearing = it))
+            Reminders.reschedule(a)
+        })
+        col.addView(wbCard)
+
+        // boot / reduction: an independent, date-driven schedule
+        ProtocolRegistry.deviceFor(profile)?.let { device ->
+            col.addView(Ui.section(a, "Boot / cast"))
+            val bootCard = Ui.card(a)
+            bootCard.addView(Ui.caption(a, "Your ${device.name.lowercase()} setting and its reduction " +
+                "schedule run on their own dates, separate from the phases below - reduce it only when " +
+                "your clinic agrees, even if other things are progressing."))
+            bootCard.addView(Ui.fullWidth(Ui.tonalButton(a, "Edit boot setting & reduction") {
+                a.pushOverlay("Injury & goal") { profileEditor(a) }
+            }, a))
+            col.addView(bootCard)
+        }
+
+        // per-phase: start date + which exercises are included
+        col.addView(Ui.section(a, "Phases"))
+        for (phase in protocol.phases) {
+            val card = Ui.card(a)
+            val head = Ui.row(a)
+            head.addView(Ui.weight(Ui.text(a, "Phase ${phase.number} · ${phase.title}", 15.5f, Ui.TEXT, bold = true), 1f))
+            if (phase.number == current) head.addView(Ui.pillBadge(a, "Now", Ui.ON_PRIMARY_CONTAINER, Ui.PRIMARY_CONTAINER))
+            card.addView(head)
+
+            val defaultDate = profile.injuryDate.plusWeeks(phase.startWeek.toLong())
+            val overridden = profile.phaseStartOverrides[phase.number]
+            card.addView(Forms.dateRow(a, "Starts", overridden ?: defaultDate) { newDate ->
+                val p2 = a.store.profile()
+                a.store.saveProfile(p2.copy(phaseStartOverrides = p2.phaseStartOverrides + (phase.number to newDate)))
+                Reminders.reschedule(a)
+            })
+            if (overridden != null) {
+                card.addView(Ui.fullWidth(Ui.textButton(a, "Reset to default date") {
+                    val p2 = a.store.profile()
+                    a.store.saveProfile(p2.copy(phaseStartOverrides = p2.phaseStartOverrides - phase.number))
+                    Reminders.reschedule(a); a.refresh()
+                }, a, 2))
+            }
+
+            if (phase.exercises.isNotEmpty()) {
+                card.addView(Ui.spacer(a, 6))
+                card.addView(Forms.label(a, "Exercises included in this phase"))
+                val overrides = a.store.exerciseOverrides()
+                for (spec in phase.exercises) {
+                    val enabled = overrides[spec.id]?.enabled ?: true
+                    val row = Ui.row(a)
+                    row.addView(Ui.weight(Ui.text(a, spec.name, 14.5f, if (enabled) Ui.TEXT else Ui.TEXT_DIM), 1f))
+                    row.addView(Forms.toggle(a, enabled, "On", "Off") { on ->
+                        val base = a.store.exerciseOverrides()[spec.id]
+                            ?: ExerciseOverride(spec.id, null, null, null, null, true)
+                        a.store.saveExerciseOverride(base.copy(enabled = on))
+                        Reminders.reschedule(a)
+                        a.refresh()
+                    })
+                    card.addView(row)
+                }
+            }
+            col.addView(card)
+        }
+
+        // the progression gate - the app advances a phase only once confirmed
+        val confirmCard = Ui.card(a)
+        confirmCard.addView(Ui.text(a, "Physio-confirmed phase", 15.5f, Ui.TEXT, bold = true))
+        confirmCard.addView(Ui.caption(a, "The app advances a phase only once you confirm your physio " +
+            "agreed. Wind this back if you progressed by mistake."))
+        confirmCard.addView(Forms.stepper(a, "Confirmed up to", profile.physioConfirmedPhase, 1, protocol.phases.size) { v ->
+            val pp = a.store.profile()
+            val dates = if (v > pp.physioConfirmedPhase) pp.phaseConfirmedDates + (v to LocalDate.now())
+            else pp.phaseConfirmedDates
+            a.store.saveProfile(pp.copy(physioConfirmedPhase = v, phaseConfirmedDates = dates))
+            Reminders.reschedule(a)
+        })
+        col.addView(confirmCard)
+
+        col.addView(Ui.spacer(a, 24))
+        return Ui.scroll(a, col)
+    }
 
     fun phaseDatesEditor(a: MainActivity): View {
         val col = Ui.column(a)
