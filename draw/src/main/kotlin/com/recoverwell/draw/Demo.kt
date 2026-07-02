@@ -426,12 +426,15 @@ object DemoLibrary {
             )
         ))
         put("band_pf", Demo(
-            setOf(Prop.BAND),
+            // seated with the leg extended and a band looped round the ball of the
+            // foot (held ahead) - the foot presses down against it. Rendered seated
+            // rather than lying so the pose reads clearly instead of collapsing.
+            setOf(Prop.CHAIR, Prop.BAND),
             "Push the foot down against the band like a slow gas pedal",
             listOf(
-                Pose(lying = true, torso = -65f, thighA = 12f, kneeA = 8f, ankleA = -2f, thighB = 20f, kneeB = 35f) to 800L,
-                Pose(lying = true, torso = -65f, thighA = 12f, kneeA = 8f, ankleA = 34f, thighB = 20f, kneeB = 35f) to 800L,
-                Pose(lying = true, torso = -65f, thighA = 12f, kneeA = 8f, ankleA = -2f, thighB = 20f, kneeB = 35f) to 1000L
+                seated(20f, -2f) to 800L,
+                seated(20f, 34f) to 800L,
+                seated(20f, -2f) to 1000L
             )
         ))
         put("step_up", Demo(
