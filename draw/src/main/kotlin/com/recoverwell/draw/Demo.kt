@@ -105,9 +105,16 @@ object DemoScene {
         val groundY = s.height * 0.82f
         val limbW = L * 0.30f
 
-        // ground
-        s.stroke(PathSpec.line(s.width * 0.06f, groundY, s.width * 0.94f, groundY),
-            Palette.OUTLINE, 3f)
+        // ground - or, for a lying figure, a clear mat/bed band at their back so
+        // the movement reads against a surface (and nothing appears to sink below it)
+        if (p.lying) {
+            val cy = groundY - 1.05f * L
+            s.roundRect(s.width * 0.05f, cy + 0.34f * L, s.width * 0.95f, cy + 0.72f * L, 12f,
+                Palette.withAlpha(Palette.ON_SURFACE_VARIANT, 0x33))
+        } else {
+            s.stroke(PathSpec.line(s.width * 0.06f, groundY, s.width * 0.94f, groundY),
+                Palette.OUTLINE, 3f)
+        }
 
         s.save()
         if (p.lying) {
@@ -327,11 +334,13 @@ object DemoLibrary {
         ))
         put("bridge", Demo(
             setOf(Prop.BOOT),
-            "Knees bent, squeeze and lift the hips, lower with control",
+            "Knees bent, feet flat, squeeze and lift the hips, lower with control",
             listOf(
-                Pose(lying = true, thighA = 50f, kneeA = 80f, thighB = 50f, kneeB = 80f) to 900L,
-                Pose(lying = true, thighA = 22f, kneeA = 80f, thighB = 22f, kneeB = 80f, hipY = -0.30f) to 900L,
-                Pose(lying = true, thighA = 50f, kneeA = 80f, thighB = 50f, kneeB = 80f) to 1100L
+                // knees up with feet planted on the mat, hips resting, then the
+                // pelvis lifts (hipY up) while the feet stay put, then lower
+                Pose(lying = true, thighA = 62f, kneeA = 120f, thighB = 62f, kneeB = 120f, hipY = 0.06f) to 900L,
+                Pose(lying = true, thighA = 40f, kneeA = 96f, thighB = 40f, kneeB = 96f, hipY = -0.26f) to 900L,
+                Pose(lying = true, thighA = 62f, kneeA = 120f, thighB = 62f, kneeB = 120f, hipY = 0.06f) to 1100L
             )
         ))
         put("boot_walk", Demo(
