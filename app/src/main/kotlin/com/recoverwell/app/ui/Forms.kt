@@ -45,7 +45,7 @@ object Forms {
             this.hint = hint
             textSize = 15.5f
             setTextColor(Ui.TEXT)
-            setHintTextColor(0xFF9AA39C.toInt())
+            setHintTextColor(Ui.TEXT_DIM)
             background = Ui.rounded(Ui.SURFACE_HIGH, Ui.RADIUS_SMALL)
             val p = Ui.dp(ctx, 14)
             setPadding(p, Ui.dp(ctx, 12), p, Ui.dp(ctx, 12))
@@ -174,8 +174,8 @@ object Forms {
             row.removeAllViews()
             for (opt in options) {
                 val isSel = opt == current
-                val chip = Ui.text(ctx, labelOf(opt), 13.5f,
-                    if (isSel) Ui.ON_PRIMARY_CONTAINER else Ui.TEXT_DIM, bold = true).apply {
+                val chip = Ui.text(ctx, labelOf(opt), 14f,
+                    if (isSel) Ui.ON_PRIMARY_CONTAINER else Ui.TEXT, bold = true).apply {
                     gravity = Gravity.CENTER
                     background = Ui.ripple(ctx, Ui.rounded(
                         if (isSel) Ui.PRIMARY_CONTAINER else Ui.SURFACE_HIGH, 16f))

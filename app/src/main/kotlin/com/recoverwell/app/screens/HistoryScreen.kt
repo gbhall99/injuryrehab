@@ -73,7 +73,7 @@ object HistoryScreen {
         val col = Ui.column(a)
         col.addView(Ui.backRow(a, date.format(dayFmt)) { a.popOverlay() })
         col.addView(TodayScreen.checkInCard(a, date, expanded = true) {
-            Toast.makeText(a, "Log saved", Toast.LENGTH_SHORT).show()
+            Toast.makeText(a, "Saved", Toast.LENGTH_SHORT).show()
             a.popOverlay()
         })
         col.addView(Ui.spacer(a, 24))
@@ -134,6 +134,7 @@ object HistoryScreen {
                         .setItems(arrayOf("Taken", "Missed")) { _, which ->
                             writeEvent(a, date, EventType.MEDICATION, med.id, slot,
                                 if (which == 0) EventStatus.TAKEN else EventStatus.MISSED)
+                            Toast.makeText(a, "Saved", Toast.LENGTH_SHORT).show()
                             a.refresh()
                         }
                         .setNegativeButton("Cancel", null)
@@ -193,6 +194,7 @@ object HistoryScreen {
                 "$doneCount/${exs.size} exercises", doneCount, exs.size) {
                 val newStatus = if (allDone) EventStatus.SKIPPED else EventStatus.DONE
                 for (ex in exs) writeEvent(a, date, EventType.EXERCISE, ex.id, slot, newStatus)
+                Toast.makeText(a, "Saved", Toast.LENGTH_SHORT).show()
                 a.refresh()
             })
         }

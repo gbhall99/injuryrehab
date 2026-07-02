@@ -66,6 +66,17 @@ object Onboarding {
         return Ui.scroll(a, col)
     }
 
+    /** A compact left-aligned "‹ Back" link for stepping back through onboarding. */
+    private fun backLink(a: MainActivity, onBack: () -> Unit): View =
+        Ui.text(a, "‹ Back", 14f, Ui.PRIMARY, bold = true).apply {
+            setPadding(Ui.dp(a, 2), Ui.dp(a, 4), Ui.dp(a, 12), Ui.dp(a, 6))
+            isClickable = true
+            isFocusable = true
+            contentDescription = "Back to the previous step"
+            background = Ui.ripple(a, Ui.rounded(0x00000000, 20f))
+            setOnClickListener { onBack() }
+        }
+
     private fun stepProfile(a: MainActivity): View {
         val col = Ui.column(a, 0)
         val banner = Ui.column(a)
@@ -88,6 +99,7 @@ object Onboarding {
     private fun stepMeds(a: MainActivity): View {
         val col = Ui.column(a, 0)
         val banner = Ui.column(a)
+        banner.addView(backLink(a) { a.popOverlay(); a.pushOverlay { stepProfile(a) } })
         banner.addView(Ui.pillBadge(a, "Step 2 of 3", Ui.ON_PRIMARY_CONTAINER, Ui.PRIMARY_CONTAINER))
         banner.addView(Ui.spacer(a, 6))
         banner.addView(Ui.headline(a, "Medication reminders"))
@@ -158,6 +170,7 @@ object Onboarding {
     private fun stepRoutine(a: MainActivity): View {
         val col = Ui.column(a, 0)
         val banner = Ui.column(a)
+        banner.addView(backLink(a) { a.popOverlay(); a.pushOverlay { stepMeds(a) } })
         banner.addView(Ui.pillBadge(a, "Step 3 of 3", Ui.ON_PRIMARY_CONTAINER, Ui.PRIMARY_CONTAINER))
         banner.addView(Ui.spacer(a, 6))
         banner.addView(Ui.headline(a, "Set your daily rhythm"))
