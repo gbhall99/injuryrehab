@@ -28,6 +28,32 @@ object Ask {
         return out.distinct()
     }
 
+    /** A labelled group of starter questions, so the coach reads as structured
+     *  topics rather than one open-ended box. */
+    data class Topic(val title: String, val icon: String, val questions: List<String>)
+
+    /**
+     * Suggested questions grouped into a few topics. Every question resolves to
+     * a deterministic offline answer (and seeds the AI chat when enabled), so the
+     * coach offers clear starting points instead of a single blank prompt.
+     */
+    fun topics(profile: Profile): List<Topic> {
+        val checks = ProtocolRegistry.forProfile(profile).movementChecks
+        val moves = LinkedHashSet<String>()
+        checks.firstOrNull { it.movement.contains("drive", true) }?.let { moves.add("Can I drive yet?") }
+        checks.firstOrNull { it.movement.contains("walk", true) }?.let { moves.add("Can I walk without the boot?") }
+        checks.firstOrNull { it.movement.contains("raise", true) }?.let { moves.add("Can I do heel raises?") }
+        checks.firstOrNull { it.movement.contains("stretch", true) || it.movement.contains("neutral", true) }
+            ?.let { moves.add("Can I stretch my ankle?") }
+        checks.lastOrNull { it.movement.startsWith("Play", true) }
+            ?.let { moves.add("Can I play ${it.movement.lowercase().removePrefix("play ")}?") }
+        val out = ArrayList<Topic>()
+        out.add(Topic("Where I'm at", "ic_today", listOf("What can I do right now?", "What's next?")))
+        if (moves.isNotEmpty()) out.add(Topic("Everyday movement", "ic_leg", moves.toList()))
+        out.add(Topic("Safety", "ic_alert", listOf("What are the red flags?", "I'm worried about a clot")))
+        return out
+    }
+
     private val redFlagWords = listOf("red flag", "clot", "dvt", "pe ", "embolism", "bleed",
         "emergency", "999", "111", "worried", "symptom", "danger", "warning")
     private val nextWords = listOf("next", "progress", "phase", "when can", "move on", "advance")

@@ -361,6 +361,45 @@ object Reminders {
                 recordedAtMinuteOfDay = now.hour * 60 + now.minute
             )
         )
+        com.recoverwell.app.widget.TodayWidget.update(context)
+    }
+
+    /**
+     * The exercise reminder is a generic "do your exercises" nudge (refId/slot =
+     * [ScheduleEngine.EXERCISE_SESSION_REF]), not a specific session, so a plain
+     * recordEvent wouldn't match any checklist session. Instead, mark every
+     * exercise in the next not-yet-complete session DONE for today so the
+     * notification's "Done" actually counts.
+     */
+    fun markNextExerciseSessionDone(context: Context) {
+        val store = Store.get(context)
+        val today = LocalDate.now()
+        val exercises = ScheduleEngine.mergedExercises(
+            com.recoverwell.core.logic.PhaseEngine.currentPhase(store.profile(), today).exercises,
+            store.exerciseOverrides()
+        )
+        if (exercises.isEmpty()) return
+        val sessions = ScheduleEngine.clampSessions(store.exerciseSessions())
+        val events = store.eventsOn(today)
+        val now = LocalTime.now()
+        for (s in 1..sessions) {
+            val slot = "session$s"
+            val sessionDone = exercises.all { ex ->
+                events.lastOrNull {
+                    it.type == EventType.EXERCISE && it.refId == ex.id && it.slotKey == slot
+                }?.status == EventStatus.DONE
+            }
+            if (!sessionDone) {
+                for (ex in exercises) store.addEvent(
+                    EventLog(
+                        UUID.randomUUID().toString(), today, EventType.EXERCISE,
+                        ex.id, slot, EventStatus.DONE, now.hour * 60 + now.minute
+                    )
+                )
+                break
+            }
+        }
+        com.recoverwell.app.widget.TodayWidget.update(context)
     }
 }
 
@@ -405,12 +444,14 @@ class ActionReceiver : BroadcastReceiver() {
             return
         }
         val status = intent.getStringExtra("status")?.let { EventStatus.valueOf(it) } ?: return
-        Reminders.recordEvent(
-            context, kind,
-            intent.getStringExtra("refId") ?: return,
-            intent.getStringExtra("slotKey") ?: "",
-            status
-        )
+        val refId = intent.getStringExtra("refId") ?: return
+        // the generic exercise nudge isn't a specific session - mark the next
+        // incomplete session done instead of recording a non-matching event
+        if (kind == ScheduleEngine.ItemKind.EXERCISE && refId == ScheduleEngine.EXERCISE_SESSION_REF) {
+            Reminders.markNextExerciseSessionDone(context)
+        } else {
+            Reminders.recordEvent(context, kind, refId, intent.getStringExtra("slotKey") ?: "", status)
+        }
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.cancel(intent.getIntExtra("notifId", 0))
         Reminders.refreshSummaryAfterDismiss(context)

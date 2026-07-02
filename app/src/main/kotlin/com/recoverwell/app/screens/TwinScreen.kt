@@ -95,6 +95,7 @@ object TwinScreen {
             val badge = Ui.iconBadge(a, if (c.allowed) "ic_check" else "ic_close",
                 if (c.allowed) Ui.DONE else Ui.DANGER,
                 if (c.allowed) Ui.DONE_BG else Ui.DANGER_BG, boxDp = 34)
+            badge.contentDescription = if (c.allowed) "Allowed" else "Not yet"
             row.addView(badge)
             val texts = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
             texts.setPadding(Ui.dp(a, 12), Ui.dp(a, 1), 0, 0)
@@ -102,11 +103,15 @@ object TwinScreen {
             texts.addView(Ui.spacer(a, 2))
             texts.addView(Ui.caption(a, c.note))
             row.addView(Ui.weight(texts, 1f))
+            // spell the verdict out in words too, so it never relies on colour/icon alone
+            row.addView(Ui.pillBadge(a, if (c.allowed) "Yes" else "Not yet",
+                if (c.allowed) Ui.DONE else Ui.DANGER,
+                if (c.allowed) Ui.DONE_BG else Ui.DANGER_BG))
             checksCard.addView(row)
         }
         col.addView(checksCard)
 
-        col.addView(Ui.fullWidth(Ui.dangerButton(a, "Open red flags") {
+        col.addView(Ui.fullWidth(Ui.tonalButton(a, "When to get help · warning signs") {
             a.pushOverlay("Red flags") { RedFlagsScreen.build(a) }
         }, a))
 

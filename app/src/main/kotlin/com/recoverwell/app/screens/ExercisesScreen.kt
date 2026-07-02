@@ -42,7 +42,8 @@ object ExercisesScreen {
             "Locked phases are view-only."))
         col.addView(Ui.spacer(a, 10))
         val protocol = ProtocolRegistry.forProfile(profile)
-        col.addView(Forms.choiceRow(a, protocol.phases.map { it.number }, { n -> "P$n" }, shown) { n ->
+        col.addView(Forms.choiceRow(a, protocol.phases.map { it.number },
+            { n -> if (n == current) "P$n · Now" else "P$n" }, shown) { n ->
             viewedPhase = n
             a.refresh()
         })
@@ -65,13 +66,17 @@ object ExercisesScreen {
             col.addView(warn)
         }
         col.addView(Ui.spacer(a, 8))
+        if (phase.exercises.isNotEmpty()) {
+            col.addView(Ui.caption(a, "Each set × reps below is one session - you do a few sessions a day."))
+            col.addView(Ui.spacer(a, 4))
+        }
 
         val overrides = a.store.exerciseOverrides()
         for (spec in phase.exercises) {
             val o = overrides[spec.id]
             val effective = ScheduleEngine.mergedExercises(listOf(spec), overrides).firstOrNull()
             val meta = if (effective != null)
-                ScheduleEngine.exercisePrescription(effective) + " · each session"
+                ScheduleEngine.exercisePrescription(effective)
             else "off"
             val row = Ui.listRow(
                 a, iconFor(spec.demoId), spec.name,
@@ -172,7 +177,7 @@ object ExercisesScreen {
         }
         tile("${a.store.exerciseSessions()}×", "per day")
         col.addView(stats)
-        col.addView(Ui.fullWidth(Ui.textButton(a, "Adjust prescription") {
+        col.addView(Ui.fullWidth(Ui.textButton(a, "Change sets & reps") {
             a.pushOverlay { editOverride(a, spec) }
         }, a, 4))
 

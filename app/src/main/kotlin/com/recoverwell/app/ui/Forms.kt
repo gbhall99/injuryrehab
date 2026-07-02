@@ -5,6 +5,7 @@ import android.app.AlertDialog
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.res.ColorStateList
+import android.os.Build
 import android.text.InputType
 import android.view.Gravity
 import android.view.ViewGroup
@@ -14,9 +15,24 @@ import android.widget.SeekBar
 import android.widget.TextView
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 
 /** Form building blocks sized for one-handed use with the leg up. */
 object Forms {
+
+    private val DATE_FMT = DateTimeFormatter.ofPattern("EEE, d MMM yyyy")
+    private val TIME_FMT = DateTimeFormatter.ofPattern("h:mm a")
+
+    /** Human-friendly date: Today/Tomorrow/Yesterday, else "Tue, 1 Jul 2026". */
+    fun friendlyDate(d: LocalDate): String {
+        val today = LocalDate.now()
+        return when (d) {
+            today -> "Today"
+            today.plusDays(1) -> "Tomorrow"
+            today.minusDays(1) -> "Yesterday"
+            else -> d.format(DATE_FMT)
+        }
+    }
 
     fun label(ctx: Activity, text: String): TextView =
         Ui.text(ctx, text, 13.5f, Ui.TEXT_DIM, bold = true).apply {
@@ -29,7 +45,7 @@ object Forms {
             this.hint = hint
             textSize = 15.5f
             setTextColor(Ui.TEXT)
-            setHintTextColor(0xFF9AA39C.toInt())
+            setHintTextColor(Ui.TEXT_DIM)
             background = Ui.rounded(Ui.SURFACE_HIGH, Ui.RADIUS_SMALL)
             val p = Ui.dp(ctx, 14)
             setPadding(p, Ui.dp(ctx, 12), p, Ui.dp(ctx, 12))
@@ -78,10 +94,10 @@ object Forms {
         row.minimumHeight = Ui.dp(ctx, Ui.MIN_TOUCH_DP)
         var current = initial
         var btn: TextView? = null
-        btn = Ui.tonalButton(ctx, current.toString()) {
+        btn = Ui.tonalButton(ctx, friendlyDate(current)) {
             DatePickerDialog(ctx, { _, y, m, d ->
                 current = LocalDate.of(y, m + 1, d)
-                btn?.text = current.toString()
+                btn?.text = friendlyDate(current)
                 onChange(current)
             }, current.year, current.monthValue - 1, current.dayOfMonth).show()
         }
@@ -93,12 +109,12 @@ object Forms {
     fun timeButton(ctx: Activity, initial: LocalTime, onChange: (LocalTime) -> Unit): TextView {
         var current = initial
         var btn: TextView? = null
-        btn = Ui.tonalButton(ctx, "%02d:%02d".format(current.hour, current.minute)) {
+        btn = Ui.tonalButton(ctx, current.format(TIME_FMT)) {
             TimePickerDialog(ctx, { _, h, m ->
                 current = LocalTime.of(h, m)
-                btn?.text = "%02d:%02d".format(h, m)
+                btn?.text = current.format(TIME_FMT)
                 onChange(current)
-            }, current.hour, current.minute, true).show()
+            }, current.hour, current.minute, false).show()
         }
         return btn
     }
@@ -113,11 +129,18 @@ object Forms {
             card.removeAllViews()
             times.sorted().forEachIndexed { i, t ->
                 val row = Ui.row(ctx)
-                row.addView(Ui.weight(timeButton(ctx, t) { new -> times[i] = new }, 1f))
+                // moderate corner radius (not a full stadium) so stacked time
+                // fields read as separate rows instead of pinching together
+                val tb = timeButton(ctx, t) { new -> times[i] = new }
+                tb.background = Ui.ripple(ctx, Ui.rounded(Ui.PRIMARY_CONTAINER, Ui.RADIUS_SMALL))
+                row.addView(Ui.weight(tb, 1f))
                 row.addView(Ui.iconButton(ctx, "ic_close", Ui.TEXT_DIM, desc = "Remove time") {
                     times.removeAt(i); rebuild()
                 })
-                card.addView(row)
+                val lp = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                if (i > 0) lp.topMargin = Ui.dp(ctx, 8)
+                card.addView(row, lp)
             }
             card.addView(Ui.fullWidth(Ui.textButton(ctx, "Add a time") {
                 times.add(LocalTime.of(12, 0)); rebuild()
@@ -151,8 +174,8 @@ object Forms {
             row.removeAllViews()
             for (opt in options) {
                 val isSel = opt == current
-                val chip = Ui.text(ctx, labelOf(opt), 13.5f,
-                    if (isSel) Ui.ON_PRIMARY_CONTAINER else Ui.TEXT_DIM, bold = true).apply {
+                val chip = Ui.text(ctx, labelOf(opt), 14f,
+                    if (isSel) Ui.ON_PRIMARY_CONTAINER else Ui.TEXT, bold = true).apply {
                     gravity = Gravity.CENTER
                     background = Ui.ripple(ctx, Ui.rounded(
                         if (isSel) Ui.PRIMARY_CONTAINER else Ui.SURFACE_HIGH, 16f))
@@ -177,26 +200,43 @@ object Forms {
         return row
     }
 
-    /** 0-10 slider with a live value readout and scale anchors, for the pain scale. */
+    /**
+     * A value slider with a live readout and scale anchors. Spans [min]..[max]
+     * (min defaults to 0, e.g. the 0-10 pain scale; use min=1 for a 1-5 scale)
+     * so every check-in metric can share the same control.
+     */
     fun scaleSlider(
         ctx: Activity, max: Int, initial: Int?,
         minLabel: String? = null, maxLabel: String? = null,
+        min: Int = 0,
         onChange: (Int) -> Unit
     ): LinearLayout {
+        val span = (max - min).coerceAtLeast(1)
+        val start = (initial ?: min).coerceIn(min, max)
         val col = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
-        val readout = Ui.text(ctx, initial?.toString() ?: "–", 22f, Ui.PRIMARY, bold = true)
+        val readout = Ui.text(ctx, start.toString(), 22f, Ui.PRIMARY, bold = true)
         readout.gravity = Gravity.CENTER
         val bar = SeekBar(ctx).apply {
-            this.max = max
-            progress = initial ?: 0
+            this.max = span
+            progress = start - min
             minimumHeight = Ui.dp(ctx, Ui.MIN_TOUCH_DP)
             progressTintList = ColorStateList.valueOf(Ui.PRIMARY)
             thumbTintList = ColorStateList.valueOf(Ui.PRIMARY)
             setPadding(Ui.dp(ctx, 18), Ui.dp(ctx, 10), Ui.dp(ctx, 18), Ui.dp(ctx, 10))
+            // screen-reader: a stable label plus a live value announcement
+            contentDescription = buildString {
+                append("Rating from ").append(min)
+                minLabel?.let { append(" (").append(it).append(")") }
+                append(" to ").append(max)
+                maxLabel?.let { append(" (").append(it).append(")") }
+            }
+            if (Build.VERSION.SDK_INT >= 30) stateDescription = "$start of $max"
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                    readout.text = progress.toString()
-                    onChange(progress)
+                    val value = progress + min
+                    readout.text = value.toString()
+                    if (Build.VERSION.SDK_INT >= 30) seekBar?.stateDescription = "$value of $max"
+                    onChange(value)
                 }
                 override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
                 override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
@@ -216,13 +256,21 @@ object Forms {
         return col
     }
 
-    fun confirm(ctx: Activity, title: String, message: String, onYes: () -> Unit) {
-        AlertDialog.Builder(ctx)
+    fun confirm(
+        ctx: Activity, title: String, message: String,
+        confirmLabel: String = "Confirm", destructive: Boolean = false, onYes: () -> Unit
+    ) {
+        val dialog = AlertDialog.Builder(ctx)
             .setTitle(title)
             .setMessage(message)
-            .setPositiveButton("Confirm") { _, _ -> onYes() }
+            .setPositiveButton(confirmLabel) { _, _ -> onYes() }
             .setNegativeButton("Cancel", null)
-            .show()
+            .create()
+        // tint the confirm action red when it deletes/undoes something
+        if (destructive) dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(Ui.DANGER)
+        }
+        dialog.show()
     }
 
     fun info(ctx: Activity, title: String, message: String) {

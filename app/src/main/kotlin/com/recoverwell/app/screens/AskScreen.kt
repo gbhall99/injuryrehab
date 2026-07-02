@@ -70,7 +70,7 @@ object AskScreen {
         val head = Ui.row(a)
         head.addView(Ui.weight(Ui.caption(a, "A grounded chat about your recovery. General guidance, " +
             "not a substitute for your physio."), 1f))
-        if (turns.isNotEmpty()) head.addView(Ui.textButton(a, "Clear") {
+        if (turns.isNotEmpty()) head.addView(Ui.textButton(a, "Start a new chat") {
             turns.clear(); error = null; loading = false
             a.store.clearAskTurns()
             a.refresh()
@@ -104,14 +104,11 @@ object AskScreen {
         }
 
         if (turns.isEmpty()) {
-            col.addView(Ui.section(a, "Try"))
-            for (q in Ask.suggestions(profile)) {
-                col.addView(Ui.listRow(a, "ic_info", q, null, chevron = true) { send(a, q, profile, today) })
-            }
+            addTopicPicker(a, col, profile) { q -> send(a, q, profile, today) }
             if (a.store.askMemory().isNotEmpty()) {
                 col.addView(Ui.spacer(a, 8))
                 col.addView(Ui.caption(a, "I'll remember the gist of our past chats to keep advice consistent."))
-                col.addView(Ui.fullWidth(Ui.textButton(a, "Forget remembered context", Ui.WARN) {
+                col.addView(Ui.fullWidth(Ui.textButton(a, "Forget past chats", Ui.WARN) {
                     Forms.confirm(a, "Forget remembered context?",
                         "I'll clear the summary of your previous chats. Your logs and journal stay untouched.") {
                         a.store.clearAskMemory(); a.refresh()
@@ -200,7 +197,18 @@ object AskScreen {
         col.addView(Ui.caption(a, "Answered from your protocol, fully offline. Not a substitute for your physio."))
         col.addView(Ui.spacer(a, 8))
 
-        val input = Forms.editText(a, lastQuestion, "Type a question, e.g. \"Can I drive yet?\"")
+        // the most recent answer sits up top; the one-tap topics are the primary
+        // path, with the free-text box offered below as an alternative
+        lastAnswer?.let { col.addView(answerCard(a, it, profile, today)) }
+
+        addTopicPicker(a, col, profile) { q ->
+            lastQuestion = q
+            lastAnswer = Ask.answer(q, profile, today)
+            a.refresh()
+        }
+
+        col.addView(Ui.section(a, "Or type your own question"))
+        val input = Forms.editText(a, lastQuestion, "e.g. \"Can I drive yet?\"")
         col.addView(input)
         col.addView(Ui.fullWidth(Ui.button(a, "Ask") {
             lastQuestion = input.text.toString()
@@ -208,17 +216,26 @@ object AskScreen {
             a.refresh()
         }, a))
 
-        lastAnswer?.let { col.addView(answerCard(a, it, profile, today)) }
-
-        col.addView(Ui.section(a, if (lastAnswer == null) "Try" else "Ask something else"))
-        for (q in Ask.suggestions(profile)) {
-            col.addView(Ui.listRow(a, "ic_info", q, null, chevron = true) {
-                lastAnswer = Ask.answer(q, profile, today); a.refresh()
-            })
-        }
-
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
+    }
+
+    /**
+     * Renders the grouped topic starters: a few labelled topics each with their
+     * own questions, so the coach offers structured entry points rather than one
+     * long open-ended thread. [onPick] sends (AI) or answers (offline) the tap.
+     */
+    private fun addTopicPicker(
+        a: MainActivity, col: LinearLayout,
+        profile: com.recoverwell.core.model.Profile, onPick: (String) -> Unit
+    ) {
+        col.addView(Ui.caption(a, "Pick a topic to start - or type your own question."))
+        for (topic in Ask.topics(profile)) {
+            col.addView(Ui.section(a, topic.title))
+            for (q in topic.questions) {
+                col.addView(Ui.listRow(a, topic.icon, q, null, chevron = true) { onPick(q) })
+            }
+        }
     }
 
     private fun answerCard(a: MainActivity, ans: Ask.Answer,

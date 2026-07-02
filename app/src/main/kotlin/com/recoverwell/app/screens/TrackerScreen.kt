@@ -26,10 +26,13 @@ object TrackerScreen {
         val today = LocalDate.now()
         val col = Ui.column(a)
 
-        // Logging today happens on Today; Progress reviews the trend and lets you
-        // backfill or edit any past day through the same shared check-in.
-        col.addView(Ui.listRow(a, "ic_edit", "Log or edit a past day",
-            "Backfill a missed check-in") {
+        // Progress reviews the trend first; the option to add/edit a past day sits
+        // at the bottom (logging today happens on Today) so a review-only screen
+        // leads with the weekly digest rather than an editing control.
+        buildReview(a, today, col)
+
+        col.addView(Ui.listRow(a, "ic_edit", "Add a check-in for a day you missed",
+            "Or edit an earlier day") {
             android.app.DatePickerDialog(a, { _, y, m, d ->
                 val date = LocalDate.of(y, m + 1, d).coerceAtMost(today)
                 a.pushOverlay("Log for $date") { pastDayOverlay(a, date) }
@@ -37,8 +40,6 @@ object TrackerScreen {
                 datePicker.maxDate = System.currentTimeMillis()
             }.show()
         })
-
-        buildReview(a, today, col)
 
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)

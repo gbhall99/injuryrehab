@@ -25,11 +25,21 @@ data class Pose(
 
 enum class Prop { NONE, BOOT, CRUTCHES, BAND, STEP, WALL, TOWEL, BIKE, CONES, RACQUET, CHAIR }
 
+/**
+ * Which camera the demo is drawn from. SIDE is the default sagittal figure.
+ * The FRONT_* views draw a coronal (face-on) figure of someone side-lying, so
+ * a genuinely sideways movement - abduction (FRONT_ABD) or a clamshell knee
+ * opening (FRONT_CLAM) - actually reads as sideways instead of a leg lift. The
+ * moving (top) leg's opening angle is driven by the pose's [Pose.thighA].
+ */
+enum class DemoView { SIDE, FRONT_ABD, FRONT_CLAM }
+
 data class Demo(
     val props: Set<Prop>,
     val caption: String,
     /** keyframe + milliseconds to morph from the previous frame */
-    val frames: List<Pair<Pose, Long>>
+    val frames: List<Pair<Pose, Long>>,
+    val view: DemoView = DemoView.SIDE
 )
 
 object DemoScene {
@@ -99,15 +109,23 @@ object DemoScene {
 
     fun render(s: Sketch, demoId: String, elapsed: Long) {
         val demo = DemoLibrary.demos[demoId] ?: DemoLibrary.demos.getValue("ankle_pump")
+        if (demo.view != DemoView.SIDE) { renderFront(s, demo, elapsed); return }
         val p = pose(demo, elapsed)
 
         val L = s.height * 0.20f
         val groundY = s.height * 0.82f
         val limbW = L * 0.30f
 
-        // ground
-        s.stroke(PathSpec.line(s.width * 0.06f, groundY, s.width * 0.94f, groundY),
-            Palette.OUTLINE, 3f)
+        // ground - or, for a lying figure, a clear mat/bed band at their back so
+        // the movement reads against a surface (and nothing appears to sink below it)
+        if (p.lying) {
+            val cy = groundY - 1.05f * L
+            s.roundRect(s.width * 0.05f, cy + 0.34f * L, s.width * 0.95f, cy + 0.72f * L, 12f,
+                Palette.withAlpha(Palette.ON_SURFACE_VARIANT, 0x33))
+        } else {
+            s.stroke(PathSpec.line(s.width * 0.06f, groundY, s.width * 0.94f, groundY),
+                Palette.OUTLINE, 3f)
+        }
 
         s.save()
         if (p.lying) {
@@ -221,6 +239,71 @@ object DemoScene {
         s.restore()
     }
 
+    /** A short thick dark stroke standing in for the boot along a leg segment. */
+    private fun drawBootSeg(s: Sketch, x0: Float, y0: Float, x1: Float, y1: Float, w: Float) {
+        s.stroke(PathSpec.line(x0, y0, x1, y1), Palette.withAlpha(Palette.BOOT_DARK, 0xE6), w * 1.85f)
+    }
+
+    /**
+     * Front-facing (coronal) view of someone side-lying on a mat, head to the
+     * left. Both legs point right, stacked; the moving (top) leg opens UPWARD by
+     * [Pose.thighA] degrees, so abduction / a clamshell reads as a true sideways
+     * opening. FRONT_CLAM bends the knees with the feet kept together (the
+     * clamshell hinge); FRONT_ABD keeps the legs straight (hip abduction).
+     */
+    private fun renderFront(s: Sketch, demo: Demo, elapsed: Long) {
+        val p = pose(demo, elapsed)
+        val L = s.height * 0.21f
+        val limbW = L * 0.30f
+        val matY = s.height * 0.72f
+
+        // mat/bed the person lies on
+        s.roundRect(s.width * 0.05f, matY, s.width * 0.95f, matY + L * 0.18f, 12f,
+            Palette.withAlpha(Palette.ON_SURFACE_VARIANT, 0x33))
+
+        val bent = demo.view == DemoView.FRONT_CLAM
+        val open = p.thighA
+        val hipX = s.width * 0.46f
+        val hipY = matY - limbW * 1.05f
+        val headX = hipX - L * 1.20f
+
+        // torso, head, and a resting supporting forearm
+        s.stroke(PathSpec.line(hipX, hipY, headX + L * 0.20f, hipY), FIGURE, limbW * 1.28f)
+        s.circle(headX, hipY - limbW * 0.05f, L * 0.17f, FIGURE)
+        s.stroke(PathSpec.line(headX + L * 0.55f, hipY, headX + L * 0.48f, matY - limbW * 0.2f),
+            FIGURE_BACK, limbW * 0.5f)
+
+        // feet kept together for the clamshell, resting near the mat
+        val feetX = hipX + L * 0.98f
+        val feetY = matY - limbW * 0.4f
+
+        fun leg(angleUp: Float, color: Int, boot: Boolean) {
+            val (dx, dy) = dir(90f + angleUp)   // angleUp=0 -> right; grows -> up
+            if (bent) {
+                val kneeX = hipX + dx * L * 0.95f
+                val kneeY = hipY + dy * L * 0.95f
+                if (boot) drawBootSeg(s, kneeX, kneeY, feetX, feetY, limbW)
+                s.stroke(PathSpec.line(hipX, hipY, kneeX, kneeY), color, limbW)
+                s.stroke(PathSpec.line(kneeX, kneeY, feetX, feetY), color, limbW * 0.88f)
+            } else {
+                val kneeX = hipX + dx * L
+                val kneeY = hipY + dy * L
+                val footX = kneeX + dx * L
+                val footY = kneeY + dy * L
+                if (boot) drawBootSeg(s, kneeX, kneeY, footX, footY, limbW)
+                s.stroke(PathSpec.line(hipX, hipY, kneeX, kneeY), color, limbW)
+                s.stroke(PathSpec.line(kneeX, kneeY, footX, footY), color, limbW * 0.88f)
+                // short foot at the ankle, pointing down toward the toes
+                s.stroke(PathSpec.line(footX, footY, footX + dy * L * 0.22f, footY - dx * L * 0.22f),
+                    color, limbW * 0.6f)
+            }
+        }
+
+        // bottom (resting) leg first and dimmer, then the moving top leg
+        leg(-5f, FIGURE_BACK, boot = false)
+        leg(open, FIGURE, boot = Prop.BOOT in demo.props)
+    }
+
     private fun drawLeg(
         s: Sketch, hipX: Float, hipY: Float, L: Float, w: Float,
         thigh: Float, knee: Float, ankle: Float, toes: Float,
@@ -318,20 +401,23 @@ object DemoLibrary {
         ))
         put("hip_abd", Demo(
             setOf(Prop.BOOT),
-            "Side-lying: lift the booted leg sideways, keep it straight",
+            "Side-lying: lift the booted leg straight up and out, then lower slowly",
             listOf(
-                Pose(lying = true, thighA = 0f, thighB = 8f, kneeB = 10f) to 900L,
-                Pose(lying = true, thighA = 32f, thighB = 8f, kneeB = 10f) to 900L,
-                Pose(lying = true, thighA = 0f, thighB = 8f, kneeB = 10f) to 1100L
-            )
+                Pose(thighA = 2f) to 900L,
+                Pose(thighA = 34f) to 900L,
+                Pose(thighA = 2f) to 1100L
+            ),
+            view = DemoView.FRONT_ABD
         ))
         put("bridge", Demo(
             setOf(Prop.BOOT),
-            "Knees bent, squeeze and lift the hips, lower with control",
+            "Knees bent, feet flat, squeeze and lift the hips, lower with control",
             listOf(
-                Pose(lying = true, thighA = 50f, kneeA = 80f, thighB = 50f, kneeB = 80f) to 900L,
-                Pose(lying = true, thighA = 22f, kneeA = 80f, thighB = 22f, kneeB = 80f, hipY = -0.30f) to 900L,
-                Pose(lying = true, thighA = 50f, kneeA = 80f, thighB = 50f, kneeB = 80f) to 1100L
+                // knees up with feet planted on the mat, hips resting, then the
+                // pelvis lifts (hipY up) while the feet stay put, then lower
+                Pose(lying = true, thighA = 62f, kneeA = 120f, thighB = 62f, kneeB = 120f, hipY = 0.06f) to 900L,
+                Pose(lying = true, thighA = 40f, kneeA = 96f, thighB = 40f, kneeB = 96f, hipY = -0.26f) to 900L,
+                Pose(lying = true, thighA = 62f, kneeA = 120f, thighB = 62f, kneeB = 120f, hipY = 0.06f) to 1100L
             )
         ))
         put("boot_walk", Demo(
@@ -351,12 +437,13 @@ object DemoLibrary {
         ))
         put("clamshell", Demo(
             setOf(),
-            "Side-lying, knees bent: open the top knee, pelvis still",
+            "Side-lying, knees bent, feet together: open the top knee, pelvis still",
             listOf(
-                Pose(lying = true, thighA = 55f, kneeA = 85f, thighB = 55f, kneeB = 85f) to 800L,
-                Pose(lying = true, thighA = 28f, kneeA = 85f, thighB = 55f, kneeB = 85f) to 800L,
-                Pose(lying = true, thighA = 55f, kneeA = 85f, thighB = 55f, kneeB = 85f) to 900L
-            )
+                Pose(thighA = 6f) to 800L,
+                Pose(thighA = 44f) to 800L,
+                Pose(thighA = 6f) to 900L
+            ),
+            view = DemoView.FRONT_CLAM
         ))
         put("seated_core", Demo(
             setOf(Prop.BOOT, Prop.CHAIR, Prop.BAND),
@@ -426,12 +513,15 @@ object DemoLibrary {
             )
         ))
         put("band_pf", Demo(
-            setOf(Prop.BAND),
+            // seated with the leg extended and a band looped round the ball of the
+            // foot (held ahead) - the foot presses down against it. Rendered seated
+            // rather than lying so the pose reads clearly instead of collapsing.
+            setOf(Prop.CHAIR, Prop.BAND),
             "Push the foot down against the band like a slow gas pedal",
             listOf(
-                Pose(lying = true, torso = -65f, thighA = 12f, kneeA = 8f, ankleA = -2f, thighB = 20f, kneeB = 35f) to 800L,
-                Pose(lying = true, torso = -65f, thighA = 12f, kneeA = 8f, ankleA = 34f, thighB = 20f, kneeB = 35f) to 800L,
-                Pose(lying = true, torso = -65f, thighA = 12f, kneeA = 8f, ankleA = -2f, thighB = 20f, kneeB = 35f) to 1000L
+                seated(20f, -2f) to 800L,
+                seated(20f, 34f) to 800L,
+                seated(20f, -2f) to 1000L
             )
         ))
         put("step_up", Demo(
