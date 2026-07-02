@@ -566,6 +566,9 @@ object MoreScreen {
     private fun tasksEditor(a: MainActivity): View {
         val col = Ui.column(a)
         col.addView(Ui.backRow(a, "Daily care") { a.popOverlay() })
+        col.addView(Ui.caption(a, "How often each check repeats is up to you - tap Edit to add or " +
+            "remove times, or turn a check off. The default cadences are a sensible starting point, " +
+            "not a fixed rule; match whatever your physio or consultant advised."))
         col.addView(Ui.caption(a, "Boot-change reminders come from your boot plan automatically " +
             "(edit it under Injury & goal)."))
         col.addView(Ui.spacer(a, 4))
@@ -640,6 +643,8 @@ object MoreScreen {
         col.addView(card)
 
         col.addView(Ui.section(a, "Reminder times"))
+        col.addView(Ui.caption(a, "Add or remove times to change how often this repeats each day " +
+            "(e.g. once, twice, or more)."))
         val timesCard = Ui.card(a)
         Forms.timeListEditor(a, timesCard, times)
         col.addView(timesCard)

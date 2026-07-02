@@ -699,17 +699,32 @@ object TodayScreen {
     private fun exerciseSession(a: MainActivity, number: Int, slotKey: String, refIds: List<String>): View {
         val col = Ui.column(a)
         col.addView(Ui.backRow(a, "Exercise session $number") { a.popOverlay() })
-        col.addView(Ui.caption(a, "Your routine for this session - tap an exercise to see how " +
-            "to do it and log it. Each daily session is the same set."))
+        col.addView(Ui.caption(a, "Your routine for this session - tap an exercise to see how to do " +
+            "it and log it, or mark the whole session done at once below."))
         col.addView(Ui.spacer(a, 4))
         val allExercises = ProtocolRegistry.forProfile(a.store.profile()).phases.flatMap { it.exercises }
         val events = a.store.eventsOn(LocalDate.now())
+        var doneCount = 0
         for (refId in refIds) {
             val spec = allExercises.find { it.id == refId } ?: continue
             val done = events.lastOrNull { it.refId == refId && it.slotKey == slotKey }?.status == EventStatus.DONE
+            if (done) doneCount++
             col.addView(Ui.checkRow(a, spec.name, ScheduleEngine.exercisePrescription(spec), null, done, null) {
                 a.pushOverlay(spec.name) { ExercisesScreen.exerciseDetail(a, spec, slotKey) }
             })
+        }
+        // one-tap: log (or undo) the entire session at once
+        col.addView(Ui.spacer(a, 8))
+        if (refIds.isNotEmpty() && doneCount == refIds.size) {
+            col.addView(Ui.fullWidth(Ui.tonalButton(a, "Mark session not done") {
+                for (rid in refIds) Reminders.recordEvent(a, ScheduleEngine.ItemKind.EXERCISE, rid, slotKey, EventStatus.SKIPPED)
+                a.refresh()
+            }, a))
+        } else {
+            col.addView(Ui.fullWidth(Ui.button(a, "Mark whole session done") {
+                for (rid in refIds) Reminders.recordEvent(a, ScheduleEngine.ItemKind.EXERCISE, rid, slotKey, EventStatus.DONE)
+                a.refresh()
+            }, a))
         }
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
@@ -808,42 +823,42 @@ object TodayScreen {
         val today = LocalDate.now()
         val log = a.store.dailyLog(date)
         val card = Ui.card(a)
-        card.addView(Ui.text(a, if (date == today) "How's your pain today?" else "Log for $date",
+        card.addView(Ui.text(a, if (date == today) "How are you today?" else "Log for $date",
             16f, Ui.TEXT, bold = true))
-        card.addView(Ui.caption(a, "Pain is all that's needed - add detail if you like."))
-        card.addView(Ui.spacer(a, 4))
-        // start at the day's saved value, else yesterday's, so most days are one tap
-        var pain = log.pain ?: (a.store.dailyLog(date.minusDays(1)).pain ?: 0)
-        card.addView(Forms.scaleSlider(a, 10, pain, "0 · None", "10 · Worst") { pain = it })
-        var mood: Int? = log.mood
-        card.addView(Forms.label(a, "Mood · 1 low – 5 great · optional"))
-        card.addView(Forms.choiceRow(a, (1..5).toList(), { "$it" }, log.mood) { mood = it })
+        card.addView(Ui.caption(a, "One quick check-in - the same sliders each time. Pain matters " +
+            "most; the rest help spot patterns."))
+        card.addView(Ui.spacer(a, 6))
 
-        var swelling: Swelling? = log.swelling
-        var energy: Int? = log.energy
-        var notesEdit: android.widget.EditText? = null
-        if (expanded) {
-            card.addView(Forms.label(a, "Swelling"))
-            card.addView(Forms.choiceRow(a, Swelling.values().toList(), { it.label }, log.swelling) { swelling = it })
-            card.addView(Forms.label(a, "Energy · 1 drained – 5 energised"))
-            card.addView(Forms.choiceRow(a, (1..5).toList(), { "$it" }, log.energy) { energy = it })
-            card.addView(Forms.label(a, "Notes"))
-            notesEdit = Forms.editText(a, log.notes ?: "", "Anything worth remembering", multiline = true)
-            card.addView(notesEdit)
-        }
+        // Every metric is the SAME control (a labelled slider), all in one view,
+        // so nothing reads differently from anything else.
+        // start pain at the day's saved value, else yesterday's, so most days are one tap
+        var pain = log.pain ?: (a.store.dailyLog(date.minusDays(1)).pain ?: 0)
+        card.addView(Forms.label(a, "Pain · 0 none – 10 worst"))
+        card.addView(Forms.scaleSlider(a, 10, pain, "0 None", "10 Worst") { pain = it })
+
+        var mood = log.mood ?: 3
+        card.addView(Forms.label(a, "Mood · 1 low – 5 great"))
+        card.addView(Forms.scaleSlider(a, 5, mood, "1 Low", "5 Great", min = 1) { mood = it })
+
+        var energy = log.energy ?: 3
+        card.addView(Forms.label(a, "Energy · 1 drained – 5 energised"))
+        card.addView(Forms.scaleSlider(a, 5, energy, "1 Drained", "5 Energised", min = 1) { energy = it })
+
+        var swellingScore = log.swelling?.score ?: 0
+        card.addView(Forms.label(a, "Swelling · 0 none – 3 severe"))
+        card.addView(Forms.scaleSlider(a, 3, swellingScore, "0 None", "3 Severe") { swellingScore = it })
+
+        card.addView(Forms.label(a, "Notes · optional"))
+        val notesEdit = Forms.editText(a, log.notes ?: "", "Anything worth remembering", multiline = true)
+        card.addView(notesEdit)
 
         card.addView(Ui.fullWidth(Ui.button(a, if (date == today) "Save check-in" else "Save log for $date") {
             a.store.saveDailyLog(log.copy(
-                pain = pain, mood = mood, swelling = swelling, energy = energy,
-                notes = notesEdit?.text?.toString()?.ifBlank { null } ?: log.notes))
+                pain = pain, mood = mood, energy = energy,
+                swelling = Swelling.values().firstOrNull { it.score == swellingScore } ?: Swelling.NONE,
+                notes = notesEdit.text?.toString()?.ifBlank { null }))
             onSaved()
         }, a))
-        if (!expanded) {
-            card.addView(Ui.fullWidth(Ui.textButton(a, "Add more detail (swelling, energy, notes)") {
-                checkInExpanded = true
-                a.refresh()
-            }, a, 2))
-        }
         // voice front-end: speak your day and let AI fill the check-in for you
         if (date == today && AiScreen.enabled(a)) {
             card.addView(Ui.fullWidth(Ui.textButton(a, "🎙  Speak your check-in instead") {

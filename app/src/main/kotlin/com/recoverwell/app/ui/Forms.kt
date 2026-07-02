@@ -200,35 +200,43 @@ object Forms {
         return row
     }
 
-    /** 0-10 slider with a live value readout and scale anchors, for the pain scale. */
+    /**
+     * A value slider with a live readout and scale anchors. Spans [min]..[max]
+     * (min defaults to 0, e.g. the 0-10 pain scale; use min=1 for a 1-5 scale)
+     * so every check-in metric can share the same control.
+     */
     fun scaleSlider(
         ctx: Activity, max: Int, initial: Int?,
         minLabel: String? = null, maxLabel: String? = null,
+        min: Int = 0,
         onChange: (Int) -> Unit
     ): LinearLayout {
+        val span = (max - min).coerceAtLeast(1)
+        val start = (initial ?: min).coerceIn(min, max)
         val col = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
-        val readout = Ui.text(ctx, initial?.toString() ?: "–", 22f, Ui.PRIMARY, bold = true)
+        val readout = Ui.text(ctx, start.toString(), 22f, Ui.PRIMARY, bold = true)
         readout.gravity = Gravity.CENTER
         val bar = SeekBar(ctx).apply {
-            this.max = max
-            progress = initial ?: 0
+            this.max = span
+            progress = start - min
             minimumHeight = Ui.dp(ctx, Ui.MIN_TOUCH_DP)
             progressTintList = ColorStateList.valueOf(Ui.PRIMARY)
             thumbTintList = ColorStateList.valueOf(Ui.PRIMARY)
             setPadding(Ui.dp(ctx, 18), Ui.dp(ctx, 10), Ui.dp(ctx, 18), Ui.dp(ctx, 10))
             // screen-reader: a stable label plus a live value announcement
             contentDescription = buildString {
-                append("Rating from 0")
+                append("Rating from ").append(min)
                 minLabel?.let { append(" (").append(it).append(")") }
                 append(" to ").append(max)
                 maxLabel?.let { append(" (").append(it).append(")") }
             }
-            if (Build.VERSION.SDK_INT >= 30) stateDescription = "${initial ?: 0} of $max"
+            if (Build.VERSION.SDK_INT >= 30) stateDescription = "$start of $max"
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                    readout.text = progress.toString()
-                    if (Build.VERSION.SDK_INT >= 30) seekBar?.stateDescription = "$progress of $max"
-                    onChange(progress)
+                    val value = progress + min
+                    readout.text = value.toString()
+                    if (Build.VERSION.SDK_INT >= 30) seekBar?.stateDescription = "$value of $max"
+                    onChange(value)
                 }
                 override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
                 override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
