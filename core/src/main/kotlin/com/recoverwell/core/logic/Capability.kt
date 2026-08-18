@@ -87,7 +87,11 @@ object Capability {
             )
         }
 
+        // Reduction-plan comparisons only apply while the phase still uses the
+        // device: once the protocol has the user out of the boot, a stale dial/
+        // wedge value must not keep warning "ahead/behind plan" forever.
         val device = ProtocolRegistry.forProfile(profile).supportDevice
+            ?.takeIf { phase.deviceUsage != null }
         if (device != null && profile.currentWedges < expected) {
             out.add(
                 Warning(

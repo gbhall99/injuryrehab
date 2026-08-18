@@ -40,6 +40,15 @@ class CapabilityAndMilestoneTest {
     }
 
     @Test
+    fun devicePlanWarningsStopOncePhaseDropsTheBoot() {
+        // Phase 4 no longer uses the boot: a stale device value (never stepped
+        // down to 0 in the app) must not keep warning "behind plan" forever.
+        val out = profile.copy(physioConfirmedPhase = 4, currentWedges = 15)
+        val warnings = Capability.warnings(out, emptyList(), injury.plusWeeks(13))
+        assertFalse(warnings.any { it.title.contains("ahead of plan") || it.title.contains("behind plan") })
+    }
+
+    @Test
     fun bootNotWornWarnsInProtectionPhase() {
         val log = DailyLog.empty(injury.plusDays(5)).copy(bootWornAsPlanned = false)
         val warnings = Capability.warnings(profile, listOf(log), injury.plusDays(5))

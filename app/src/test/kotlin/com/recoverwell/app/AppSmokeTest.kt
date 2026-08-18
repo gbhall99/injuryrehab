@@ -130,3 +130,29 @@ class StoreSmokeTest : SmokeBase() {
         assertEquals(4, store.dailyLog(java.time.LocalDate.now()).pain)
     }
 }
+
+@RunWith(RobolectricTestRunner::class)
+@Config(manifest = "src/main/AndroidManifest.xml", sdk = [26])
+class EndlessMedicationCourseSmokeTest : SmokeBase() {
+    @Test
+    fun endlessCoursePromptsOnceAfterTypicalLength() {
+        val activity = Robolectric.setupActivity(MainActivity::class.java)
+        // 11 weeks post-injury with a medication that has no course end/review
+        // date (data from before course ends existed): Today must ask about it
+        activity.store.saveProfile(activity.store.profile().copy(
+            onboardingComplete = true, disclaimerAcknowledged = true,
+            injuryDate = java.time.LocalDate.now().minusWeeks(11)
+        ))
+        activity.store.saveMedications(
+            com.recoverwell.core.protocol.ProtocolRegistry.default.prefillMedications)
+        activity.show(MainActivity.Tab.TODAY)
+        var texts = allText(activity.window.decorView).joinToString("\n")
+        assertTrue(texts.has("Still taking"))
+        // engaging once marks it handled - an ongoing medicine is asked one time
+        val medId = activity.store.medications().first().id
+        activity.store.saveSetting("med_course_prompted_$medId", "1")
+        activity.show(MainActivity.Tab.TODAY)
+        texts = allText(activity.window.decorView).joinToString("\n")
+        assertFalse(texts.has("Still taking"))
+    }
+}

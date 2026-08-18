@@ -124,8 +124,10 @@ object Onboarding {
                     val injuryDate = a.store.profile().injuryDate
                     val seeded = proto.prefillMedications.map {
                         it.copy(
-                            courseEndDate = injuryDate.plusWeeks(10),
-                            reviewDate = injuryDate.plusWeeks(9)
+                            courseEndDate = injuryDate.plusWeeks(
+                                com.recoverwell.core.model.Medication.TYPICAL_COURSE_WEEKS),
+                            reviewDate = injuryDate.plusWeeks(
+                                com.recoverwell.core.model.Medication.TYPICAL_REVIEW_WEEKS)
                         )
                     }
                     a.store.saveMedications(a.store.medications() + seeded)

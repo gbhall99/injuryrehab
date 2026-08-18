@@ -245,3 +245,30 @@ confirmed, powering pace. 10 new SmartTest cases (trends, correlation, reminder
 suggest+apply, miss pattern, pace ahead/early-days, ask intents, backup).
 
 64 tests green; signed v2.2 APK; still no INTERNET permission.
+
+---
+
+# Stage-readiness review (week 11 · phase 3, out of the boot)
+
+Prompted by the real recovery reaching early mobilisation (out of the boot,
+walking, basic exercises): a full audit that the app serves phase 3 today and
+phases 4-5 next, plus the settings a user at this stage must update.
+
+**Audit result: content and engines cover the stage.** Phase 3 ships 6
+exercises (ankle pumps to neutral, in/out movements, seated heel raises, gait
+practice, easy bike, towel scrunches), week-8-12 expectations, mindset and
+re-rupture reassurance; boot-era care tasks auto-expire after phase 3
+(fromPhase/toPhase); fitness activities unlock at phases 3-4; phases 4-5 and
+the return-to-sport ladder (self-tests, sign-off gates, sport tail) are ready.
+
+**Gaps found → fixed:**
+
+| # | Gap | Fix |
+|---|---|---|
+| 1 | A medication with no course end/review date (added before course ends existed, or restored from an old backup) reminds forever with no prompt to review it - exactly the "still getting pill reminders at week 11" complaint | Today now asks once - "Still taking X?" - for any active medicine with neither date once past the typical course length, deep-linking to the medication editor; engaging marks it handled so an intentionally ongoing medicine is asked one time only. Typical course/review weeks extracted to `Medication.TYPICAL_COURSE_WEEKS/TYPICAL_REVIEW_WEEKS` (single source for onboarding seeding, the editor default and the prompt) |
+| 2 | Digital-twin "ahead of/behind plan" device warnings kept scoring a stale dial/wedge value against the reduction plan even in phases whose protocol has no boot at all | Plan comparisons now apply only while the phase still uses the device (`deviceUsage != null`), matching the existing boot-worn warning |
+| 3 | Boot-check task said "wedges seated correctly" - wrong vocabulary for the default VACOped (ROM dial, degrees) | Device-neutral wording: "boot set as your plan expects" |
+
+New tests: `devicePlanWarningsStopOncePhaseDropsTheBoot` (core) and
+`EndlessMedicationCourseSmokeTest` (Robolectric: prompt appears at week 11 for
+an endless course, and only once). Full suite green; signed APK assembles.

@@ -631,8 +631,8 @@ object MoreScreen {
             val end = courseEnd
             if (end == null) {
                 courseCard.addView(Ui.fullWidth(Ui.tonalButton(a, "Set an end date") {
-                    courseEnd = LocalDate.now().plusWeeks(10)
-                    reviewDate = LocalDate.now().plusWeeks(9)
+                    courseEnd = LocalDate.now().plusWeeks(Medication.TYPICAL_COURSE_WEEKS)
+                    reviewDate = LocalDate.now().plusWeeks(Medication.TYPICAL_REVIEW_WEEKS)
                     rebuildCourse()
                 }, a))
             } else {
