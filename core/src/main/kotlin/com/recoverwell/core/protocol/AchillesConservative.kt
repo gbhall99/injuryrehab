@@ -698,7 +698,7 @@ object AchillesConservative {
             id = "task_boot_check",
             kind = TaskKind.BOOT_CHECK,
             title = "Boot check",
-            detail = "Straps snug, wedges seated correctly, no rubbing or pressure points on the skin.",
+            detail = "Straps snug, boot set as your plan expects, no rubbing or pressure points on the skin.",
             times = listOf(LocalTime.of(9, 0)),
             fromPhase = 1, toPhase = 3, dueDate = null, active = true
         ),

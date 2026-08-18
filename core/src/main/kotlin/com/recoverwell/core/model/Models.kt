@@ -165,6 +165,20 @@ data class Medication(
      */
     fun activeOn(date: LocalDate): Boolean =
         active && (courseEndDate == null || !date.isAfter(courseEndDate))
+
+    companion object {
+        /**
+         * Typical length (weeks from injury) of a clot-prevention course after
+         * lower-limb immobilisation - roughly the boot period (NICE NG89 keeps
+         * prophylaxis only while the limb is immobilised). Used to seed the
+         * editable course-end placeholder, and to prompt a review when a course
+         * has no end date at all. A placeholder, never a prescription.
+         */
+        const val TYPICAL_COURSE_WEEKS = 10L
+
+        /** When to prompt "continue or stop?" - shortly before the typical end. */
+        const val TYPICAL_REVIEW_WEEKS = 9L
+    }
 }
 
 enum class TaskKind(val label: String) {

@@ -166,6 +166,28 @@ object TodayScreen {
                 })
             }
         }
+        // a course with NO end or review date at all (added before course ends
+        // existed, or via an old backup) reminds forever - once past the typical
+        // course length, ask ONCE whether it should still be running. Opening the
+        // editor marks it handled, so an intentionally ongoing medicine is only
+        // ever asked about one time.
+        for (med in a.store.medications().filter {
+                it.active && it.courseEndDate == null && it.reviewDate == null }) {
+            val promptedKey = "med_course_prompted_${med.id}"
+            val reviewFrom = profile.injuryDate.plusWeeks(
+                com.recoverwell.core.model.Medication.TYPICAL_REVIEW_WEEKS)
+            if (!today.isBefore(reviewFrom) && a.store.setting(promptedKey, "") != "1") {
+                prompts.add(Prompt(5, "ic_pill", "Still taking ${med.name.lowercase()}?",
+                    "This medicine has no end date set, so its reminders continue indefinitely. " +
+                        "Courses like clot prevention are usually time-limited - check with your " +
+                        "clinician, then set an end date (or pause it if you've been told to stop). " +
+                        "Never stop a clot-prevention medicine without medical advice.",
+                    "Manage medication", TONE_WARN, safety = true) {
+                    a.store.saveSetting(promptedKey, "1")
+                    a.pushOverlay("Medications") { MoreScreen.medsEditor(a) }
+                })
+            }
+        }
 
         // progression gate
         if (gate.nextPhase != null && gate.readyToConfirm) {
