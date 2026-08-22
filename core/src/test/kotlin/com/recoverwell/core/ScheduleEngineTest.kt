@@ -39,6 +39,23 @@ class ScheduleEngineTest {
     }
 
     @Test
+    fun bootWeanedDateStopsBootChecksAndBootChanges() {
+        // fully out of the boot mid-phase-3: the boot check ends from that date,
+        // other daily care carries on, and no boot-change item can still fire
+        val weaned = profile.copy(physioConfirmedPhase = 3, bootWeanedDate = injury.plusWeeks(10))
+        val after = ScheduleEngine.dailyChecklist(weaned, meds, tasks, emptyMap(), emptyList(), injury.plusWeeks(11))
+        assertTrue(after.none { it.title.contains("Boot check") })
+        assertTrue(after.any { it.title.contains("Elevate") })
+        val before = ScheduleEngine.dailyChecklist(weaned, meds, tasks, emptyMap(), emptyList(), injury.plusWeeks(9))
+        assertTrue(before.any { it.title.contains("Boot check") })
+
+        val lastChange = profile.wedgePlan.removalSchedule(injury).last().first
+        val weanedEarly = profile.copy(bootWeanedDate = lastChange.minusDays(7))
+        assertTrue(ScheduleEngine.wedgeChangesOn(profile, lastChange).isNotEmpty())
+        assertTrue(ScheduleEngine.wedgeChangesOn(weanedEarly, lastChange).isEmpty())
+    }
+
+    @Test
     fun exerciseSessionsAreConfigurableAndClamped() {
         val date = injury.plusDays(3)
         fun exerciseCount(sessions: Int) = ScheduleEngine

@@ -56,6 +56,19 @@ class CapabilityAndMilestoneTest {
     }
 
     @Test
+    fun bootWeanedFlipsTwinStatusAndSilencesBootWarnings() {
+        val weaned = profile.copy(physioConfirmedPhase = 3, bootWeanedDate = injury.plusWeeks(10))
+        val today = injury.plusWeeks(11)
+        assertTrue(Capability.snapshot(weaned, today).bootStatus.contains("Out of the"))
+        // a stale dial value and a "boot not worn" log must not warn once weaned
+        val log = DailyLog.empty(today).copy(bootWornAsPlanned = false)
+        val warnings = Capability.warnings(weaned, listOf(log), today)
+        assertFalse(warnings.any {
+            it.title.contains("not worn") || it.title.contains("ahead of plan") || it.title.contains("behind plan")
+        })
+    }
+
+    @Test
     fun pendingPhaseConfirmationSurfaces() {
         val warnings = Capability.warnings(profile, emptyList(), injury.plusWeeks(3))
         assertTrue(warnings.any { it.title.contains("physio confirmation") })

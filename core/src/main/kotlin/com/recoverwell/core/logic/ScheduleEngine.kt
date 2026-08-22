@@ -127,8 +127,13 @@ object ScheduleEngine {
         return n
     }
 
+    /** Whether [task] applies on [date]: boot checks end once the boot is fully weaned. */
+    fun taskAppliesOn(task: RehabTask, profile: Profile, date: LocalDate): Boolean =
+        task.kind != TaskKind.BOOT_CHECK || profile.usesDeviceOn(date)
+
     /** Device-reduction items due on [date] per the editable plan (boot wedges etc.). */
     fun wedgeChangesOn(profile: Profile, date: LocalDate): List<ChecklistItem> {
+        if (!profile.usesDeviceOn(date)) return emptyList()
         val device = ProtocolRegistry.forProfile(profile).supportDevice ?: return emptyList()
         return profile.wedgePlan.removalSchedule(profile.injuryDate, profile.wedgeDateOverrides)
             .filter { it.first == date }
@@ -178,7 +183,7 @@ object ScheduleEngine {
             }
         }
 
-        for (task in tasks.filter { it.active && it.dueDate == null }) {
+        for (task in tasks.filter { it.active && it.dueDate == null && taskAppliesOn(it, profile, date) }) {
             if (phase.number < task.fromPhase || phase.number > task.toPhase) continue
             for (t in task.times.sorted()) {
                 val slot = slotKey(t)
@@ -192,7 +197,7 @@ object ScheduleEngine {
             }
         }
 
-        for (task in tasks.filter { it.active && it.dueDate == date }) {
+        for (task in tasks.filter { it.active && it.dueDate == date && taskAppliesOn(it, profile, date) }) {
             val slot = task.dueDate.toString()
             items.add(
                 ChecklistItem(
@@ -303,7 +308,7 @@ object ScheduleEngine {
                     )
                 }
             }
-            for (task in tasks.filter { it.active && it.dueDate == null }) {
+            for (task in tasks.filter { it.active && it.dueDate == null && taskAppliesOn(it, profile, date) }) {
                 if (phase.number < task.fromPhase || phase.number > task.toPhase) continue
                 for (t in task.times) {
                     val at = LocalDateTime.of(date, t)
@@ -312,7 +317,7 @@ object ScheduleEngine {
                     )
                 }
             }
-            for (task in tasks.filter { it.active && it.dueDate == date }) {
+            for (task in tasks.filter { it.active && it.dueDate == date && taskAppliesOn(it, profile, date) }) {
                 val t = task.times.firstOrNull() ?: LocalTime.of(9, 0)
                 val at = LocalDateTime.of(date, t)
                 if (at.isAfter(now)) out.add(
