@@ -276,11 +276,30 @@ object MoreScreen {
         var prof = p0
         val device = ProtocolRegistry.deviceFor(prof)
         if (device != null) {
-            if (device.operation.isNotBlank()) {
+            // "out of the boot" is a real, physio-agreed event that need not line
+            // up with phase timing - record it here and boot checks, boot-change
+            // reminders and the leg view all follow
+            bootCard.addView(Forms.label(a, "Fully out of the ${device.name.lowercase()}?"))
+            bootCard.addView(Forms.toggle(a, prof.bootWeanedDate != null) { on ->
+                prof = prof.copy(bootWeanedDate = if (on) LocalDate.now() else null)
+                onChange(prof)
+                rebuildBootSettings(a, prof, bootCard, devicePickerCount, onChange)
+            })
+            val weaned = prof.bootWeanedDate
+            if (weaned != null) {
+                bootCard.addView(Forms.dateRow(a, "Out of it since", weaned) {
+                    prof = prof.copy(bootWeanedDate = it); onChange(prof)
+                })
+                bootCard.addView(Ui.caption(a, "Only set this once your physio has agreed you can stop " +
+                    "using the ${device.name.lowercase()}. From this date the daily boot check and any " +
+                    "remaining boot-change reminders stop, and My leg shows you out of it."))
+                bootCard.addView(Ui.spacer(a, 6))
+            }
+            if (weaned == null && device.operation.isNotBlank()) {
                 bootCard.addView(Ui.caption(a, device.operation))
                 bootCard.addView(Ui.spacer(a, 6))
             }
-            if (device.kind != com.recoverwell.core.protocol.DeviceKind.CAST) {
+            if (weaned == null && device.kind != com.recoverwell.core.protocol.DeviceKind.CAST) {
                 val units = device.unitNamePlural
                 val step = device.plan.stepSize.coerceAtLeast(1)
                 // the common path is confirming today's setting once; the full
@@ -312,7 +331,7 @@ object MoreScreen {
                         "${device.plan.removalIntervalDays} days from week ${device.plan.removalStartWeek}. " +
                         "Match whatever your clinic prescribed."))
                 }
-            } else {
+            } else if (weaned == null) {
                 bootCard.addView(Ui.caption(a, "A cast can't be adjusted at home - your clinic re-sets the " +
                     "angle toward neutral at appointments, so there's no daily boot change to schedule."))
             }

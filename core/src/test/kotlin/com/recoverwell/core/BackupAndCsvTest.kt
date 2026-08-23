@@ -20,7 +20,8 @@ class BackupAndCsvTest {
                 physioConfirmedPhase = 2,
                 phaseStartOverrides = mapOf(3 to injury.plusWeeks(9)),
                 onboardingComplete = true,
-                disclaimerAcknowledged = true
+                disclaimerAcknowledged = true,
+                bootWeanedDate = injury.plusWeeks(10)
             ),
             medications = Fixtures.medications().map {
                 it.copy(courseEndDate = injury.plusWeeks(10), reviewDate = injury.plusWeeks(9))

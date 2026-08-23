@@ -272,3 +272,18 @@ the return-to-sport ladder (self-tests, sign-off gates, sport tail) are ready.
 New tests: `devicePlanWarningsStopOncePhaseDropsTheBoot` (core) and
 `EndlessMedicationCourseSmokeTest` (Robolectric: prompt appears at week 11 for
 an endless course, and only once). Full suite green; signed APK assembles.
+
+## Follow-up: "out of the boot" as first-class state
+
+User feedback after the stage review: the daily "boot snug?" check kept
+firing after they were fully out of the boot, because "out of the boot" only
+existed implicitly (phase 4 starting, or manually toggling tasks off).
+Fix: `Profile.bootWeanedDate` (physio-agreed date the device stopped being
+used; backup-carried, null = still in use) with a toggle + date under
+Injury & goal. From that date: BOOT_CHECK tasks and boot-change items drop
+out of the checklist and reminders (`ScheduleEngine.taskAppliesOn` /
+`wedgeChangesOn`); the twin's status reads "Out of the boot since …" and the
+ahead/behind-plan and boot-not-worn warnings are silenced; the boot setting
+steppers hide in the editor. Tests: `bootWeanedDateStopsBootChecksAndBootChanges`,
+`bootWeanedFlipsTwinStatusAndSilencesBootWarnings`, backup round-trip carries
+the field. Full suite green; signed APK assembles.

@@ -38,7 +38,9 @@ object Capability {
         val phase = PhaseEngine.currentPhase(profile, today)
         val weeks = PhaseEngine.weeksSinceInjury(profile, today)
         val expected = profile.wedgePlan.expectedWedges(profile.injuryDate, today, profile.wedgeDateOverrides)
-        val boot = phase.deviceUsage?.replace("{n}", profile.currentWedges.toString())
+        val boot = protocol.supportDevice?.takeIf { !profile.usesDeviceOn(today) }
+            ?.let { "Out of the ${it.name.lowercase()} since ${profile.bootWeanedDate}" }
+            ?: phase.deviceUsage?.replace("{n}", profile.currentWedges.toString())
             ?: protocol.supportDevice?.let { "No ${it.name.lowercase()} needed in this phase" }
             ?: "No support device for this protocol"
         val tendon = phase.tissueState
@@ -87,11 +89,12 @@ object Capability {
             )
         }
 
-        // Reduction-plan comparisons only apply while the phase still uses the
-        // device: once the protocol has the user out of the boot, a stale dial/
-        // wedge value must not keep warning "ahead/behind plan" forever.
+        // Reduction-plan comparisons only apply while the device is still in
+        // use: once the protocol has the user out of the boot - or the user has
+        // recorded being fully weaned - a stale dial/wedge value must not keep
+        // warning "ahead/behind plan" (or "not worn") forever.
         val device = ProtocolRegistry.forProfile(profile).supportDevice
-            ?.takeIf { phase.deviceUsage != null }
+            ?.takeIf { phase.deviceUsage != null && profile.usesDeviceOn(today) }
         if (device != null && profile.currentWedges < expected) {
             out.add(
                 Warning(

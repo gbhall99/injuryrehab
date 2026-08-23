@@ -126,11 +126,23 @@ data class Profile(
      * N"). Null = use the default estimate ([effectiveReturnDate]); always an
      * estimate the physio's real timeline overrides.
      */
-    val targetReturnDate: LocalDate? = null
+    val targetReturnDate: LocalDate? = null,
+    /**
+     * Date the user stopped using the support device entirely (physio-agreed
+     * "out of the boot"). Null = still using it as the phase directs. Going
+     * boot-free is a real event that need not line up with phase timing, so it
+     * is profile state: from this date boot checks and boot-change reminders
+     * stop and the digital twin shows the leg without the device.
+     */
+    val bootWeanedDate: LocalDate? = null
 ) {
     /** Aimed return-to-sport date, defaulting to ~12 months post-injury. */
     fun effectiveReturnDate(): LocalDate =
         targetReturnDate ?: injuryDate.plusDays(DEFAULT_RETURN_DAYS)
+
+    /** Whether the support device is still in use on [date] (see [bootWeanedDate]). */
+    fun usesDeviceOn(date: LocalDate): Boolean =
+        bootWeanedDate == null || date.isBefore(bootWeanedDate)
 
     companion object {
         /** Default estimated recovery span when no return date is set (~1 year). */
