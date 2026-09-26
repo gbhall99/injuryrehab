@@ -39,7 +39,7 @@ object Capability {
         val weeks = PhaseEngine.weeksSinceInjury(profile, today)
         val expected = profile.wedgePlan.expectedWedges(profile.injuryDate, today, profile.wedgeDateOverrides)
         val boot = protocol.supportDevice?.takeIf { !profile.usesDeviceOn(today) }
-            ?.let { "Out of the ${it.name.lowercase()} since ${profile.bootWeanedDate}" }
+            ?.let { "Out of the ${it.name.lowercase()} since ${Dates.friendly(profile.bootWeanedDate!!, today)}" }
             ?: phase.deviceUsage?.replace("{n}", profile.currentWedges.toString())
             ?: protocol.supportDevice?.let { "No ${it.name.lowercase()} needed in this phase" }
             ?: "No support device for this protocol"

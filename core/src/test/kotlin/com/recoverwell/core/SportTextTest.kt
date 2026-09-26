@@ -11,14 +11,14 @@ class SportTextTest {
     @Test
     fun defaultResolvesToPadel() {
         val p = ProtocolRegistry.forProfile(Fixtures.profile())
-        assertTrue(p.movementChecks.any { it.movement == "Play padel" })
+        assertTrue(p.movementChecks.any { it.movement == "Get back to padel" })
         assertTrue(p.milestones.any { it.title == "Return to padel" })
     }
 
     @Test
     fun chosenSportReshapesTheCopy() {
         val p = ProtocolRegistry.forProfile(Fixtures.profile().copy(sportId = "running"))
-        assertTrue(p.movementChecks.any { it.movement == "Play running" })
+        assertTrue(p.movementChecks.any { it.movement == "Get back to running" })
         assertTrue(p.milestones.any { it.title == "Return to running" })
         assertFalse(p.milestones.any { it.title.contains("padel", ignoreCase = true) })
 

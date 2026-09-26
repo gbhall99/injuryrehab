@@ -287,3 +287,33 @@ ahead/behind-plan and boot-not-worn warnings are silenced; the boot setting
 steppers hide in the editor. Tests: `bootWeanedDateStopsBootChecksAndBootChanges`,
 `bootWeanedFlipsTwinStatusAndSilencesBootWarnings`, backup round-trip carries
 the field. Full suite green; signed APK assembles.
+
+---
+
+# UX journey + specialist content audit (v3.7)
+
+Full report: [`docs/UX_CLINICAL_AUDIT.md`](docs/UX_CLINICAL_AUDIT.md). 14 journeys
+scored and walked as three personas (day-2 in the boot, week-14 late joiner,
+week-26 return to padel); every friction point fixed and test-guarded.
+
+| Journey | Before → After | Headline fix |
+|---|:-:|---|
+| Late joiner | 3 → 10 | "Where are you now?" onboarding step; no past-dated anticoagulant course; honest pace |
+| Recovery coach | 3 → 10 | Whole-word, safety-first matcher (fixed "speed"→PE, "cardio"→driving, "drive in my boot"→walking); 16 phase-aware everyday FAQs; symptom answers with call buttons |
+| Phase gate | 5 → 10 | Gate pinned (was hidden for 3 days); "Phase N unlocked" summary |
+| Today | 6 → 10 | Ring counts sessions not rows; boot change moved up; "More for you" restored; adherence honours chosen sessions |
+| Exercises | 6 → 10 | Dose-aware sessions, alternate-day impact work, real timers, pain rule, editable times-a-day |
+| Red flags | 7 → 10 | Call 999 / 111 / my clinic; head injury on anticoagulant; out-of-hours re-rupture route |
+| Other 8 journeys | 7-8 → 10 | Out-of-boot prompt; stage questions for the physio; phase-gated milestones; privacy copy now discloses AI; friendly dates |
+
+Specialist content: phase 4 now builds single-leg strength (heel-raise
+progression + loaded soleus) so phase 5's "20-25 single-leg raises" entry
+criterion is reachable; impact work on alternate days; pain-monitoring rule;
+no-stretch-unless-prescribed; heel-rise height test; NSAID / missed-dose /
+head-injury advice; ADL guidance (sleep, washing, stairs, crutches, travel,
+footwear); conservative-only, device-neutral wording.
+
+Verification: 174 tests green (146 before; +22 core, +6 Robolectric journey
+tests); signed APK builds and verifies; invoke-dynamic guard clean. Not
+device- or patient-validated in this environment - see the report's residual
+risks.

@@ -67,7 +67,8 @@ object ExercisesScreen {
         }
         col.addView(Ui.spacer(a, 8))
         if (phase.exercises.isNotEmpty()) {
-            col.addView(Ui.caption(a, "Each set × reps below is one session - you do a few sessions a day."))
+            col.addView(Ui.caption(a, "Each dose below is for one session. Open an exercise to see how many of " +
+                "your daily sessions it's in."))
             col.addView(Ui.spacer(a, 4))
         }
 
@@ -170,15 +171,23 @@ object ExercisesScreen {
             t.layoutParams = lp
             stats.addView(t)
         }
-        tile("${effective.sets}", if (effective.sets == 1) "set" else "sets")
-        tile("${effective.reps}", "reps")
-        if (effective.holdSeconds > 0) {
-            tile(if (effective.holdSeconds >= 60) "${effective.holdSeconds / 60}m" else "${effective.holdSeconds}s", "hold")
+        if (effective.isTimed) {
+            // timed work reads as rounds × duration, never "1 set · 1 rep · 10m hold"
+            if (effective.sets > 1) tile("${effective.sets}", "sets")
+            tile("${effective.reps}", if (effective.reps == 1) "round" else "rounds")
+            tile(ScheduleEngine.durationLabel(effective.holdSeconds).replace(" min", "m"), "each")
+        } else {
+            tile("${effective.sets}", if (effective.sets == 1) "set" else "sets")
+            tile("${effective.reps}", "reps")
+            if (effective.holdSeconds > 0) tile("${effective.holdSeconds}s", "hold")
         }
-        tile("${a.store.exerciseSessions()}×", "per day")
+        // how often THIS exercise is done: its own dose, capped by the user's daily sessions
+        val perDay = minOf(effective.sessionsPerDay.coerceAtLeast(1), a.store.exerciseSessions())
+        tile(if (effective.intervalDays > 1) "Alt" else "${perDay}×",
+            if (effective.intervalDays > 1) "days" else "per day")
         col.addView(stats)
         col.addView(Ui.fullWidth(Ui.textButton(a, "Change sets & reps") {
-            a.pushOverlay { editOverride(a, spec) }
+            a.pushOverlay("Adjust ${spec.name}") { editOverride(a, spec) }
         }, a, 4))
 
         col.addView(Ui.section(a, "How to do it"))
@@ -211,9 +220,23 @@ object ExercisesScreen {
         precCard.addView(pr)
         col.addView(precCard)
 
+        // the pain-monitoring rule: how much discomfort is acceptable, and when to back off
+        val painRule = ProtocolRegistry.forProfile(a.store.profile()).exercisePainRule
+        if (painRule.isNotBlank()) {
+            val ruleCard = Ui.card(a, Ui.INFO_BG)
+            val rr = Ui.row(a)
+            rr.gravity = android.view.Gravity.TOP
+            rr.addView(Ui.icon(a, "ic_pulse", 18, Ui.ON_INFO_BG))
+            val rt = Ui.text(a, painRule, 14f, Ui.ON_INFO_BG)
+            rt.setPadding(Ui.dp(a, 10), 0, 0, 0)
+            rr.addView(Ui.weight(rt, 1f))
+            ruleCard.addView(rr)
+            col.addView(ruleCard)
+        }
+
         if (spec.phase == currentPhase) {
             col.addView(Ui.fullWidth(Ui.button(a, "Start guided session") {
-                a.pushOverlay { guidedSession(a, spec) }
+                a.pushOverlay("Guided session") { guidedSession(a, spec) }
             }, a))
             val events = a.store.eventsOn(today)
             if (sessionSlot != null) {
@@ -237,8 +260,16 @@ object ExercisesScreen {
                 ))
             } else {
                 col.addView(Ui.section(a, "Today's sessions"))
-                for (session in 1..a.store.exerciseSessions()) {
-                    val slot = "session$session"
+                // only the sessions this exercise is actually in today (dose + alternate days)
+                val sessionsToday = ScheduleEngine.sessionPlan(a.store.profile(), overrides, today,
+                    a.store.exerciseSessions()).filter { (_, exs) -> exs.any { it.id == spec.id } }.map { it.first }
+                if (sessionsToday.isEmpty()) {
+                    col.addView(Ui.caption(a, if (effective.intervalDays > 1)
+                        "Not scheduled today - this one is done on alternate days to give the tendon a recovery day."
+                    else "Not in today's plan."))
+                }
+                for (session in sessionsToday) {
+                    val slot = ScheduleEngine.sessionSlot(session)
                     val done = events.lastOrNull {
                         it.refId == spec.id && it.slotKey == slot
                     }?.status == EventStatus.DONE
@@ -329,11 +360,15 @@ object ExercisesScreen {
         var timer: android.os.CountDownTimer? = null
 
         fun finish() {
-            // log into the first session slot not yet done today
-            val events = a.store.eventsOn(LocalDate.now())
-            val slot = (1..a.store.exerciseSessions()).map { "session$it" }.firstOrNull { sl ->
+            // log into the first of today's sessions containing this exercise that isn't done yet
+            val today = LocalDate.now()
+            val events = a.store.eventsOn(today)
+            val slots = ScheduleEngine.sessionPlan(a.store.profile(), a.store.exerciseOverrides(), today,
+                a.store.exerciseSessions()).filter { (_, exs) -> exs.any { it.id == spec.id } }
+                .map { ScheduleEngine.sessionSlot(it.first) }.ifEmpty { listOf(ScheduleEngine.sessionSlot(1)) }
+            val slot = slots.firstOrNull { sl ->
                 events.lastOrNull { it.refId == spec.id && it.slotKey == sl }?.status != EventStatus.DONE
-            } ?: "session1"
+            } ?: slots.first()
             Reminders.recordEvent(a, ScheduleEngine.ItemKind.EXERCISE, spec.id, slot, EventStatus.DONE)
             a.popOverlay()
             a.refresh()
@@ -368,9 +403,38 @@ object ExercisesScreen {
                 val big = Ui.text(a, "${rep + 1}", 56f, Ui.PRIMARY, bold = true)
                 big.gravity = android.view.Gravity.CENTER
                 stage.addView(big)
-                stage.addView(Ui.caption(a, "of ${effective.reps} reps"))
+                stage.addView(Ui.caption(a, if (effective.isTimed)
+                    "of ${effective.reps} round${if (effective.reps == 1) "" else "s"} · " +
+                        ScheduleEngine.durationLabel(effective.holdSeconds) + " each"
+                else "of ${effective.reps} reps"))
                 stage.addView(Ui.spacer(a, 10))
-                if (effective.holdSeconds in 1..299) {
+                if (effective.isTimed) {
+                    // walking, bike, swim or jog intervals: a real countdown, not a "hold"
+                    var running = false
+                    val secs = effective.holdSeconds
+                    fun clock(ms: Long): String {
+                        val t = ((ms + 999) / 1000).toInt()
+                        return "%d:%02d".format(t / 60, t % 60)
+                    }
+                    val btn = Ui.button(a, "Start ${ScheduleEngine.durationLabel(secs)} timer") {}
+                    btn.setOnClickListener {
+                        if (running) return@setOnClickListener
+                        running = true
+                        it.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
+                        timer = object : android.os.CountDownTimer(secs * 1000L, 500L) {
+                            override fun onTick(ms: Long) { btn.text = clock(ms) + " left" }
+                            override fun onFinish() {
+                                btn.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                                repDone()
+                            }
+                        }.start()
+                    }
+                    stage.addView(Ui.fullWidth(btn, a))
+                    stage.addView(Ui.fullWidth(Ui.textButton(a, "Done this round - next") {
+                        stage.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
+                        repDone()
+                    }, a, 2))
+                } else if (effective.holdSeconds in 1..59) {
                     var holding = false
                     val btn = Ui.button(a, "Start ${effective.holdSeconds}s hold") {}
                     btn.setOnClickListener {
@@ -411,6 +475,7 @@ object ExercisesScreen {
         var sets = effective.sets
         var reps = effective.reps
         var hold = effective.holdSeconds
+        var perDay = effective.sessionsPerDay.coerceIn(1, ScheduleEngine.MAX_EXERCISE_SESSIONS)
         var enabled = existing?.enabled ?: true
 
         val col = Ui.column(a)
@@ -418,14 +483,19 @@ object ExercisesScreen {
         col.addView(Ui.title(a, spec.name))
         col.addView(Ui.spacer(a, 4))
         col.addView(Ui.caption(
-            a, "Protocol default: ${ScheduleEngine.exercisePrescription(spec)} · done in each of " +
-                "${a.store.exerciseSessions()} daily sessions. Change only as your physio advises."))
+            a, "Protocol default: ${ScheduleEngine.exercisePrescription(spec)}, " +
+                "${spec.sessionsPerDay.coerceAtMost(ScheduleEngine.MAX_EXERCISE_SESSIONS)}× a day. " +
+                "Change only as your physio advises."))
         col.addView(Ui.spacer(a, 8))
         val card = Ui.card(a)
         card.addView(Forms.stepper(a, "Sets", sets, 1, 10) { sets = it })
         card.addView(Forms.stepper(a, "Reps", reps, 1, 50) { reps = it })
         val holdStep = if (spec.holdSeconds >= 120) 30 else if (spec.holdSeconds >= 30) 5 else 1
-        card.addView(Forms.stepper(a, "Hold (seconds)", hold, 0, 1800, step = holdStep) { hold = it })
+        card.addView(Forms.stepper(a, if (spec.isTimed) "Time each (seconds)" else "Hold (seconds)",
+            hold, 0, 3600, step = holdStep) { hold = it })
+        card.addView(Forms.stepper(a, "Times a day", perDay, 1, ScheduleEngine.MAX_EXERCISE_SESSIONS) { perDay = it })
+        card.addView(Ui.caption(a, "Capped by your number of daily sessions " +
+            "(${a.store.exerciseSessions()} - change under More › Reminders › Exercise reminders)."))
         col.addView(card)
 
         col.addView(Ui.section(a, "Include in daily plan"))
@@ -433,7 +503,8 @@ object ExercisesScreen {
 
         col.addView(Ui.spacer(a, 12))
         col.addView(Ui.fullWidth(Ui.button(a, "Save changes") {
-            a.store.saveExerciseOverride(ExerciseOverride(spec.id, sets, reps, hold, null, enabled, existing?.videoId))
+            a.store.saveExerciseOverride(ExerciseOverride(spec.id, sets, reps, hold,
+                perDay.takeIf { it != spec.sessionsPerDay }, enabled, existing?.videoId))
             a.popOverlay()
         }, a))
         col.addView(Ui.fullWidth(Ui.textButton(a, "Reset to protocol default") {

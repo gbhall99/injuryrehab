@@ -37,9 +37,11 @@ class TodayWidget : AppWidgetProvider() {
                 val profile = store.profile()
                 val items = ScheduleEngine.dailyChecklist(
                     profile, store.medications(), store.tasks(),
-                    store.exerciseOverrides(), store.eventsOn(today), today
+                    store.exerciseOverrides(), store.eventsOn(today), today,
+                    store.exerciseSessions()
                 )
-                val done = items.count { it.isDone }
+                // same units as the Today ring: sessions and the check-in count once
+                val (done, total) = ScheduleEngine.dayProgress(items, store.dailyLog(today).pain != null)
                 val next = ScheduleEngine.upcomingReminders(
                     profile, store.medications(), store.tasks(), LocalDateTime.now()
                 ).firstOrNull()
@@ -52,9 +54,9 @@ class TodayWidget : AppWidgetProvider() {
                 fun id(name: String, type: String) = context.resources.getIdentifier(name, type, pkg)
                 val views = RemoteViews(pkg, id("widget_today", "layout"))
                 views.setTextViewText(id("widget_title", "id"), "Week $week · Phase ${phase.number}")
-                views.setTextViewText(id("widget_progress", "id"), "$done of ${items.size} done today")
+                views.setTextViewText(id("widget_progress", "id"), "$done of $total done today")
                 views.setProgressBar(id("widget_bar", "id"), 100,
-                    if (items.isEmpty()) 0 else done * 100 / items.size, false)
+                    if (total == 0) 0 else done * 100 / total, false)
                 views.setTextViewText(id("widget_status", "id"),
                     if (painToday != null) "Checked in · pain $painToday/10" else "Not checked in yet today")
                 views.setTextViewText(id("widget_next", "id"),

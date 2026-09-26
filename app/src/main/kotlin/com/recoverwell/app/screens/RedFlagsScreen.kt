@@ -42,6 +42,8 @@ object RedFlagsScreen {
             }
             card.addView(Ui.spacer(a, 8))
             card.addView(Ui.text(a, rf.action, 14f, if (urgent) Ui.ON_DANGER_BG else Ui.TEXT, bold = true))
+            // one tap from reading the sign to dialling the right service
+            addCallButtons(a, card, rf.urgency)
             col.addView(card)
         }
 
@@ -49,5 +51,39 @@ object RedFlagsScreen {
         col.addView(Ui.caption(a, RehabFramework.DISCLAIMER))
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
+    }
+
+    /**
+     * Call buttons matching a section's urgency: 999 for emergencies, 111 for
+     * same-day advice, and the user's own clinic (or a prompt to save its
+     * number) where the advice is to contact the clinic.
+     */
+    fun addCallButtons(a: MainActivity, card: android.widget.LinearLayout, urgency: String) {
+        val u = urgency.lowercase()
+        if (u.contains("999")) card.addView(Ui.fullWidth(Ui.dangerButton(a, "Call 999") { dial(a, "999") }, a))
+        if (u.contains("111")) card.addView(Ui.fullWidth(Ui.tonalButton(a, "Call 111") { dial(a, "111") }, a))
+        if (u.contains("clinic")) addClinicButton(a, card)
+    }
+
+    /** "Call my clinic" when a number is saved; otherwise a route to save one. */
+    fun addClinicButton(a: MainActivity, card: android.widget.LinearLayout) {
+        val phone = a.store.profile().clinicPhone
+        if (phone.isNotBlank()) {
+            card.addView(Ui.fullWidth(Ui.tonalButton(a, "Call my clinic") { dial(a, phone) }, a))
+        } else {
+            card.addView(Ui.fullWidth(Ui.textButton(a, "Save your clinic's number for one-tap calls") {
+                a.pushOverlay("Injury & goal") { MoreScreen.profileEditor(a) }
+            }, a, 4))
+        }
+    }
+
+    /** Opens the phone's dialler with [number] filled in - no call permission needed. */
+    fun dial(a: MainActivity, number: String) {
+        try {
+            a.startActivity(android.content.Intent(android.content.Intent.ACTION_DIAL,
+                android.net.Uri.parse("tel:" + number.filter { it.isDigit() || it == '+' })))
+        } catch (e: Exception) {
+            android.widget.Toast.makeText(a, "Couldn't open the dialler - call $number", android.widget.Toast.LENGTH_LONG).show()
+        }
     }
 }

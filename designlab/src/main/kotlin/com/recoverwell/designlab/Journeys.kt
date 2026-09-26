@@ -261,7 +261,7 @@ object Journeys {
         m.s.text("Heel angle 30°", fx, top + 182f, 13f, Palette.ON_SURFACE)
         m.section("Can I...")
         val cc = m.card(186f)
-        val rows = listOf("Walk without the boot" to false, "Drive a car" to false, "Play padel" to false)
+        val rows = listOf("Walk without the boot" to false, "Drive a car" to false, "Get back to padel" to false)
         rows.forEachIndexed { i, (mv, ok) ->
             val ly = cc + 36f + i * 56f
             m.s.circle(m.pad + 30f, ly, 17f, if (ok) Palette.DONE_BG else Palette.ERROR_CONTAINER)

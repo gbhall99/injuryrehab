@@ -28,7 +28,13 @@ object TrackerScreen {
 
         // Progress reviews the trend first; the option to add/edit a past day sits
         // at the bottom (logging today happens on Today) so a review-only screen
-        // leads with the weekly digest rather than an editing control.
+        // leads with the weekly digest rather than an editing control. If today
+        // isn't logged yet, one row offers it - trends are only as good as the logs.
+        if (a.store.dailyLog(today).pain == null) {
+            col.addView(Ui.listRow(a, "ic_pulse", "Log today's check-in", "10 seconds - keeps these trends accurate") {
+                a.pushOverlay("Daily check-in") { TodayScreen.checkInOverlay(a, today) }
+            })
+        }
         buildReview(a, today, col)
 
         col.addView(Ui.listRow(a, "ic_edit", "Add a check-in for a day you missed",
@@ -78,7 +84,7 @@ object TrackerScreen {
                 card.addView(r)
                 card.addView(Ui.spacer(a, 6))
             }
-            line("ic_pill", "Medication: ${digest.adherencePct}% of doses taken")
+            digest.adherencePct?.let { line("ic_pill", "Medication: $it% of doses taken") }
             val painTint = when (digest.painTrend) {
                 com.recoverwell.core.logic.WeeklyDigest.Trend.DOWN -> Ui.DONE
                 com.recoverwell.core.logic.WeeklyDigest.Trend.UP -> Ui.WARN
@@ -134,7 +140,7 @@ object TrackerScreen {
             ChartScene.render(s, ChartScene.Data(
                 pts, avg, series.min.toFloat(), series.max.toFloat(),
                 first?.format(fmt) ?: "", series.points.lastOrNull()?.date?.format(fmt) ?: "",
-                "No entries yet - save today's log above"
+                "No entries yet - log a check-in on Today"
             ))
         }
         chart.contentDescription = run {
@@ -230,7 +236,10 @@ object TrackerScreen {
             texts.setPadding(Ui.dp(a, 8), 0, 0, Ui.dp(a, 10))
             val titleColor = if (e.status == MilestoneTimeline.Status.UPCOMING) Ui.TEXT_DIM else Ui.TEXT
             texts.addView(Ui.text(a, "Week ${e.milestone.week} · ${e.milestone.title}", 15f, titleColor, bold = true))
-            texts.addView(Ui.caption(a, "${e.expectedDate.format(fmt)} · ${e.milestone.detail}"))
+            // a passed date without the phase is "typical", not an achievement
+            val awaiting = e.status == MilestoneTimeline.Status.DUE_NOW && e.expectedDate.isBefore(today.minusDays(6))
+            texts.addView(Ui.caption(a, (if (awaiting) "Typically ~${e.expectedDate.format(fmt)} · waiting on your " +
+                "physio's go-ahead · " else "${e.expectedDate.format(fmt)} · ") + e.milestone.detail))
             row.addView(Ui.weight(texts, 1f))
             timeline.addView(row)
         }

@@ -50,7 +50,7 @@ object PhysioScreen {
             val days = java.time.temporal.ChronoUnit.DAYS.between(today, appt.date)
             val prefix = if (i == 0) "Next: " else ""
             apptCard.addView(Ui.text(a, "$prefix${appt.label}", 15.5f, Ui.TEXT, bold = true))
-            apptCard.addView(Ui.caption(a, "${appt.date} · " +
+            apptCard.addView(Ui.caption(a, "${Forms.friendlyDate(appt.date)} · " +
                 (if (days == 0L) "today" else "in $days day${if (days == 1L) "" else "s"}") +
                 (if (appt.withWhom.isNotBlank()) " · with ${appt.withWhom}" else "")))
             apptCard.addView(Ui.fullWidth(Ui.tonalButton(a, "Mark done & capture") {
@@ -60,7 +60,7 @@ object PhysioScreen {
         }
         for (o in outlook.overdue) {
             apptCard.addView(Ui.divider(a))
-            apptCard.addView(Ui.text(a, "Was: ${o.label} · ${o.date}" +
+            apptCard.addView(Ui.text(a, "Was: ${o.label} · ${Forms.friendlyDate(o.date)}" +
                 (if (o.withWhom.isNotBlank()) " · with ${o.withWhom}" else ""), 14f, Ui.WARN, bold = true))
             apptCard.addView(Ui.fullWidth(Ui.tonalButton(a, "How did it go? Capture it") {
                 completeAppointment(a, o); a.pushOverlay("Visit note") { captureNote(a) }
@@ -97,7 +97,7 @@ object PhysioScreen {
             val reg = ProtocolRegistry.forProfile(profile)
             reg.supportDevice?.let { device ->
                 profile.wedgePlan.removalSchedule(profile.injuryDate, profile.wedgeDateOverrides)
-                    .filter { !it.first.isBefore(today) }
+                    .filter { !it.first.isBefore(today) && profile.usesDeviceOn(it.first) }
                     .forEach { (d, after) ->
                         evs.add(Ev(d, "Boot change: ${device.reductionVerb} to ${device.format(after)}", "ic_boot"))
                     }
@@ -161,6 +161,19 @@ object PhysioScreen {
         }, a, 4))
         col.addView(packCard)
 
+        // evergreen questions a specialist physio would expect at this stage
+        if (pack.stageQuestions.isNotEmpty()) {
+            val stageCard = Ui.card(a)
+            stageCard.addView(Ui.text(a, "Worth asking at this stage", 13.5f, Ui.TEXT_DIM, bold = true))
+            for (q in pack.stageQuestions) stageCard.addView(bullet(a, q))
+            stageCard.addView(Ui.fullWidth(Ui.textButton(a, "Add these to my questions") {
+                val mine = a.store.physioQuestions()
+                a.store.savePhysioQuestions(mine + pack.stageQuestions.filterNot { it in mine })
+                a.refresh()
+            }, a, 2))
+            col.addView(stageCard)
+        }
+
         val copyBtn = Ui.tonalButton(a, "Copy pack") {
             copyToClipboard(a, packText(pack, questions))
             Toast.makeText(a, "Copied - paste into notes or a message", Toast.LENGTH_SHORT).show()
@@ -186,15 +199,7 @@ object PhysioScreen {
         if (gate.nextPhase != null) {
             col.addView(Ui.listRow(a, "ic_calendar", "Confirm phase ${gate.nextPhase!!.number} progression",
                 "${gate.nextPhase!!.title}") {
-                Forms.confirm(a, "Confirm progression",
-                    "Record that your physio confirmed phase ${gate.nextPhase!!.number} (${gate.nextPhase!!.title})?") {
-                    val pp = a.store.profile()
-                    a.store.saveProfile(pp.copy(
-                        physioConfirmedPhase = gate.nextPhase!!.number,
-                        phaseConfirmedDates = pp.phaseConfirmedDates + (gate.nextPhase!!.number to today)))
-                    Reminders.reschedule(a)
-                    a.refresh()
-                }
+                TodayScreen.confirmGate(a, gate.nextPhase!!.number, today)
             })
         }
         // return-to-sport sign-offs the physio may have granted
@@ -277,7 +282,7 @@ object PhysioScreen {
     private fun apptActions(a: MainActivity, appt: Appointment): View {
         val edit = Ui.textButton(a, "Edit details") { a.pushOverlay("Edit appointment") { appointmentEditor(a, appt) } }
         val remove = Ui.textButton(a, "Remove", Ui.WARN) {
-            Forms.confirm(a, "Remove appointment?", "\"${appt.label}\" on ${appt.date} will be deleted.") {
+            Forms.confirm(a, "Remove appointment?", "\"${appt.label}\" on ${Forms.friendlyDate(appt.date)} will be deleted.") {
                 deleteAppointment(a, appt); a.refresh()
             }
         }
@@ -356,6 +361,11 @@ object PhysioScreen {
         appendLine()
         appendLine("Worth raising:")
         pack.discussionPoints.forEach { appendLine("- $it") }
+        if (pack.stageQuestions.isNotEmpty()) {
+            appendLine()
+            appendLine("Worth asking at this stage:")
+            pack.stageQuestions.forEach { appendLine("- $it") }
+        }
         if (questions.isNotEmpty()) {
             appendLine()
             appendLine("My questions:")

@@ -31,10 +31,14 @@ object Wellbeing {
      * A milestone whose typical date fell within the last [withinDays] days -
      * the moment worth celebrating. Most recent one wins.
      */
-    fun recentlyReachedMilestone(profile: Profile, today: LocalDate, withinDays: Long = 7): Milestone? =
-        ProtocolRegistry.forProfile(profile).milestones
+    fun recentlyReachedMilestone(profile: Profile, today: LocalDate, withinDays: Long = 7): Milestone? {
+        // only celebrate what the user has actually reached, not just the calendar
+        val phase = PhaseEngine.currentPhase(profile, today).number
+        return ProtocolRegistry.forProfile(profile).milestones
+            .filter { phase >= it.phase }
             .map { it to profile.injuryDate.plusWeeks(it.week.toLong()) }
             .filter { (_, date) -> !date.isAfter(today) && date.isAfter(today.minusDays(withinDays + 1)) }
             .maxByOrNull { (_, date) -> date }
             ?.first
+    }
 }

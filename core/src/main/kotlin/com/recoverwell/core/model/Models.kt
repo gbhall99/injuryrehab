@@ -134,7 +134,13 @@ data class Profile(
      * is profile state: from this date boot checks and boot-change reminders
      * stop and the digital twin shows the leg without the device.
      */
-    val bootWeanedDate: LocalDate? = null
+    val bootWeanedDate: LocalDate? = null,
+    /**
+     * The user's own fracture clinic / physio phone number, so the red-flag
+     * guide can offer a one-tap "call my clinic" alongside 999 and 111. Blank =
+     * not set; the guide then offers to add it.
+     */
+    val clinicPhone: String = ""
 ) {
     /** Aimed return-to-sport date, defaulting to ~12 months post-injury. */
     fun effectiveReturnDate(): LocalDate =
@@ -178,6 +184,17 @@ data class Medication(
     fun activeOn(date: LocalDate): Boolean =
         active && (courseEndDate == null || !date.isAfter(courseEndDate))
 
+    /**
+     * Whether this looks like clot-prevention (VTE prophylaxis) medication, so
+     * clot-specific copy ("take on time - clot prevention matters") is only ever
+     * attached to a blood thinner, never to e.g. a painkiller the user added.
+     */
+    fun isClotPrevention(): Boolean {
+        if (id == PREFILL_ANTICOAGULANT_ID) return true
+        val text = (name + " " + notes).lowercase()
+        return CLOT_PREVENTION_HINTS.any { text.contains(it) }
+    }
+
     companion object {
         /**
          * Typical length (weeks from injury) of a clot-prevention course after
@@ -190,6 +207,17 @@ data class Medication(
 
         /** When to prompt "continue or stop?" - shortly before the typical end. */
         const val TYPICAL_REVIEW_WEEKS = 9L
+
+        /** Id of the protocol's opt-in blood-thinner reminder. */
+        const val PREFILL_ANTICOAGULANT_ID = "med_anticoagulant"
+
+        /** Words and common UK drug/brand names that identify a blood thinner. */
+        private val CLOT_PREVENTION_HINTS = listOf(
+            "anticoag", "blood thinner", "blood-thinner", "clot", "apixaban", "eliquis",
+            "rivaroxaban", "xarelto", "edoxaban", "dabigatran", "dalteparin", "fragmin",
+            "enoxaparin", "clexane", "inhixa", "tinzaparin", "fondaparinux", "heparin",
+            "warfarin", "aspirin"
+        )
     }
 }
 
@@ -232,8 +260,17 @@ data class ExerciseSpec(
     val precaution: String,
     /** Optional override search phrase for the "watch on YouTube" link;
      *  blank = derive from the exercise name + protocol video context. */
-    val videoQuery: String = ""
-)
+    val videoQuery: String = "",
+    /**
+     * Days between sessions of this exercise: 1 = daily, 2 = alternate days
+     * (impact work such as running and hopping needs a recovery day between
+     * sessions early on). Counted from the injury date.
+     */
+    val intervalDays: Int = 1
+) {
+    /** A timed activity (walk, ride, swim, jog interval) rather than reps with a hold. */
+    val isTimed: Boolean get() = holdSeconds >= 60
+}
 
 /** User edits applied on top of the protocol defaults; null = keep default. */
 data class ExerciseOverride(
@@ -264,7 +301,9 @@ data class PhaseSpec(
     val precautions: List<String>,
     val allowed: List<String>,
     val notAllowed: List<String>,
-    val exercises: List<ExerciseSpec>
+    val exercises: List<ExerciseSpec>,
+    /** Evergreen questions worth asking the physio at this stage (appointment pack). */
+    val physioQuestions: List<String> = emptyList()
 )
 
 data class DailyLog(
@@ -305,7 +344,14 @@ data class EventLog(
 data class Milestone(
     val week: Int,
     val title: String,
-    val detail: String
+    val detail: String,
+    /**
+     * Phase the user must actually have reached (physio-confirmed) for this
+     * milestone to count as achieved. The typical date alone never marks it
+     * reached, so the app doesn't celebrate "Out of the boot" for someone
+     * whose physio has kept them in it.
+     */
+    val phase: Int = 1
 )
 
 /** A dated record of what a clinician said - the durable half of the physio loop. */

@@ -23,6 +23,7 @@ class RtsTest {
 
     private val strengthPasses = listOf(
         result("heel_rise_sym", 18.0, 20.0),  // 90% symmetry, pain-free
+        result("heel_rise_height", 9.5, 10.0), // 95% height symmetry
         result("balance_eo", 35.0),           // >= 30s
         result("calf_girth_sym", 38.0, 40.0), // 95%
         result("walk_tol", 35.0)              // >= 30 min, pain-free
@@ -110,7 +111,7 @@ class RtsTest {
         )
         val decoded = com.recoverwell.core.export.BackupCodec.decode(
             com.recoverwell.core.export.BackupCodec.encode(state))
-        assertEquals(4, decoded.selfTestResults.size)
+        assertEquals(strengthPasses.size, decoded.selfTestResults.size)
         assertEquals(listOf("rts_jog"), decoded.rtsSignoffs)
         assertEquals(90, decoded.selfTestResults.first { it.testId == "heel_rise_sym" }.symmetryPct)
     }
