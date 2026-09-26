@@ -15,8 +15,10 @@ object SportText {
 
     private fun List<String>.resolved(name: String) = map { resolve(it, name) }
 
-    fun resolveProtocol(p: InjuryProtocol, sportName: String): InjuryProtocol {
+    /** [drillQuery] fills a `{sportDrills}` video query (see [Sport.drillVideoQuery]). */
+    fun resolveProtocol(p: InjuryProtocol, sportName: String, drillQuery: String = ""): InjuryProtocol {
         val n = sportName
+        val drills = drillQuery.ifBlank { "{Sport} drills" }
         return p.copy(
             placeholderNote = resolve(p.placeholderNote, n),
             phases = p.phases.map { ph ->
@@ -36,7 +38,7 @@ object SportText {
                             cues = e.cues.resolved(n),
                             whyItMatters = resolve(e.whyItMatters, n),
                             precaution = resolve(e.precaution, n),
-                            videoQuery = resolve(e.videoQuery, n)
+                            videoQuery = resolve(e.videoQuery.replace("{sportDrills}", drills), n)
                         )
                     },
                     physioQuestions = ph.physioQuestions.resolved(n)

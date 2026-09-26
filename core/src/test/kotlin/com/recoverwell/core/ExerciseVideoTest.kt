@@ -38,7 +38,7 @@ class ExerciseVideoTest {
         val banned = listOf("surg", "post-op", "post op", "postop", "repair", "stretch", "tendinopathy",
             "tendonitis", "tendinitis", "→", "{", "}")
         for (sport in com.recoverwell.core.protocol.SportRegistry.all) {
-            val p = com.recoverwell.core.protocol.SportText.resolveProtocol(protocol, sport.name)
+            val p = com.recoverwell.core.protocol.SportText.resolveProtocol(protocol, sport.name, sport.drillVideoQuery)
             for (ex in p.phases.flatMap { it.exercises }) {
                 val q = ExerciseVideo.query(ex, p.videoContext).lowercase()
                 for (b in banned) assertFalse("${ex.id} query \"$q\" contains \"$b\"", q.contains(b))
@@ -50,9 +50,13 @@ class ExerciseVideoTest {
     @Test
     fun sportDrillsSearchForTheUsersOwnSport() {
         for (sport in com.recoverwell.core.protocol.SportRegistry.all) {
-            val p = com.recoverwell.core.protocol.SportText.resolveProtocol(protocol, sport.name)
+            val p = com.recoverwell.core.protocol.SportText.resolveProtocol(protocol, sport.name, sport.drillVideoQuery)
             val drills = p.phases.flatMap { it.exercises }.first { it.id == "p5_padel" }
-            assertTrue(ExerciseVideo.query(drills, p.videoContext).contains(sport.name, ignoreCase = true))
+            // "<sport> footwork drills" is meaningless for cycling or swimming: each sport names its own
+            assertTrue("${sport.id} needs a drill query", sport.drillVideoQuery.isNotBlank())
+            assertEquals(sport.drillVideoQuery, ExerciseVideo.query(drills, p.videoContext))
+            // gym's drills are plyometrics; every other sport's query names the sport
+            if (sport.id != "gym") assertTrue(sport.drillVideoQuery.contains(sport.name, ignoreCase = true))
         }
     }
 

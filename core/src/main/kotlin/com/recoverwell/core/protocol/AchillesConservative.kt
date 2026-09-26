@@ -488,6 +488,7 @@ object AchillesConservative {
         ExerciseSpec(
             id = "p4_double_raise", phase = 4, name = "Heel-raise progression (two legs → one)",
             demoId = "heel_raise_progression",
+            videoQuery = "heel raise progression double leg to single leg physiotherapy",
             cues = listOf(
                 "Stand by a wall or counter, fingertips on it for balance only",
                 "Stage 1 - both legs: 3 seconds up, pause, 3 seconds down, weight shared 50/50",
@@ -502,6 +503,7 @@ object AchillesConservative {
         ExerciseSpec(
             id = "p4_soleus_raise", phase = 4, name = "Seated calf raises with weight",
             demoId = "seated_weighted_raise",
+            videoQuery = "seated soleus raise exercise physiotherapy",
             cues = listOf(
                 "Sit with the knee bent at 90 degrees, foot flat",
                 "Rest a weight on the injured knee - a heavy bag or dumbbell",
@@ -514,6 +516,7 @@ object AchillesConservative {
         ExerciseSpec(
             id = "p4_balance", phase = 4, name = "Single-leg balance",
             demoId = "single_balance",
+            videoQuery = "single leg balance exercise progression physiotherapy",
             cues = listOf(
                 "Stand on the injured leg next to support",
                 "Soft knee, tall posture, eyes ahead",
@@ -526,6 +529,7 @@ object AchillesConservative {
         ExerciseSpec(
             id = "p4_band_pf", phase = 4, name = "Resistance-band ankle pushes",
             demoId = "band_pf",
+            videoQuery = "resistance band ankle plantar flexion physical therapy exercise",
             cues = listOf(
                 "Long sitting, band looped around the ball of the foot",
                 "Push the foot down against the band like a slow gas pedal",
@@ -538,6 +542,7 @@ object AchillesConservative {
         ExerciseSpec(
             id = "p4_step_up", phase = 4, name = "Step-ups",
             demoId = "step_up",
+            videoQuery = "step up exercise how to physiotherapy",
             cues = listOf(
                 "Low step to start; injured foot goes up first",
                 "Drive up through the heel, control the step down",
@@ -550,6 +555,7 @@ object AchillesConservative {
         ExerciseSpec(
             id = "p4_squat", phase = 4, name = "Bodyweight squats",
             demoId = "squat",
+            videoQuery = "bodyweight squat how to physiotherapy exercise",
             cues = listOf(
                 "Feet shoulder-width, weight even between sides",
                 "Sit back and down as far as comfortable, heels down",
@@ -562,6 +568,7 @@ object AchillesConservative {
         ExerciseSpec(
             id = "p4_swim", phase = 4, name = "Swimming / bike conditioning",
             demoId = "bike",
+            videoQuery = "how to use a stationary bike physical therapist",
             cues = listOf(
                 "Bike: build resistance gradually; Swim: gentle kick only",
                 "20-30 minutes, conversational effort",
@@ -578,6 +585,7 @@ object AchillesConservative {
         ExerciseSpec(
             id = "p5_single_raise", phase = 5, name = "Single-leg heel raises",
             demoId = "single_heel_raise",
+            videoQuery = "single leg heel raise exercise how to physiotherapy",
             cues = listOf(
                 "Fingertips on a wall for balance only",
                 "Rise on the injured leg alone, full height",
@@ -590,6 +598,7 @@ object AchillesConservative {
         ExerciseSpec(
             id = "p5_jog", phase = 5, name = "Walk-jog programme",
             demoId = "jog",
+            videoQuery = "run walk intervals return to running after injury physiotherapy",
             cues = listOf(
                 "Flat, even ground; cushioned shoes",
                 "Start 1 min jog / 2 min walk x 8, build gradually",
@@ -603,6 +612,7 @@ object AchillesConservative {
         ExerciseSpec(
             id = "p5_hop", phase = 5, name = "Hop & plyometric progression",
             demoId = "hop",
+            videoQuery = "pogo hops exercise physiotherapy",
             cues = listOf(
                 "Start: two-leg mini hops on the spot",
                 "Progress: single-leg hops, then forward/sideways",
@@ -616,6 +626,7 @@ object AchillesConservative {
         ExerciseSpec(
             id = "p5_agility", phase = 5, name = "Direction-change drills",
             demoId = "agility",
+            videoQuery = "lateral shuffle cone drill physical therapy",
             cues = listOf(
                 "Cone shuffles: side-to-side, then diagonal cuts",
                 "Start at 50% speed, build over weeks",
@@ -629,6 +640,7 @@ object AchillesConservative {
         ExerciseSpec(
             id = "p5_padel", phase = 5, name = "{Sport}-specific drills",
             demoId = "padel_drill",
+            videoQuery = "{sportDrills}",
             cues = listOf(
                 "Stage 1: sport-specific movement patterns at low intensity, no resistance",
                 "Stage 2: light, controlled practice - skills before speed",
