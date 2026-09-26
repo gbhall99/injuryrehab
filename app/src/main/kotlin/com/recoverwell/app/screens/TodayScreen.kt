@@ -12,6 +12,7 @@ import com.recoverwell.app.ui.Forms
 import com.recoverwell.app.ui.SceneView
 import com.recoverwell.app.ui.Ui
 import com.recoverwell.core.logic.Capability
+import com.recoverwell.core.logic.Insights
 import com.recoverwell.core.logic.PhaseEngine
 import com.recoverwell.core.logic.ScheduleEngine
 import com.recoverwell.core.model.EventStatus
@@ -62,22 +63,6 @@ object TodayScreen {
             com.recoverwell.draw.Palette.withAlpha(onHero, 0xE6)))
         heroTexts.addView(Ui.spacer(a, 6))
         heroTexts.addView(Ui.text(a, "$doneCount of $totalCount done today", 13f, onHeroDim))
-        // streak chips: medication and exercise, side by side (each shown at 2+ days)
-        val chips = ArrayList<View>()
-        if (medStreak >= 2) chips.add(streakChip(a, "ic_flag", "$medStreak-day meds"))
-        if (exStreak >= 2) chips.add(streakChip(a, "ic_exercises", "$exStreak-day exercise"))
-        if (chips.isNotEmpty()) {
-            heroTexts.addView(Ui.spacer(a, 8))
-            val wrap = LinearLayout(a).apply { orientation = LinearLayout.HORIZONTAL }
-            chips.forEachIndexed { i, c ->
-                val lp = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                if (i > 0) lp.leftMargin = Ui.dp(a, 6)
-                wrap.addView(c, lp)
-            }
-            heroTexts.addView(wrap, LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        }
         heroRow.addView(Ui.weight(heroTexts, 1f))
 
         val ringBox = FrameLayout(a)
@@ -320,19 +305,36 @@ object TodayScreen {
         // ---- checklist (the core daily task: now directly under the hero + any
         // safety cards, so the actions are immediate and never buried) ----
         // medication stays one row per dose (each dose is logged individually)
+        val todayEvents = a.store.eventsOn(today)
+        // a finished group folds to one done line, so what's still left stands out;
+        // tapping it opens the rows again (e.g. to undo) for the rest of the day
+        if (unfoldedDay != today) { unfoldedDay = today; unfolded.clear() }
+        fun folded(key: String, title: String): Boolean {
+            if (key in unfolded) return false
+            col.addView(Ui.checkRow(a, title, "Tap to see them", null, true, null) {
+                unfolded.add(key); a.refresh()
+            })
+            return true
+        }
         fun addGroup(label: String, kinds: Set<ScheduleEngine.ItemKind>) {
             val group = items.filter { it.kind in kinds }
             if (group.isEmpty()) return
             col.addView(Ui.section(a, label))
+            if (kinds == setOf(ScheduleEngine.ItemKind.MEDICATION) && group.all { it.isDone } &&
+                folded("meds", "All ${group.size} dose${if (group.size == 1) "" else "s"} taken today")) return
             for (item in group) {
-                val statusLabel = when (item.status) {
-                    EventStatus.MISSED -> "Marked missed"
-                    EventStatus.SKIPPED -> "Skipped"
-                    else -> null
-                }
+                // an undo returns a row to "not done" - it never reads as "skipped"
+                val statusLabel = if (item.status == EventStatus.MISSED) "Marked missed" else null
                 val time = item.time?.let { "%02d:%02d".format(it.hour, it.minute) }
-                val subtitle = if (item.kind == ScheduleEngine.ItemKind.WEDGE_CHANGE)
-                    "Only with your clinic's agreement" else ""
+                val subtitle = when {
+                    item.kind == ScheduleEngine.ItemKind.WEDGE_CHANGE -> "Only with your clinic's agreement"
+                    // "did I take it?" answered at a glance
+                    item.kind == ScheduleEngine.ItemKind.MEDICATION && item.status == EventStatus.TAKEN ->
+                        todayEvents.lastOrNull { it.refId == item.refId && it.slotKey == item.slotKey }
+                            ?.let { "Taken at " + Insights.minuteLabel(it.recordedAtMinuteOfDay) } ?: "Taken"
+                    item.kind == ScheduleEngine.ItemKind.MEDICATION && item.status == null -> "Tap when taken"
+                    else -> ""
+                }
                 col.addView(Ui.checkRow(a, item.title, subtitle, time, item.isDone, statusLabel) {
                     onItemTapped(a, item)
                 })
@@ -343,6 +345,8 @@ object TodayScreen {
         fun addDailyCare() {
             col.addView(Ui.section(a, "Daily care"))
             val group = items.filter { it.kind == ScheduleEngine.ItemKind.TASK }
+            if (group.all { it.isDone } && a.store.dailyLog(today).pain != null &&
+                folded("care", "Daily care and check-in done")) return
             val byRef = LinkedHashMap<String, MutableList<ScheduleEngine.ChecklistItem>>()
             for (it in group) byRef.getOrPut(it.refId) { ArrayList() }.add(it)
             for ((_, slots) in byRef) {
@@ -356,16 +360,18 @@ object TodayScreen {
                     col.addView(Ui.checkRow(a, first.title, first.subtitle, null, done == total, null) { tap() })
                 }
             }
-            // the daily check-in as a care item - tapping opens the shared form
+            // the daily check-in: one tap on a number logs today's pain right here;
+            // once logged it's a done row that opens the full form to update or add detail
             val log = a.store.dailyLog(today)
-            val checkedIn = log.pain != null
-            col.addView(Ui.checkRow(a, "Daily check-in",
-                if (checkedIn) "Pain ${log.pain}/10 logged · tap to update"
-                else "Log how your pain feels today",
-                null, checkedIn, null) {
-                checkInExpanded = false
-                a.pushOverlay("Daily check-in") { checkInOverlay(a, today) }
-            })
+            if (log.pain == null) {
+                col.addView(quickPainCard(a))
+            } else {
+                col.addView(Ui.checkRow(a, "Daily check-in",
+                    "Pain ${log.pain}/10 logged · tap to change or add mood, swelling, a note",
+                    null, true, null) {
+                    a.pushOverlay("Daily check-in") { checkInOverlay(a, today) }
+                })
+            }
         }
         // exercises are grouped into uniform daily SESSIONS - same routine each
         // session - so they're clear and consistent, not 2x here / 4x there
@@ -375,6 +381,8 @@ object TodayScreen {
             col.addView(Ui.section(a, "Exercise sessions · tap to do"))
             val bySession = LinkedHashMap<String, MutableList<ScheduleEngine.ChecklistItem>>()
             for (it in exItems) bySession.getOrPut(it.slotKey) { ArrayList() }.add(it)
+            if (exItems.all { it.isDone } && folded("exercise",
+                    "All ${bySession.size} exercise session${if (bySession.size == 1) "" else "s"} done")) return
             bySession.keys.sorted().forEachIndexed { idx, key ->
                 val sess = bySession[key]!!
                 val total = sess.size
@@ -428,7 +436,7 @@ object TodayScreen {
 
         // ---- recovery snapshot: the key stats & timelines, below the day's
         // actions so the checklist (the primary task) leads the screen ----
-        col.addView(recoverySnapshot(a, profile, today, phase, medStreak, exStreak))
+        col.addView(recoverySnapshot(a, profile, today, medStreak, exStreak))
 
         // ---- "jump to" card grid: the hybrid home's always-visible navigation,
         // promoting the destinations otherwise buried under the More tab ----
@@ -438,27 +446,13 @@ object TodayScreen {
         return Ui.scroll(a, col)
     }
 
-    /** A small pill chip used on the hero for medication / exercise streaks. */
-    private fun streakChip(a: MainActivity, icon: String, label: String): View {
-        val row = Ui.row(a)
-        row.addView(Ui.icon(a, icon, 13, Ui.ON_HERO))
-        val t = Ui.text(a, label, 12f, Ui.ON_HERO, bold = true)
-        t.setPadding(Ui.dp(a, 6), 0, 0, 0)
-        row.addView(t)
-        row.background = Ui.rounded(com.recoverwell.draw.Palette.withAlpha(Ui.ON_HERO, 0x28), 14f)
-        row.setPadding(Ui.dp(a, 10), Ui.dp(a, 5), Ui.dp(a, 12), Ui.dp(a, 5))
-        return row
-    }
-
     /**
-     * Key stats & timelines at a glance: the overall recovery-days timeline
-     * ("day X of N" toward the estimated return-to-sport date), the phase
-     * timeline, and a 2x2 grid of headline numbers (today's tasks, sport
-     * readiness, medication & exercise streaks).
+     * Key stats at a glance: the overall recovery-days timeline ("day X of N"
+     * toward the estimated return-to-sport date) and a 2x2 grid of headline
+     * numbers (streaks, sport readiness). The phase itself lives in the hero.
      */
     private fun recoverySnapshot(
         a: MainActivity, profile: com.recoverwell.core.model.Profile, today: LocalDate,
-        phase: com.recoverwell.core.model.PhaseSpec,
         medStreak: Int, exStreak: Int
     ): View {
         val card = Ui.card(a)
@@ -496,14 +490,6 @@ object TodayScreen {
             "~$weeksLeft week${if (weeksLeft == 1L) "" else "s"} to your estimated return to " +
                 "$sportName · around $targetLabel"
         }))
-
-        // phase timeline
-        val phaseCount = ProtocolRegistry.forProfile(profile).phases.size
-        card.addView(Ui.spacer(a, 14))
-        card.addView(Ui.text(a, "Phase ${phase.number} of $phaseCount · ${phase.title}",
-            13f, Ui.TEXT_DIM, bold = true))
-        card.addView(Ui.spacer(a, 8))
-        card.addView(Ui.setDots(a, phaseCount, phase.number).apply { gravity = Gravity.START })
 
         // headline numbers: each tile pairs a streak with a percentage and is
         // tappable through to the editable history for that metric. The
@@ -672,17 +658,8 @@ object TodayScreen {
         val colv = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
         colv.addView(Ui.section(a, "Jump to"))
         val cells = ArrayList<View>()
-        cells.add(gridCell(a, "ic_exercises", "Exercises", "Today's routine") {
-            a.show(MainActivity.Tab.EXERCISES)
-        })
-        cells.add(gridCell(a, "ic_pill", "Medication", "Doses & reminders") {
-            a.pushOverlay("Medications") { MoreScreen.medsEditor(a) }
-        })
         cells.add(gridCell(a, "ic_ask", "Recovery coach",
             if (AiScreen.enabled(a)) "Ask anything · AI" else "Ask anything") { a.openAsk() })
-        if (AiScreen.enabled(a)) cells.add(gridCell(a, "ic_edit", "Recovery journal", "Speak your day") {
-            a.openJournal()
-        })
         cells.add(gridCell(a, "ic_calendar", "Physio visits", "Appointments & notes") {
             a.pushOverlay("Physio visits") { PhysioScreen.build(a) }
         })
@@ -732,13 +709,22 @@ object TodayScreen {
     private fun exerciseSession(a: MainActivity, number: Int, slotKey: String, refIds: List<String>): View {
         val col = Ui.column(a)
         col.addView(Ui.backRow(a, "Exercise session $number") { a.popOverlay() })
-        col.addView(Ui.caption(a, "Your routine for this session - tap an exercise to see how to do " +
-            "it and log it, or mark the whole session done at once below."))
-        col.addView(Ui.spacer(a, 4))
         val allExercises = ScheduleEngine.mergedExercises(
             ProtocolRegistry.forProfile(a.store.profile()).phases.flatMap { it.exercises },
             a.store.exerciseOverrides())
         val events = a.store.eventsOn(LocalDate.now())
+        val remaining = refIds.filter { id ->
+            events.lastOrNull { it.refId == id && it.slotKey == slotKey }?.status != EventStatus.DONE
+        }
+        // the main path: play the whole session through, one tap per set
+        if (remaining.isNotEmpty()) {
+            col.addView(Ui.fullWidth(Ui.button(a,
+                if (remaining.size == refIds.size) "Start guided session" else "Continue guided session") {
+                SessionPlayer.open(a, "Exercise session $number", slotKey, remaining)
+            }, a, 4))
+            col.addView(Ui.caption(a, "Plays each exercise in turn - one tap per set, timers for holds."))
+        }
+        col.addView(Ui.section(a, "In this session"))
         var doneCount = 0
         for (refId in refIds) {
             val spec = allExercises.find { it.id == refId } ?: continue
@@ -768,13 +754,22 @@ object TodayScreen {
     private fun onItemTapped(a: MainActivity, item: ScheduleEngine.ChecklistItem) {
         when (item.kind) {
             ScheduleEngine.ItemKind.MEDICATION -> {
-                AlertDialog.Builder(a)
-                    .setTitle(item.title)
-                    .setMessage("Record the ${item.slotKey} dose. If in doubt about a missed dose, ask your pharmacist or 111 - never double up.")
-                    .setPositiveButton("Taken") { _, _ -> record(a, item, EventStatus.TAKEN) }
-                    .setNegativeButton("Missed") { _, _ -> record(a, item, EventStatus.MISSED) }
-                    .setNeutralButton("Cancel", null)
-                    .show()
+                if (item.status == null || item.status == EventStatus.SKIPPED) {
+                    // the common case is one tap: taking the dose
+                    record(a, item, EventStatus.TAKEN)
+                } else {
+                    val taken = item.status == EventStatus.TAKEN
+                    AlertDialog.Builder(a)
+                        .setTitle(item.title)
+                        .setMessage("The ${item.slotKey} dose is logged as ${if (taken) "taken" else "missed"}. " +
+                            "If in doubt about a missed dose, check the leaflet or ask a pharmacist or 111 - never double up.")
+                        .setPositiveButton(if (taken) "Mark missed" else "Mark taken") { _, _ ->
+                            record(a, item, if (taken) EventStatus.MISSED else EventStatus.TAKEN)
+                        }
+                        .setNegativeButton("Undo") { _, _ -> record(a, item, EventStatus.SKIPPED) }
+                        .setNeutralButton("Cancel", null)
+                        .show()
+                }
             }
             ScheduleEngine.ItemKind.WEDGE_CHANGE -> {
                 if (item.isDone) {
@@ -833,8 +828,47 @@ object TodayScreen {
         a.refresh()
     }
 
-    /** Whether the Today check-in is showing its expanded fields in place. */
-    private var checkInExpanded = false
+    /**
+     * The one-tap check-in: 0-10 as two rows of 48dp number chips. A tap logs
+     * today's pain (carrying the boot setting and weight-bearing forward); mood,
+     * swelling and notes stay optional in the full form.
+     */
+    private fun quickPainCard(a: MainActivity): View {
+        val card = Ui.card(a)
+        card.addView(Ui.text(a, "How's your pain today?", 15.5f, Ui.TEXT, bold = true))
+        card.addView(Ui.caption(a, "One tap logs it · 0 none, 10 worst"))
+        card.addView(Ui.spacer(a, 6))
+        for (values in listOf(0..5, 6..10)) {
+            val r = Ui.row(a)
+            for (n in values) {
+                val chip = Ui.text(a, "$n", 16f, Ui.TEXT, bold = true).apply {
+                    gravity = Gravity.CENTER
+                    background = Ui.ripple(a, Ui.rounded(Ui.SURFACE_HIGH, 14f))
+                    minHeight = Ui.dp(a, Ui.MIN_TOUCH_DP)
+                    isClickable = true
+                    isFocusable = true
+                    contentDescription = "Pain $n out of 10"
+                    setOnClickListener {
+                        it.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
+                        Reminders.recordCheckIn(a, n)
+                        a.refresh()
+                    }
+                }
+                val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                lp.setMargins(Ui.dp(a, 3), Ui.dp(a, 3), Ui.dp(a, 3), Ui.dp(a, 3))
+                r.addView(chip, lp)
+            }
+            // keep both rows' chips the same width
+            if (values.count() < 6) r.addView(View(a), LinearLayout.LayoutParams(0, 1, 1f).apply {
+                setMargins(Ui.dp(a, 3), 0, Ui.dp(a, 3), 0)
+            })
+            card.addView(r)
+        }
+        card.addView(Ui.fullWidth(Ui.textButton(a, "Add mood, swelling or a note instead") {
+            a.pushOverlay("Daily check-in") { checkInOverlay(a, LocalDate.now()) }
+        }, a, 2))
+        return card
+    }
 
     /** Check-ins logged before Today reveals the focus card + "more for you"; until
      *  then the home screen stays minimal so new users learn the daily rhythm. */
@@ -844,43 +878,43 @@ object TodayScreen {
     fun checkInOverlay(a: MainActivity, date: LocalDate): View {
         val col = Ui.column(a)
         col.addView(Ui.backRow(a, "Daily check-in") { a.popOverlay() })
-        col.addView(checkInCard(a, date, checkInExpanded) { a.popOverlay(); a.refresh() })
+        col.addView(checkInCard(a, date) { a.popOverlay(); a.refresh() })
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
     }
 
     /**
      * The single daily check-in form, shared by Today and Progress. Pain is all
-     * that's needed; mood/swelling/energy/notes are optional behind a disclosure.
+     * that's needed; mood, energy and swelling are saved only if the user sets
+     * them, so untouched sliders never become fake data in trends and insights.
      * No boot/ROM here - boot is profile state, ROM is captured at physio visits.
      */
-    fun checkInCard(a: MainActivity, date: LocalDate, expanded: Boolean, onSaved: () -> Unit): View {
+    fun checkInCard(a: MainActivity, date: LocalDate, onSaved: () -> Unit): View {
         val today = LocalDate.now()
         val log = a.store.dailyLog(date)
         val card = Ui.card(a)
-        card.addView(Ui.text(a, if (date == today) "How are you today?" else "Log for $date",
+        card.addView(Ui.text(a, if (date == today) "How are you today?" else "Log for ${Forms.friendlyDate(date)}",
             16f, Ui.TEXT, bold = true))
-        card.addView(Ui.caption(a, "One quick check-in - the same sliders each time. Pain matters " +
-            "most; the rest help spot patterns."))
+        card.addView(Ui.caption(a, "Pain is all that's needed. Mood, energy and swelling are optional - " +
+            "only what you set is saved."))
         card.addView(Ui.spacer(a, 6))
 
-        // Every metric is the SAME control (a labelled slider), all in one view,
-        // so nothing reads differently from anything else.
         // start pain at the day's saved value, else yesterday's, so most days are one tap
         var pain = log.pain ?: (a.store.dailyLog(date.minusDays(1)).pain ?: 0)
         card.addView(Forms.label(a, "Pain · 0 none – 10 worst"))
         card.addView(Forms.scaleSlider(a, 10, pain, "0 None", "10 Worst") { pain = it })
 
-        var mood = log.mood ?: 3
-        card.addView(Forms.label(a, "Mood · 1 low – 5 great"))
+        // optional metrics start "not logged" (null) and are saved only once set
+        var mood: Int? = log.mood
+        card.addView(Forms.label(a, "Mood · optional"))
         card.addView(Forms.scaleSlider(a, 5, mood, "1 Low", "5 Great", min = 1) { mood = it })
 
-        var energy = log.energy ?: 3
-        card.addView(Forms.label(a, "Energy · 1 drained – 5 energised"))
+        var energy: Int? = log.energy
+        card.addView(Forms.label(a, "Energy · optional"))
         card.addView(Forms.scaleSlider(a, 5, energy, "1 Drained", "5 Energised", min = 1) { energy = it })
 
-        var swellingScore = log.swelling?.score ?: 0
-        card.addView(Forms.label(a, "Swelling · 0 none – 3 severe"))
+        var swellingScore: Int? = log.swelling?.score
+        card.addView(Forms.label(a, "Swelling · optional"))
         card.addView(Forms.scaleSlider(a, 3, swellingScore, "0 None", "3 Severe") { swellingScore = it })
 
         card.addView(Forms.label(a, "Notes · optional"))
@@ -890,7 +924,7 @@ object TodayScreen {
         card.addView(Ui.fullWidth(Ui.button(a, if (date == today) "Save check-in" else "Save log for $date") {
             a.store.saveDailyLog(log.copy(
                 pain = pain, mood = mood, energy = energy,
-                swelling = Swelling.values().firstOrNull { it.score == swellingScore } ?: Swelling.NONE,
+                swelling = swellingScore?.let { s -> Swelling.values().firstOrNull { it.score == s } },
                 notes = notesEdit.text?.toString()?.ifBlank { null }))
             onSaved()
         }, a))
@@ -919,6 +953,10 @@ object TodayScreen {
     )
 
     private const val BOOT_PROMPT_SNOOZE = "boot_out_prompt_snooze_until"
+
+    // finished checklist groups the user re-opened today (they fold again tomorrow)
+    private var unfoldedDay: LocalDate? = null
+    private val unfolded = HashSet<String>()
 
     private fun toneBg(tone: Int) = when (tone) { TONE_WARN -> Ui.WARN_BG; TONE_DONE -> Ui.DONE_BG; else -> Ui.INFO_BG }
     private fun toneFg(tone: Int) = when (tone) { TONE_WARN -> Ui.WARN; TONE_DONE -> Ui.DONE; else -> Ui.ON_INFO_BG }

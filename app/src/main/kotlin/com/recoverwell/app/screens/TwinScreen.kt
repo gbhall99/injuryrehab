@@ -59,6 +59,14 @@ object TwinScreen {
         facts.addView(Ui.caption(a, snap.tendonState))
         facts.addView(Ui.spacer(a, 8))
         facts.addView(Ui.text(a, snap.bootStatus, 13.5f, Ui.TEXT))
+        // the clinic changed the angle? adjust it right where it's shown
+        val phaseNow = com.recoverwell.core.logic.PhaseEngine.currentPhase(profile, today)
+        if (device != null && device.kind != com.recoverwell.core.protocol.DeviceKind.CAST &&
+            phaseNow.deviceUsage != null && profile.usesDeviceOn(today)) {
+            facts.addView(Ui.textButton(a, "Adjust setting") { adjustDevice(a, device) }.apply {
+                contentDescription = "Adjust ${device.name} setting"
+            })
+        }
         facts.addView(Ui.spacer(a, 4))
         facts.addView(Ui.text(a, snap.weightBearing, 13.5f, Ui.TEXT))
         heroRow.addView(Ui.weight(facts, 1f))
@@ -194,5 +202,28 @@ object TwinScreen {
 
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
+    }
+
+    /** One small dialog: step the boot's current setting, save, and every screen follows. */
+    private fun adjustDevice(a: MainActivity, device: com.recoverwell.core.protocol.SupportDevice) {
+        var value = a.store.profile().currentWedges
+        val pad = Ui.dp(a, 18)
+        val holder = LinearLayout(a).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(pad, Ui.dp(a, 6), pad, 0)
+            addView(com.recoverwell.app.ui.Forms.stepper(a, "Setting now (${device.unitNamePlural})", value, 0,
+                device.maxValue, step = device.plan.stepSize.coerceAtLeast(1)) { value = it })
+            addView(Ui.caption(a, "Only change it when your clinic has agreed the step."))
+        }
+        android.app.AlertDialog.Builder(a)
+            .setTitle(device.name)
+            .setView(holder)
+            .setPositiveButton("Save") { _, _ ->
+                a.store.saveProfile(a.store.profile().copy(currentWedges = value))
+                com.recoverwell.app.notify.Reminders.reschedule(a)
+                a.refresh()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 }

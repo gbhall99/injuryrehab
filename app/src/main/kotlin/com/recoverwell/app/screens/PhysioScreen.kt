@@ -217,8 +217,10 @@ object PhysioScreen {
                 }
             })
         }
-        col.addView(Ui.listRow(a, "ic_calendar", "Adjust phase dates",
-            "If your physio re-timed a phase") { a.pushOverlay("Phase dates") { MoreScreen.phaseDatesEditor(a) } })
+        col.addView(Ui.listRow(a, "ic_calendar", "Adjust phases & exercises",
+            "If your physio re-timed a phase or changed your exercises") {
+            a.pushOverlay("Configure my plan") { MoreScreen.planEditor(a) }
+        })
         col.addView(Ui.listRow(a, "ic_boot", "Adjust boot / injury plan",
             "Boot angle, schedule, weight-bearing") { a.pushOverlay("Injury & goal") { MoreScreen.profileEditor(a) } })
         col.addView(Ui.listRow(a, "ic_calendar", "Boot change dates",

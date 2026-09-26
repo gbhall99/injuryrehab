@@ -202,24 +202,23 @@ object AskScreen {
         col.addView(Ui.caption(a, "Answered from your protocol, fully offline. Not a substitute for your physio."))
         col.addView(Ui.spacer(a, 8))
 
-        // the most recent answer sits up top; the one-tap topics are the primary
-        // path, with the free-text box offered below as an alternative
-        lastAnswer?.let { col.addView(answerCard(a, it, profile, today)) }
-
-        addTopicPicker(a, col, profile) { q ->
-            lastQuestion = q
-            lastAnswer = Ask.answer(q, profile, today)
-            a.refresh()
-        }
-
-        col.addView(Ui.section(a, "Or type your own question"))
-        val input = Forms.editText(a, lastQuestion, "e.g. \"Can I drive yet?\"")
+        // ask first (no scrolling past two dozen questions to reach the box), the
+        // answer right under it, then one-tap starter questions
+        val input = Forms.editText(a, lastQuestion, "Ask anything, e.g. \"Can I drive yet?\"")
         col.addView(input)
         col.addView(Ui.fullWidth(Ui.button(a, "Ask") {
             lastQuestion = input.text.toString()
             lastAnswer = Ask.answer(lastQuestion.ifBlank { "what can I do right now" }, profile, today)
             a.refresh()
         }, a))
+        lastAnswer?.let { col.addView(answerCard(a, it, profile, today)) }
+
+        addTopicPicker(a, col, profile) { q ->
+            lastQuestion = q
+            lastAnswer = Ask.answer(q, profile, today)
+            // the answer renders at the top - take the user there
+            a.refresh(keepScroll = false)
+        }
 
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
