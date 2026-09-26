@@ -169,7 +169,8 @@ object BackupCodec {
         "sportId" to Json.of(p.sportId),
         "deviceId" to Json.of(p.deviceId),
         "targetReturnDate" to Json.of(p.targetReturnDate?.toString() ?: ""),
-        "bootWeanedDate" to Json.of(p.bootWeanedDate?.toString() ?: "")
+        "bootWeanedDate" to Json.of(p.bootWeanedDate?.toString() ?: ""),
+        "clinicPhone" to Json.of(p.clinicPhone)
     )
 
     fun profileFrom(j: JsonValue): Profile = Profile(
@@ -218,7 +219,9 @@ object BackupCodec {
             ?.let { LocalDate.parse(it) },
         // older backups predate the "out of the boot" date
         bootWeanedDate = j.opt("bootWeanedDate")?.asString()?.takeIf { it.isNotBlank() }
-            ?.let { LocalDate.parse(it) }
+            ?.let { LocalDate.parse(it) },
+        // older backups predate the saved clinic phone number
+        clinicPhone = j.opt("clinicPhone")?.asString() ?: ""
     )
 
     // -- medication -----------------------------------------------------

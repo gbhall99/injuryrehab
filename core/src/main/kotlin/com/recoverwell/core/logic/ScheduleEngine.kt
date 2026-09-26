@@ -58,6 +58,88 @@ object ScheduleEngine {
             )
         }
 
+    /** Whether [ex] is scheduled on [date]: daily, or every [ExerciseSpec.intervalDays] days from injury. */
+    fun dueOn(ex: ExerciseSpec, profile: Profile, date: LocalDate): Boolean {
+        val every = ex.intervalDays.coerceAtLeast(1)
+        if (every == 1) return true
+        val day = java.time.temporal.ChronoUnit.DAYS.between(profile.injuryDate, date)
+        return Math.floorMod(day, every.toLong()) == 0L
+    }
+
+    /**
+     * The day's exercise plan as numbered sessions (1..[sessionsPerDay]). Each
+     * exercise appears in as many sessions as its own dose asks for - an
+     * exercise prescribed twice a day is in sessions 1 and 2 only - so the
+     * physio's dosing is honoured instead of repeating everything every
+     * session. Alternate-day work only appears on its days. Sessions left empty
+     * are dropped.
+     */
+    fun sessionPlan(
+        profile: Profile,
+        overrides: Map<String, ExerciseOverride>,
+        date: LocalDate,
+        sessionsPerDay: Int = EXERCISE_SESSIONS_PER_DAY
+    ): List<Pair<Int, List<ExerciseSpec>>> {
+        val exercises = mergedExercises(PhaseEngine.currentPhase(profile, date).exercises, overrides)
+            .filter { dueOn(it, profile, date) }
+        return (1..clampSessions(sessionsPerDay))
+            .map { s -> s to exercises.filter { s <= it.sessionsPerDay.coerceAtLeast(1) } }
+            .filter { it.second.isNotEmpty() }
+    }
+
+    /** Stored slot key of daily session [n]. */
+    fun sessionSlot(n: Int): String = "session$n"
+
+    /**
+     * % of planned exercise sessions fully completed over the last [days] days
+     * (today included), judged against each day's own plan and the user's
+     * chosen number of daily sessions.
+     */
+    fun exerciseAdherence(
+        profile: Profile,
+        overrides: Map<String, ExerciseOverride>,
+        events: List<EventLog>,
+        today: LocalDate,
+        sessionsPerDay: Int = EXERCISE_SESSIONS_PER_DAY,
+        days: Int = 7
+    ): Int {
+        val doneByDay = events
+            .filter { it.type == EventType.EXERCISE && it.status == EventStatus.DONE }
+            .groupBy { it.date }
+        var expected = 0
+        var done = 0
+        for (i in 0 until days) {
+            val d = today.minusDays(i.toLong())
+            if (d.isBefore(profile.injuryDate)) break
+            val plan = sessionPlan(profile, overrides, d, sessionsPerDay)
+            expected += plan.size
+            val dayEvents = doneByDay[d] ?: continue
+            for ((n, exs) in plan) {
+                val slot = sessionSlot(n)
+                if (exs.all { ex -> dayEvents.any { it.refId == ex.id && it.slotKey == slot } }) done++
+            }
+        }
+        return if (expected == 0) 0 else done * 100 / expected
+    }
+
+    /**
+     * Today's progress in real actions (done, total): each dose and care task
+     * counts once, each exercise SESSION counts once (done when all its
+     * exercises are), and - when [checkedIn] is given - the daily check-in
+     * counts once. Stops a 5-exercise × 3-session day from reading "4 of 23".
+     */
+    fun dayProgress(items: List<ChecklistItem>, checkedIn: Boolean? = null): Pair<Int, Int> {
+        val others = items.filter { it.kind != ItemKind.EXERCISE }
+        val sessions = items.filter { it.kind == ItemKind.EXERCISE }.groupBy { it.slotKey }.values
+        var done = others.count { it.isDone } + sessions.count { s -> s.all { it.isDone } }
+        var total = others.size + sessions.size
+        if (checkedIn != null) {
+            total++
+            if (checkedIn) done++
+        }
+        return done to total
+    }
+
     /** Locale-independent: slot keys are stored identifiers, never display text. */
     fun slotKey(time: LocalTime): String =
         String.format(java.util.Locale.ROOT, "%02d:%02d", time.hour, time.minute)
@@ -108,14 +190,11 @@ object ScheduleEngine {
             .filter { it.type == EventType.EXERCISE && it.status == EventStatus.DONE }
             .groupBy { it.date }
         fun sessionDone(d: LocalDate): Boolean {
-            val exercises = mergedExercises(PhaseEngine.currentPhase(profile, d).exercises, overrides)
-            if (exercises.isEmpty()) return false
             val day = doneByDay[d] ?: return false
-            for (s in 1..clampSessions(sessionsPerDay)) {
-                val slot = "session$s"
-                if (exercises.all { ex -> day.any { it.refId == ex.id && it.slotKey == slot } }) return true
+            return sessionPlan(profile, overrides, d, sessionsPerDay).any { (n, exs) ->
+                val slot = sessionSlot(n)
+                exs.all { ex -> day.any { it.refId == ex.id && it.slotKey == slot } }
             }
-            return false
         }
         // a streak can only begin the day after the injury
         var day = if (sessionDone(today)) today else today.minusDays(1)
@@ -175,8 +254,9 @@ object ScheduleEngine {
                 items.add(
                     ChecklistItem(
                         ItemKind.MEDICATION, med.id, slot,
-                        "${med.name} ${med.dose}",
-                        "Scheduled $slot - clot prevention matters: take on time",
+                        "${med.name} ${med.dose}".trim(),
+                        if (med.isClotPrevention()) "Scheduled $slot - clot prevention matters: take on time"
+                        else "Scheduled $slot",
                         t, statusOf(EventType.MEDICATION, med.id, slot)
                     )
                 )
@@ -211,35 +291,61 @@ object ScheduleEngine {
             item.copy(status = statusOf(EventType.TASK, item.refId, item.slotKey))
         })
 
-        // Exercises are grouped into a uniform number of daily SESSIONS; each
-        // session is the same routine (all of the phase's exercises once), rather
-        // than each exercise carrying its own 2x/3x/4x count.
-        val exercises = mergedExercises(phase.exercises, overrides)
-        if (exercises.isNotEmpty()) {
-            for (session in 1..clampSessions(sessionsPerDay)) {
-                val slot = "session$session"
-                for (ex in exercises) {
-                    items.add(
-                        ChecklistItem(
-                            ItemKind.EXERCISE, ex.id, slot, ex.name,
-                            exercisePrescription(ex), null,
-                            statusOf(EventType.EXERCISE, ex.id, slot)
-                        )
+        // Exercises are grouped into numbered daily SESSIONS; each exercise sits
+        // in as many sessions as its own dose asks for (see sessionPlan).
+        for ((session, exercises) in sessionPlan(profile, overrides, date, sessionsPerDay)) {
+            val slot = sessionSlot(session)
+            for (ex in exercises) {
+                items.add(
+                    ChecklistItem(
+                        ItemKind.EXERCISE, ex.id, slot, ex.name,
+                        exercisePrescription(ex), null,
+                        statusOf(EventType.EXERCISE, ex.id, slot)
                     )
-                }
+                )
             }
         }
 
         return items.sortedWith(compareBy({ it.time == null }, { it.time }, { it.title }))
     }
 
+    /**
+     * Human dose: "3 sets × 12 · hold 3s" for reps; "10 min" or "5 × 1 min" for
+     * timed activities (walking, bike, jog intervals) - never "hold 10 min" -
+     * plus "alternate days" for work that needs a recovery day between.
+     */
     fun exercisePrescription(ex: ExerciseSpec): String {
-        val hold = when {
-            ex.holdSeconds >= 60 -> " · hold ${ex.holdSeconds / 60} min"
-            ex.holdSeconds > 0 -> " · hold ${ex.holdSeconds}s"
-            else -> ""
+        val base = if (ex.isTimed) {
+            val each = durationLabel(ex.holdSeconds)
+            val rounds = ex.reps
+            when {
+                ex.sets <= 1 && rounds <= 1 -> each
+                ex.sets <= 1 -> "$rounds × $each"
+                else -> "${ex.sets} sets × $rounds × $each"
+            }
+        } else if (ex.reps == 1 && ex.holdSeconds > 0) {
+            "${ex.sets} × ${ex.holdSeconds}s hold"
+        } else {
+            val hold = if (ex.holdSeconds > 0) " · hold ${ex.holdSeconds}s" else ""
+            "${ex.sets} set${if (ex.sets > 1) "s" else ""} × ${ex.reps}$hold"
         }
-        return "${ex.sets} set${if (ex.sets > 1) "s" else ""} × ${ex.reps}$hold"
+        val every = when (ex.intervalDays.coerceAtLeast(1)) {
+            1 -> ""
+            2 -> " · alternate days"
+            else -> " · every ${ex.intervalDays} days"
+        }
+        return base + every
+    }
+
+    /** "45s", "3 min", "1 min 30s". */
+    fun durationLabel(seconds: Int): String {
+        val m = seconds / 60
+        val sec = seconds % 60
+        return when {
+            m == 0 -> "${sec}s"
+            sec == 0 -> "$m min"
+            else -> "$m min ${sec}s"
+        }
     }
 
     /** Stable id used for the once-daily "do your exercises" engagement nudge. */
@@ -282,9 +388,10 @@ object ScheduleEngine {
             }
 
             if (exerciseReminderTime != null) {
-                val exercises = mergedExercises(phase.exercises, overrides)
+                val plan = sessionPlan(profile, overrides, date, sessionsPerDay)
+                val exercises = plan.flatMap { it.second }.distinctBy { it.id }
                 val at = LocalDateTime.of(date, exerciseReminderTime)
-                val sessions = clampSessions(sessionsPerDay)
+                val sessions = plan.size
                 if (exercises.isNotEmpty() && at.isAfter(now)) out.add(
                     Reminder(
                         at, ItemKind.EXERCISE, EXERCISE_SESSION_REF, EXERCISE_SESSION_REF,
@@ -302,8 +409,9 @@ object ScheduleEngine {
                     if (at.isAfter(now)) out.add(
                         Reminder(
                             at, ItemKind.MEDICATION, med.id, slotKey(t),
-                            "Medication: ${med.name} ${med.dose}",
-                            "Time for your ${slotKey(t)} dose. Clot prevention is clinically important."
+                            "Medication: ${med.name} ${med.dose}".trim(),
+                            "Time for your ${slotKey(t)} dose." +
+                                if (med.isClotPrevention()) " Clot prevention is clinically important." else ""
                         )
                     )
                 }

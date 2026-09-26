@@ -36,12 +36,15 @@ object AskScreen {
     private var lastQuestion: String = ""
     // request a jump to the newest message on the next build (after send/receive)
     private var scrollToEnd = false
+    // a red-flag symptom in the latest question: the deterministic safety answer
+    // (with its call button) is shown straight away, whatever the AI replies
+    private var safety: Ask.Answer? = null
 
     /** Clear the transient view when leaving. The transcript itself is persisted,
      *  so reopening resumes it; only the in-memory copy and flags are dropped. */
     fun reset() {
         turns.clear(); loading = false; error = null
-        lastAnswer = null; lastQuestion = ""; scrollToEnd = false
+        lastAnswer = null; lastQuestion = ""; scrollToEnd = false; safety = null
     }
 
     fun build(a: MainActivity): View {
@@ -71,7 +74,7 @@ object AskScreen {
         head.addView(Ui.weight(Ui.caption(a, "A grounded chat about your recovery. General guidance, " +
             "not a substitute for your physio."), 1f))
         if (turns.isNotEmpty()) head.addView(Ui.textButton(a, "Start a new chat") {
-            turns.clear(); error = null; loading = false
+            turns.clear(); error = null; loading = false; safety = null
             a.store.clearAskTurns()
             a.refresh()
         })
@@ -92,6 +95,7 @@ object AskScreen {
                 col.addView(c)
             }
         }
+        safety?.let { col.addView(answerCard(a, it, profile, today)) }
         if (loading) {
             val c = Ui.card(a, Ui.INFO_BG)
             c.addView(Ui.text(a, "Thinking…", 14.5f, Ui.ON_INFO_BG, bold = true))
@@ -143,6 +147,7 @@ object AskScreen {
     }
 
     private fun send(a: MainActivity, q: String, profile: com.recoverwell.core.model.Profile, today: LocalDate) {
+        safety = Ask.answer(q, profile, today).takeIf { it.dial != null }
         turns.add(Groq.Message("user", q))
         error = null
         loading = true
@@ -229,8 +234,8 @@ object AskScreen {
         a: MainActivity, col: LinearLayout,
         profile: com.recoverwell.core.model.Profile, onPick: (String) -> Unit
     ) {
-        col.addView(Ui.caption(a, "Pick a topic to start - or type your own question."))
-        for (topic in Ask.topics(profile)) {
+        col.addView(Ui.caption(a, "Pick a question to start - or type your own."))
+        for (topic in Ask.topics(profile, LocalDate.now())) {
             col.addView(Ui.section(a, topic.title))
             for (q in topic.questions) {
                 col.addView(Ui.listRow(a, topic.icon, q, null, chevron = true) { onPick(q) })
@@ -244,14 +249,35 @@ object AskScreen {
         card.addView(Ui.text(a, ans.title, 16f, Ui.ON_INFO_BG, bold = true))
         card.addView(Ui.spacer(a, 4))
         card.addView(Ui.text(a, ans.body, 14.5f, Ui.ON_INFO_BG))
+        // a symptom answer puts the right call one tap away
+        when (val number = ans.dial) {
+            null -> {}
+            Ask.DIAL_CLINIC -> RedFlagsScreen.addClinicButton(a, card)
+            "999" -> card.addView(Ui.fullWidth(Ui.dangerButton(a, "Call 999") { RedFlagsScreen.dial(a, "999") }, a))
+            else -> card.addView(Ui.fullWidth(Ui.tonalButton(a, "Call $number") { RedFlagsScreen.dial(a, number) }, a))
+        }
+        fun link(label: String, go: () -> Unit) = card.addView(Ui.fullWidth(Ui.tonalButton(a, label) { go() }, a))
         when (ans.action) {
             Ask.Action.OPEN_RED_FLAGS -> card.addView(Ui.fullWidth(Ui.dangerButton(a, "Open red flags") {
                 a.pushOverlay("Red flags") { RedFlagsScreen.build(a) }
             }, a))
-            Ask.Action.OPEN_PHASE_GUIDE -> card.addView(Ui.fullWidth(Ui.tonalButton(a, "Open phase guide") {
+            Ask.Action.OPEN_PHASE_GUIDE -> link("Open phase guide") {
                 val n = com.recoverwell.core.logic.PhaseEngine.currentPhase(profile, today).number
                 a.pushOverlay("Phase $n") { TodayScreen.phaseDetail(a, n) }
-            }, a))
+            }
+            Ask.Action.OPEN_MEDICATIONS -> link("Open medications") {
+                a.pushOverlay("Medications") { MoreScreen.medsEditor(a) }
+            }
+            Ask.Action.OPEN_WELLBEING -> link("How you're doing") {
+                a.pushOverlay("How you're doing") { WellbeingScreen.build(a) }
+            }
+            Ask.Action.OPEN_STAY_FIT -> link("Stay fit ideas") {
+                a.pushOverlay("Stay fit") { StayFitScreen.build(a) }
+            }
+            Ask.Action.OPEN_EXERCISES -> link("Open exercises") { a.show(MainActivity.Tab.EXERCISES) }
+            Ask.Action.OPEN_WHAT_TO_EXPECT -> link("What to expect") {
+                a.pushOverlay("What to expect") { WhatToExpectScreen.build(a) }
+            }
             Ask.Action.NONE -> {}
         }
         return card

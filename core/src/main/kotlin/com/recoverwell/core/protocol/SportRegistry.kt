@@ -156,7 +156,7 @@ object SportRegistry {
             RtsRung("rts_swim_return", 10, "Return to swimming", "Pool walking, then easy strokes, then push-off and kick.",
                 phase = 4, testIds = listOf("balance_eo"),
                 guidance = listOf(
-                    "Wait until any wounds are fully healed and your physio approves the pool.",
+                    "Wait until your physio approves the pool (and any skin sores from the boot have healed).",
                     "Reintroduce strong kicking and wall push-offs last."),
                 requiresPhysioSignoff = true)
         )

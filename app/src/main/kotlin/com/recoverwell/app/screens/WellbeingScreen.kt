@@ -59,7 +59,8 @@ object WellbeingScreen {
             col.addView(TodayScreen.insightCard(a, moodInsight))
         } else {
             col.addView(Ui.section(a, "Your mood"))
-            col.addView(Ui.caption(a, "Log your mood on the Progress tab for a few days and a gentle reflection will appear here."))
+            col.addView(Ui.caption(a, "Log your mood in the daily check-in (Today › Daily care) for a few days " +
+                "and a gentle reflection will appear here."))
         }
 
         // ---- reassurance (fear of re-rupture) ------------------------------

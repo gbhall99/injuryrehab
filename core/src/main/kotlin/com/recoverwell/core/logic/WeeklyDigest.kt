@@ -13,7 +13,8 @@ object WeeklyDigest {
     enum class Trend { DOWN, UP, STEADY, NONE }
 
     data class Digest(
-        val adherencePct: Int,
+        /** % of scheduled doses logged taken; null when no medication is scheduled. */
+        val adherencePct: Int?,
         val painTrend: Trend,
         val painDetail: String,
         val exercisesDone: Int,
@@ -38,7 +39,7 @@ object WeeklyDigest {
             it.type == EventType.MEDICATION && it.status == EventStatus.TAKEN &&
                 !it.date.isBefore(weekAgo) && !it.date.isAfter(today)
         }
-        val adherence = TrendMath.adherence(taken, total)
+        val adherence = if (total > 0) TrendMath.adherence(taken, total) else null
 
         // pain trend over the trailing week vs the week before (shared, future-bounded windows)
         val (recentLogs, priorLogs) = TrendMath.twoWindows(logs, today) { it.date }
@@ -64,18 +65,20 @@ object WeeklyDigest {
                 it.refId != ScheduleEngine.EXERCISE_SESSION_REF && it.refId != Fitness.SESSION_REF
         }
 
-        // milestones whose typical date fell this week
+        // milestones whose typical date fell this week AND whose phase is reached
         val protocol = ProtocolRegistry.forProfile(profile)
+        val phaseNow = PhaseEngine.currentPhase(profile, today).number
         val milestones = protocol.milestones.filter {
             val d = profile.injuryDate.plusWeeks(it.week.toLong())
-            !d.isBefore(weekAgo) && !d.isAfter(today)
+            !d.isBefore(weekAgo) && !d.isAfter(today) && phaseNow >= it.phase
         }.map { it.title }
 
         // one focus for next week
         val gate = PhaseEngine.nextPhaseGate(profile, today)
         val phase = PhaseEngine.currentPhase(profile, today)
         val focus = when {
-            adherence in 1 until TrendMath.ADHERENCE_SLIPPING -> "Tighten up your medication routine - consistency protects against clots."
+            adherence != null && adherence in 1 until TrendMath.ADHERENCE_SLIPPING ->
+                "Tighten up your medication routine - consistency protects against clots."
             trend == Trend.UP -> "Ease off a little; if pain keeps rising, tell your physio."
             gate.readyToConfirm -> "Ask your physio whether you're ready for phase ${gate.nextPhase!!.number}."
             else -> phase.goals.firstOrNull() ?: "Keep following your plan."

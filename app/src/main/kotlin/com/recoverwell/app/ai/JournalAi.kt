@@ -53,8 +53,10 @@ Reply with ONLY a JSON object of this exact shape:
  "redFlagNote":"if redFlag, one short sentence on the concerning symptom; else empty"}
 For metrics, ONLY fill a field if the user actually described it; otherwise use null - never
 guess a value. Set redFlag to true ONLY for symptoms needing urgent medical attention: signs
-of a blood clot (new calf pain/swelling/warmth/redness), chest pain, breathlessness, fever,
-a wound that looks infected, or sudden severe new pain. Keep each array to at most 3 short
+of a blood clot (new calf pain/swelling/warmth/redness), chest pain, breathlessness, coughing
+blood, a snap/pop or sudden loss of push-off (possible re-rupture), bleeding that won't stop or
+any head injury on a blood thinner, numb or discoloured toes or sores under the boot, fever, or
+sudden severe new pain. Keep each array to at most 3 short
 items. Do not give medical clearance; defer clinical decisions to their physio."""
 
     private const val SUMMARY_RULES = """

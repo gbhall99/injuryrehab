@@ -6,9 +6,11 @@ import com.recoverwell.app.MainActivity
 import com.recoverwell.app.notify.Reminders
 import com.recoverwell.app.ui.Forms
 import com.recoverwell.app.ui.Ui
+import com.recoverwell.core.logic.PhaseEngine
 import com.recoverwell.core.logic.ScheduleEngine
 import com.recoverwell.core.protocol.ProtocolRegistry
 import com.recoverwell.core.protocol.RehabFramework
+import java.time.LocalDate
 import java.time.LocalTime
 
 /**
@@ -91,15 +93,126 @@ object Onboarding {
         // scrolls within itself, instead of overflowing and overlapping the banner
         col.addView(MoreScreen.profileEditor(a) {
             a.popOverlay()
-            a.pushOverlay { stepMeds(a) }
+            // someone joining mid-recovery says where their physio has them, so
+            // the plan doesn't restart them on week-one boot exercises
+            a.pushOverlay { if (joiningMidRecovery(a)) stepWhereNow(a) else stepMeds(a) }
         }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        return col
+    }
+
+    /** True when the injury date is far enough back that the typical timeline is past phase 1. */
+    private fun joiningMidRecovery(a: MainActivity): Boolean =
+        PhaseEngine.dateEligiblePhase(a.store.profile(), LocalDate.now()) > 1
+
+    /**
+     * For people who start using the app part-way through: pick the stage the
+     * physio has actually put them in (defaulting to the typical one for their
+     * injury date) and whether they're still in the boot. Confirmation dates are
+     * left unknown so "your pace" isn't skewed by the install date.
+     */
+    private fun stepWhereNow(a: MainActivity): View {
+        val today = LocalDate.now()
+        val profile = a.store.profile()
+        val protocol = ProtocolRegistry.forProfile(profile)
+        val typical = PhaseEngine.dateEligiblePhase(profile, today)
+        val weeks = PhaseEngine.weeksSinceInjury(profile, today)
+        val device = ProtocolRegistry.deviceFor(profile)
+        var chosen = profile.physioConfirmedPhase.takeIf { it in 2..typical } ?: typical
+        var inDevice = profile.bootWeanedDate == null && chosen <= 3
+        var setting = if (profile.physioConfirmedPhase > 1) profile.currentWedges
+            else profile.wedgePlan.expectedWedges(profile.injuryDate, today, profile.wedgeDateOverrides)
+        var weanedOn = profile.bootWeanedDate ?: minOf(today, profile.injuryDate.plusWeeks(10))
+
+        val col = Ui.column(a, 0)
+        val banner = Ui.column(a)
+        banner.addView(backLink(a) { a.popOverlay(); a.pushOverlay { stepProfile(a) } })
+        banner.addView(Ui.pillBadge(a, "Step 1 of 3", Ui.ON_PRIMARY_CONTAINER, Ui.PRIMARY_CONTAINER))
+        banner.addView(Ui.spacer(a, 6))
+        banner.addView(Ui.headline(a, "Where are you now?"))
+        banner.addView(Ui.caption(a, "You're about $weeks weeks in. Pick the stage your physio or clinic has " +
+            "actually moved you to - your exercises, checks and reminders start from there."))
+        col.addView(banner)
+
+        val editor = Ui.column(a)
+        val phases = Ui.card(a)
+        val deviceCard = Ui.card(a)
+        lateinit var rebuild: () -> Unit
+        rebuild = {
+            phases.removeAllViews()
+            for (ph in protocol.phases.filter { it.number <= typical }) {
+                val selected = ph.number == chosen
+                val row = Ui.row(a)
+                row.setPadding(0, Ui.dp(a, 8), 0, Ui.dp(a, 8))
+                row.isClickable = true
+                row.isFocusable = true
+                row.minimumHeight = Ui.dp(a, Ui.MIN_TOUCH_DP)
+                row.contentDescription = "Phase ${ph.number}, ${ph.title}" + if (selected) ", selected" else ""
+                row.background = Ui.ripple(a, Ui.rounded(0x00000000, 12f))
+                row.addView(Ui.iconBadge(a, if (selected) "ic_check" else "ic_flag",
+                    if (selected) Ui.ON_PRIMARY_CONTAINER else Ui.TEXT_DIM,
+                    if (selected) Ui.PRIMARY_CONTAINER else Ui.SURFACE_HIGH, boxDp = 34))
+                val texts = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
+                texts.setPadding(Ui.dp(a, 12), 0, 0, 0)
+                texts.addView(Ui.text(a, "Phase ${ph.number} · ${ph.title}", 15f, Ui.TEXT, bold = selected))
+                texts.addView(Ui.caption(a, ph.subtitle + if (ph.number == typical) " · typical for your date" else ""))
+                row.addView(Ui.weight(texts, 1f))
+                row.setOnClickListener {
+                    chosen = ph.number
+                    inDevice = when {
+                        chosen <= 2 -> true
+                        chosen >= 4 -> false
+                        else -> inDevice
+                    }
+                    rebuild()
+                }
+                phases.addView(row)
+            }
+            deviceCard.removeAllViews()
+            if (device != null) {
+                val name = device.name.lowercase()
+                deviceCard.addView(Forms.label(a, "Still wearing the $name?"))
+                deviceCard.addView(Forms.toggle(a, inDevice) { on -> inDevice = on; rebuild() })
+                if (inDevice && device.kind != com.recoverwell.core.protocol.DeviceKind.CAST) {
+                    deviceCard.addView(Forms.stepper(a, "Setting now (${device.unitNamePlural})",
+                        setting, 0, device.maxValue, step = device.plan.stepSize.coerceAtLeast(1)) { setting = it })
+                    deviceCard.addView(Ui.caption(a, "Your plan would expect about " +
+                        device.format(profile.wedgePlan.expectedWedges(profile.injuryDate, today,
+                            profile.wedgeDateOverrides)) + " around now - enter what yours is actually set to."))
+                } else if (!inDevice) {
+                    deviceCard.addView(Forms.dateRow(a, "Out of it since", weanedOn) { weanedOn = it.coerceAtMost(today) })
+                    deviceCard.addView(Ui.caption(a, "Boot checks and boot-change reminders won't be scheduled."))
+                }
+            }
+        }
+        rebuild()
+        editor.addView(phases)
+        if (device != null) editor.addView(deviceCard)
+        editor.addView(Ui.fullWidth(Ui.button(a, "Confirm & continue") {
+            val p = a.store.profile()
+            a.store.saveProfile(p.copy(
+                physioConfirmedPhase = chosen,
+                // when each phase was confirmed is unknown - leave it out rather than
+                // stamping today, which would make "your pace" read weeks behind
+                phaseConfirmedDates = emptyMap(),
+                currentWedges = if (inDevice) setting else p.currentWedges,
+                bootWeanedDate = if (inDevice) null else weanedOn
+            ))
+            Reminders.reschedule(a)
+            a.popOverlay()
+            a.pushOverlay { stepMeds(a) }
+        }, a))
+        editor.addView(Ui.spacer(a, 24))
+        col.addView(Ui.scroll(a, editor),
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         return col
     }
 
     private fun stepMeds(a: MainActivity): View {
         val col = Ui.column(a, 0)
         val banner = Ui.column(a)
-        banner.addView(backLink(a) { a.popOverlay(); a.pushOverlay { stepProfile(a) } })
+        banner.addView(backLink(a) {
+            a.popOverlay(); a.pushOverlay { if (joiningMidRecovery(a)) stepWhereNow(a) else stepProfile(a) }
+        })
         banner.addView(Ui.pillBadge(a, "Step 2 of 3", Ui.ON_PRIMARY_CONTAINER, Ui.PRIMARY_CONTAINER))
         banner.addView(Ui.spacer(a, 6))
         banner.addView(Ui.headline(a, "Medication reminders"))
@@ -122,10 +235,17 @@ object Onboarding {
                     // typical boot period rather than letting reminders run forever
                     // (VTE prophylaxis is time-limited - NICE NG89).
                     val injuryDate = a.store.profile().injuryDate
+                    val today = LocalDate.now()
+                    val typicalEnd = injuryDate.plusWeeks(
+                        com.recoverwell.core.model.Medication.TYPICAL_COURSE_WEEKS)
                     val seeded = proto.prefillMedications.map {
-                        it.copy(
-                            courseEndDate = injuryDate.plusWeeks(
-                                com.recoverwell.core.model.Medication.TYPICAL_COURSE_WEEKS),
+                        if (!typicalEnd.isAfter(today)) {
+                            // joining after the typical course would have ended: someone adding it
+                            // is still taking it, so never seed an end date in the past (reminders
+                            // would silently never fire) - ask them to confirm the end in a week
+                            it.copy(courseEndDate = null, reviewDate = today.plusDays(7))
+                        } else it.copy(
+                            courseEndDate = typicalEnd,
                             reviewDate = injuryDate.plusWeeks(
                                 com.recoverwell.core.model.Medication.TYPICAL_REVIEW_WEEKS)
                         )

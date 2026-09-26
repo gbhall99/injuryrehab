@@ -57,6 +57,14 @@ data class InjuryProtocol(
     val expectations: List<WeekExpectation> = emptyList(),
     /** General fitness / conditioning that's safe to do during recovery. */
     val fitness: List<FitnessActivity> = emptyList(),
+    /**
+     * The everyday questions patients actually ask (sleeping, showering, stairs,
+     * painkillers, flying...), answered from protocol data by the offline
+     * Recovery coach - phase-aware, never invented.
+     */
+    val faqs: List<Faq> = emptyList(),
+    /** How much discomfort is acceptable during/after exercise (shown with every exercise). */
+    val exercisePainRule: String = "",
     /** Which drawn body visual the twin screen uses (registry key). */
     val bodySceneId: String,
     // ---- copy that would otherwise be hard-coded in screens (scalable) ----
@@ -216,8 +224,51 @@ data class MovementCheckSpec(
     /** First phase in which this is allowed. */
     val unlockPhase: Int,
     val noteWhenLocked: String,
-    val noteWhenUnlocked: String
-)
+    val noteWhenUnlocked: String,
+    /** Words/phrases that clearly ask about this movement ("drive", "car"). */
+    val keywords: List<String> = emptyList(),
+    /**
+     * Weaker context words ("boot off") that only decide the match when no
+     * other question topic is present - so "take the boot off to sleep"
+     * answers sleeping, not walking without the boot.
+     */
+    val contextKeywords: List<String> = emptyList(),
+    /** How the coach lists it, e.g. "Can I do heel raises?"; blank = "Can I <movement>?". */
+    val question: String = ""
+) {
+    fun questionText(): String = question.ifBlank { "Can I ${movement.lowercase()}?" }
+}
+
+/** Where a coach answer can take the user next. */
+enum class FaqLink { NONE, RED_FLAGS, PHASE_GUIDE, MEDICATIONS, WELLBEING, STAY_FIT, EXERCISES, WHAT_TO_EXPECT }
+
+/**
+ * A common patient question, answered offline from protocol data. [answers] is
+ * keyed by phase: the entry with the highest key at or below the user's
+ * current phase applies, so "Can I shower?" gets a different (correct) answer
+ * in the boot than out of it.
+ */
+data class Faq(
+    val id: String,
+    /** The question as listed in the coach. */
+    val question: String,
+    /** Heading it's grouped under in the coach's topic list. */
+    val topic: String,
+    /** Words/phrases that clearly identify the question (whole-word matched). */
+    val keywords: List<String>,
+    val answers: Map<Int, String>,
+    val link: FaqLink = FaqLink.NONE,
+    /** Phases in which it's listed as a starter question (always answerable when typed). */
+    val listFromPhase: Int = 1,
+    val listToPhase: Int = 99,
+    /** Weaker context words, used only when no stronger topic matches. */
+    val contextKeywords: List<String> = emptyList()
+) {
+    /** The answer for [phase]: the latest entry at or below it (else the earliest). */
+    fun answerFor(phase: Int): String =
+        answers.filterKeys { it <= phase }.maxByOrNull { it.key }?.value
+            ?: answers.minByOrNull { it.key }?.value.orEmpty()
+}
 
 data class RedFlagSection(
     val id: String,

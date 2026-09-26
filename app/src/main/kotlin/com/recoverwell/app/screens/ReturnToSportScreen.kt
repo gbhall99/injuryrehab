@@ -253,7 +253,7 @@ object ReturnToSportScreen {
                 t.test.howTo.joinToString("\n\n") { "• $it" } + "\n\n" + t.test.precaution)
         }, 1f))
         actions.addView(Ui.weight(Ui.textButton(a, "Log result") {
-            a.pushOverlay { logTest(a, t.test) }
+            a.pushOverlay("Log result") { logTest(a, t.test) }
         }, 1f))
         wrap.addView(actions)
         return wrap
@@ -352,7 +352,8 @@ object ReturnToSportScreen {
                 val tv = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
                 tv.setPadding(Ui.dp(a, 8), 0, Ui.dp(a, 8), 0)
                 tv.addView(Ui.text(a, test.valueLabel(r) + (if (r.painFree) "" else " · with pain"), 14f, Ui.TEXT, bold = true))
-                tv.addView(Ui.caption(a, r.date.toString() + if (r.note.isNotBlank()) " · ${r.note}" else ""))
+                tv.addView(Ui.caption(a, com.recoverwell.core.logic.Dates.friendly(r.date) +
+                    if (r.note.isNotBlank()) " · ${r.note}" else ""))
                 row.addView(Ui.weight(tv, 1f))
                 row.addView(Ui.iconButton(a, "ic_close", Ui.TEXT_DIM, desc = "Delete result") {
                     Forms.confirm(a, "Delete this result?", "It will be removed from your history.") {

@@ -18,8 +18,11 @@ progressive wedge reduction — built around a real recovery that started on
 
 - **Exercise engine** — five-phase library with animated demonstrations
   (offline, see below), written cues, sets/reps/holds, frequency and a
-  "why this matters" for every exercise. Daily session view with tick-off
-  logging. Progression is gated by *date AND physio confirmation*: the next
+  "why this matters" for every exercise, plus a pain-monitoring rule. Daily
+  sessions are dose-aware (each exercise appears in as many sessions as its own
+  prescription; impact work runs on alternate days) with tick-off logging and a
+  guided mode that counts reps, holds and timed rounds. Progression is gated by
+  *date AND physio confirmation*: the next
   phase only activates when its (editable) start date has been reached *and*
   you record that your physio approved it.
 - **Medication & task reminders** — anticoagulant 2.5 mg pre-loaded with
@@ -39,16 +42,20 @@ progressive wedge reduction — built around a real recovery that started on
   of plan, boot not worn in the protection phase, pain/swelling patterns that
   deserve a DVT check).
 - **Safety first** — DVT, pulmonary embolism, re-rupture, anticoagulant
-  bleeding and boot/skin red flags are one tap away from **every** screen via
-  the persistent header button, written as symptoms + concrete actions
-  (999 / 111 / clinic).
+  bleeding (incl. head injury on a blood thinner) and boot/skin red flags are
+  one tap away from **every** screen via the persistent header button, written
+  as symptoms + concrete actions - with one-tap **Call 999 / Call 111 / Call my
+  clinic** (the dialler opens; no call permission).
 - **On-device intelligence (no cloud, no network)** — *Insights* analyse your
   own logs for pain/swelling trends and correlations (e.g. swelling lower on
   elevation days); *Adaptive reminders* learn the time you actually take a dose
   and offer to move the reminder to match; *Pace* projects whether you are
   ahead of or behind the typical timeline from your physio-confirmed phases;
-  and the *Recovery coach* answers "Can I drive yet?", "What's next?" and red-flag
-  questions offline, deep-linking into the right screen.
+  and the *Recovery coach* answers "Can I drive yet?", "What's next?", the
+  everyday questions (sleeping in the boot, showering, stairs, crutches, work,
+  flying, painkillers, swelling, shoes, gym, falls) and red-flag questions
+  offline - phase-aware, whole-word matched, safety-first, deep-linking into the
+  right screen.
 - **Engagement** — an optional once-a-day exercise nudge (only on days your
   current phase has exercises), and a **weekly digest** on the Progress tab:
   medication adherence, pain trend, exercise sessions completed, milestones
@@ -122,6 +129,9 @@ progressive wedge reduction — built around a real recovery that started on
   unlock by phase), plus a settable weekly conditioning goal you can log
   against. Protocol data, so it scales per injury and is kept separate from the
   rehab-exercise counts.
+
+A full UX-journey and specialist-physio content audit (scores, friction
+points, fixes, verification) lives in [`docs/UX_CLINICAL_AUDIT.md`](docs/UX_CLINICAL_AUDIT.md).
 
 ## Rehab protocol (conservative / non-surgical only)
 

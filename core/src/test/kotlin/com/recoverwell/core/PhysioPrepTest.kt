@@ -32,6 +32,7 @@ class PhysioPrepTest {
         // clear the whole strength stage so the jogging stage (needs sign-off) is current
         val results = listOf(
             SelfTestResult(UUID.randomUUID().toString(), "heel_rise_sym", today, 18.0, 20.0, true, ""),
+            SelfTestResult(UUID.randomUUID().toString(), "heel_rise_height", today, 9.5, 10.0, true, ""),
             SelfTestResult(UUID.randomUUID().toString(), "balance_eo", today, 35.0, null, true, ""),
             SelfTestResult(UUID.randomUUID().toString(), "calf_girth_sym", today, 38.0, 40.0, true, ""),
             SelfTestResult(UUID.randomUUID().toString(), "walk_tol", today, 35.0, null, true, "")

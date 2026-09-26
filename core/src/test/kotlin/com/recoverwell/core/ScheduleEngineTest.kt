@@ -33,9 +33,10 @@ class ScheduleEngineTest {
         val items = ScheduleEngine.dailyChecklist(profile, meds, tasks, emptyMap(), emptyList(), date)
         // 3 task defs with 3+1+2 = 6 time slots
         assertEquals(6, items.count { it.kind == ScheduleEngine.ItemKind.TASK })
-        // phase 1: 5 exercises done over a uniform 3 sessions/day = 15 items
-        assertEquals(5 * ScheduleEngine.EXERCISE_SESSIONS_PER_DAY,
-            items.count { it.kind == ScheduleEngine.ItemKind.EXERCISE })
+        // phase 1 over 3 daily sessions, each exercise in as many sessions as its
+        // own dose: all 5 in sessions 1-2, then only the 3x/4x-a-day ones (toes,
+        // knee bends) in session 3 = 5 + 5 + 2
+        assertEquals(12, items.count { it.kind == ScheduleEngine.ItemKind.EXERCISE })
     }
 
     @Test
@@ -61,13 +62,13 @@ class ScheduleEngineTest {
         fun exerciseCount(sessions: Int) = ScheduleEngine
             .dailyChecklist(profile, meds, tasks, emptyMap(), emptyList(), date, sessions)
             .count { it.kind == ScheduleEngine.ItemKind.EXERCISE }
-        // 5 phase-1 exercises × the chosen number of daily sessions
-        assertEquals(5 * 1, exerciseCount(1))
-        assertEquals(5 * 2, exerciseCount(2))
-        assertEquals(5 * 3, exerciseCount(3))
+        // phase-1 exercises across the chosen number of daily sessions, dose-aware
+        assertEquals(5, exerciseCount(1))
+        assertEquals(10, exerciseCount(2))
+        assertEquals(12, exerciseCount(3))
         // out-of-range choices clamp into 1..3 rather than producing junk
-        assertEquals(5 * 1, exerciseCount(0))
-        assertEquals(5 * 3, exerciseCount(9))
+        assertEquals(5, exerciseCount(0))
+        assertEquals(12, exerciseCount(9))
         assertEquals(1, ScheduleEngine.clampSessions(-4))
         assertEquals(3, ScheduleEngine.clampSessions(7))
     }

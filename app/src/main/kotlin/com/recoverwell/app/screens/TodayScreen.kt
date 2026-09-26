@@ -36,13 +36,15 @@ object TodayScreen {
             a.store.exerciseOverrides(), a.store.eventsOn(today), today,
             a.store.exerciseSessions()
         )
-        val doneCount = items.count { it.isDone }
-        val dayProgress = if (items.isEmpty()) 0f else doneCount.toFloat() / items.size
+        // real actions, not rows: each exercise session and the check-in count once
+        val checkedInToday = a.store.dailyLog(today).pain != null
+        val (doneCount, totalCount) = ScheduleEngine.dayProgress(items, checkedInToday)
+        val dayProgress = if (totalCount == 0) 0f else doneCount.toFloat() / totalCount
         val allEvents = a.store.allEvents()
         val medStreak = ScheduleEngine.medicationStreak(
             a.store.medications(), allEvents, today, afterDate = profile.injuryDate)
         val exStreak = ScheduleEngine.exerciseStreak(
-            profile, a.store.exerciseOverrides(), allEvents, today)
+            profile, a.store.exerciseOverrides(), allEvents, today, a.store.exerciseSessions())
 
         // ---- hero card -------------------------------------------------
         val hero = Ui.card(a, Ui.HERO_BG)
@@ -59,7 +61,7 @@ object TodayScreen {
         heroTexts.addView(Ui.text(a, "Phase ${phase.number} · ${phase.title}", 14f,
             com.recoverwell.draw.Palette.withAlpha(onHero, 0xE6)))
         heroTexts.addView(Ui.spacer(a, 6))
-        heroTexts.addView(Ui.text(a, "$doneCount of ${items.size} done today", 13f, onHeroDim))
+        heroTexts.addView(Ui.text(a, "$doneCount of $totalCount done today", 13f, onHeroDim))
         // streak chips: medication and exercise, side by side (each shown at 2+ days)
         val chips = ArrayList<View>()
         if (medStreak >= 2) chips.add(streakChip(a, "ic_flag", "$medStreak-day meds"))
@@ -157,7 +159,7 @@ object TodayScreen {
             val review = med.reviewDate!!
             val end = med.courseEndDate
             if (!today.isBefore(review) && (end == null || !today.isAfter(end))) {
-                val endNote = end?.let { " Reminders are set to stop after $it." } ?: ""
+                val endNote = end?.let { " Reminders are set to stop after ${Forms.friendlyDate(it)}." } ?: ""
                 prompts.add(Prompt(4, "ic_pill", "Review your ${med.name.lowercase()} course",
                     "Your prescribed course is due for review.$endNote Confirm with your clinician whether to " +
                         "continue or stop - never stop a clot-prevention medicine early without advice.",
@@ -192,9 +194,34 @@ object TodayScreen {
         // progression gate
         if (gate.nextPhase != null && gate.readyToConfirm) {
             prompts.add(Prompt(10, "ic_calendar", "Ready for phase ${gate.nextPhase!!.number}?",
-                "The typical timeline reaches \"${gate.nextPhase!!.title}\" on ${gate.startDate}. " +
-                    "Only your physio can confirm you're ready.", "My physio confirmed it", TONE_INFO) {
-                confirmGate(a, gate.nextPhase!!.number, gate.nextPhase!!.title, today)
+                "The typical timeline reaches \"${gate.nextPhase!!.title}\" on " +
+                    "${gate.startDate?.let { Forms.friendlyDate(it) }}. " +
+                    "Only your physio can confirm you're ready - until then your plan stays on phase " +
+                    "${phase.number}.", "My physio confirmed it", TONE_INFO, pinned = true) {
+                confirmGate(a, gate.nextPhase!!.number, today)
+            })
+        }
+        // coming out of the boot is a real, physio-agreed event: ask once the wean
+        // phase starts, so boot checks and boot-change reminders don't outlive the boot
+        val device = ProtocolRegistry.deviceFor(profile)
+        if (device != null && phase.number == 3 && profile.bootWeanedDate == null &&
+            a.store.setting(BOOT_PROMPT_SNOOZE, "").let { v ->
+                val until = runCatching { LocalDate.parse(v) }.getOrNull()
+                until == null || !today.isBefore(until)
+            }) {
+            prompts.add(Prompt(11, "ic_boot", "Out of the ${device.name.lowercase()} yet?",
+                "When your physio says you can stop wearing it day and night, record it here - the boot " +
+                    "check and any boot-change reminders stop, and My leg shows you out of it.",
+                "I'm out of the boot", TONE_INFO, pinned = true,
+                secondaryLabel = "Not yet", onSecondary = {
+                    a.store.saveSetting(BOOT_PROMPT_SNOOZE, today.plusDays(7).toString()); a.refresh()
+                }) {
+                Forms.confirm(a, "Out of the ${device.name.lowercase()}?",
+                    "Only if your physio has agreed you can stop using it. You can change this under Injury & goal.") {
+                    a.store.saveProfile(a.store.profile().copy(bootWeanedDate = today))
+                    Reminders.reschedule(a)
+                    a.refresh()
+                }
             })
         }
         // backup nudge
@@ -372,27 +399,36 @@ object TodayScreen {
             col.addView(legend)
         }
         addGroup("Medication", setOf(ScheduleEngine.ItemKind.MEDICATION))
+        // a boot change is a key (~weekly) event - shown near the top on the day it's due
+        addGroup("Boot change due today", setOf(ScheduleEngine.ItemKind.WEDGE_CHANGE))
         addDailyCare()
         addExerciseSessions()
-        // boot changes are scheduled (~weekly), not daily - their own section,
-        // shown only on the day one is due
-        addGroup("Scheduled today", setOf(ScheduleEngine.ItemKind.WEDGE_CHANGE))
 
         if (gate.nextPhase != null && !gate.dateEligible) {
             col.addView(Ui.spacer(a, 8))
             col.addView(Ui.caption(a, "Next: phase ${gate.nextPhase!!.number} - ${gate.nextPhase!!.title}, " +
-                "typically from ${gate.startDate}. Your physio may adjust this.").apply {
+                "typically from ${gate.startDate?.let { Forms.friendlyDate(it) }}. Your physio may adjust this.").apply {
                 gravity = Gravity.CENTER
             })
         }
 
-        // ---- recovery snapshot: the key stats & timelines, now below the day's
+        // ---- focus + "more for you": pinned prompts (the phase gate) always
+        // show as full cards; once the user has a few check-ins, the single most
+        // important other prompt becomes the focus card and the rest collapse
+        // into compact rows - never silently dropped. First run stays calm.
+        val pinned = rest.filter { it.pinned }
+        val unpinned = rest.filterNot { it.pinned }
+        val cards = if (pinned.isNotEmpty()) pinned else if (settled) unpinned.take(1) else emptyList()
+        for (p in cards) col.addView(focusCard(a, p))
+        val compact = if (settled) unpinned.filterNot { it in cards } else emptyList()
+        if (compact.isNotEmpty()) {
+            col.addView(Ui.section(a, "More for you"))
+            for (p in compact) col.addView(Ui.listRow(a, p.icon, p.title, p.action) { p.onTap() })
+        }
+
+        // ---- recovery snapshot: the key stats & timelines, below the day's
         // actions so the checklist (the primary task) leads the screen ----
         col.addView(recoverySnapshot(a, profile, today, phase, medStreak, exStreak))
-
-        // Once the user has a few check-ins logged, surface the single most
-        // important non-safety prompt as the focus card (kept calm on first run).
-        if (settled) rest.firstOrNull()?.let { col.addView(focusCard(a, it)) }
 
         // ---- "jump to" card grid: the hybrid home's always-visible navigation,
         // promoting the destinations otherwise buried under the More tab ----
@@ -486,7 +522,8 @@ object TodayScreen {
 
         val tiles = ArrayList<View>()
         tiles.add(metricTile(a, "$exStreak-day", "Exercise streak",
-            "${exerciseAdherence(profile, overrides, events, today)}% done · 7d") {
+            "${ScheduleEngine.exerciseAdherence(profile, overrides, events, today,
+                a.store.exerciseSessions())}% done · 7d") {
             a.pushOverlay("Exercise history") { HistoryScreen.exercises(a) }
         })
         if (hasMeds) tiles.add(metricTile(a, "$medStreak-day", "Med streak",
@@ -525,32 +562,6 @@ object TodayScreen {
         tile.addView(Ui.caption(a, label))
         tile.addView(Ui.text(a, sub, 11.5f, Ui.PRIMARY, bold = true).apply { maxLines = 1 })
         return tile
-    }
-
-    /** % of expected exercise sessions completed over the last [days] days. */
-    private fun exerciseAdherence(
-        profile: com.recoverwell.core.model.Profile,
-        overrides: Map<String, com.recoverwell.core.model.ExerciseOverride>,
-        events: List<com.recoverwell.core.model.EventLog>, today: LocalDate, days: Int = 7
-    ): Int {
-        val doneByDay = events
-            .filter { it.type == com.recoverwell.core.model.EventType.EXERCISE && it.status == EventStatus.DONE }
-            .groupBy { it.date }
-        var expected = 0
-        var done = 0
-        for (i in 0 until days) {
-            val d = today.minusDays(i.toLong())
-            val exs = ScheduleEngine.mergedExercises(PhaseEngine.currentPhase(profile, d).exercises, overrides)
-            if (exs.isEmpty()) continue
-            val sessions = ScheduleEngine.clampSessions(ScheduleEngine.EXERCISE_SESSIONS_PER_DAY)
-            expected += sessions
-            val dayEvents = doneByDay[d] ?: continue
-            for (s in 1..sessions) {
-                val slot = "session$s"
-                if (exs.all { ex -> dayEvents.any { it.refId == ex.id && it.slotKey == slot } }) done++
-            }
-        }
-        return if (expected == 0) 0 else done * 100 / expected
     }
 
     /** % of scheduled medication doses logged as taken over the last [days] days. */
@@ -724,7 +735,9 @@ object TodayScreen {
         col.addView(Ui.caption(a, "Your routine for this session - tap an exercise to see how to do " +
             "it and log it, or mark the whole session done at once below."))
         col.addView(Ui.spacer(a, 4))
-        val allExercises = ProtocolRegistry.forProfile(a.store.profile()).phases.flatMap { it.exercises }
+        val allExercises = ScheduleEngine.mergedExercises(
+            ProtocolRegistry.forProfile(a.store.profile()).phases.flatMap { it.exercises },
+            a.store.exerciseOverrides())
         val events = a.store.eventsOn(LocalDate.now())
         var doneCount = 0
         for (refId in refIds) {
@@ -828,7 +841,7 @@ object TodayScreen {
     private const val SETTLED_AFTER_CHECKINS = 3
 
     /** Overlay wrapping the shared check-in form, opened from the Daily care row. */
-    private fun checkInOverlay(a: MainActivity, date: LocalDate): View {
+    fun checkInOverlay(a: MainActivity, date: LocalDate): View {
         val col = Ui.column(a)
         col.addView(Ui.backRow(a, "Daily check-in") { a.popOverlay() })
         col.addView(checkInCard(a, date, checkInExpanded) { a.popOverlay(); a.refresh() })
@@ -898,8 +911,14 @@ object TodayScreen {
 
     private class Prompt(
         val priority: Int, val icon: String, val title: String, val body: String,
-        val action: String, val tone: Int, val safety: Boolean = false, val onTap: () -> Unit
+        val action: String, val tone: Int, val safety: Boolean = false,
+        /** Always shown as a full card, even during the calm first-run days. */
+        val pinned: Boolean = false,
+        val secondaryLabel: String? = null, val onSecondary: (() -> Unit)? = null,
+        val onTap: () -> Unit
     )
+
+    private const val BOOT_PROMPT_SNOOZE = "boot_out_prompt_snooze_until"
 
     private fun toneBg(tone: Int) = when (tone) { TONE_WARN -> Ui.WARN_BG; TONE_DONE -> Ui.DONE_BG; else -> Ui.INFO_BG }
     private fun toneFg(tone: Int) = when (tone) { TONE_WARN -> Ui.WARN; TONE_DONE -> Ui.DONE; else -> Ui.ON_INFO_BG }
@@ -917,18 +936,32 @@ object TodayScreen {
         card.addView(Ui.spacer(a, 3))
         card.addView(Ui.text(a, p.body, 14f, toneBody(p.tone)))
         card.addView(Ui.fullWidth(Ui.button(a, p.action) { p.onTap() }, a))
+        if (p.secondaryLabel != null && p.onSecondary != null) {
+            card.addView(Ui.fullWidth(Ui.textButton(a, p.secondaryLabel) { p.onSecondary.invoke() }, a, 2))
+        }
         return card
     }
 
-    private fun confirmGate(a: MainActivity, number: Int, title: String, today: LocalDate) {
+    /**
+     * Records the physio's go-ahead for phase [number], then says plainly what
+     * changed - the new focus, exercises and freedoms - so progressing isn't a
+     * silent state flip.
+     */
+    fun confirmGate(a: MainActivity, number: Int, today: LocalDate) {
+        val spec = ProtocolRegistry.forProfile(a.store.profile()).phase(number)
         Forms.confirm(a, "Confirm progression",
-            "Has your physiotherapist explicitly confirmed phase $number ($title)?") {
+            "Has your physiotherapist explicitly confirmed phase $number (${spec.title})?") {
             val pp = a.store.profile()
             a.store.saveProfile(pp.copy(
                 physioConfirmedPhase = number,
                 phaseConfirmedDates = pp.phaseConfirmedDates + (number to today)))
             Reminders.reschedule(a)
             a.refresh()
+            Forms.info(a, "Phase $number unlocked",
+                "${spec.title}\n\nFocus now:\n• " + spec.goals.take(3).joinToString("\n• ") +
+                    "\n\nNewly OK:\n• " + spec.allowed.take(3).joinToString("\n• ") +
+                    "\n\nYour exercise sessions now follow phase $number (${spec.exercises.size} exercises). " +
+                    "The phase guide on Today has the full do's and don'ts.")
         }
     }
 

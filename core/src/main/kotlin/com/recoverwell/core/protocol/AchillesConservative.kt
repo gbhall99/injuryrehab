@@ -52,13 +52,17 @@ object AchillesConservative {
                 "Never walk without the boot, even for one step (e.g. night-time bathroom trips)",
                 "Do not move the ankle up towards you (dorsiflexion) - the boot angle protects the tendon",
                 "Do not change the boot's heel angle yourself unless your clinic has told you to",
-                "Watch daily for DVT warning signs - calf pain, heat, swelling, redness"
+                "Watch daily for DVT warning signs - calf pain, heat, swelling, redness",
+                "Pain relief: paracetamol is usually first choice - avoid anti-inflammatories (ibuprofen, naproxen) " +
+                    "while on a blood thinner unless your doctor agrees"
             ),
             allowed = listOf(
                 "Walking short distances in the boot with crutches, putting weight through as comfort allows",
                 "Wiggling and scrunching toes inside the boot",
                 "Knee, hip and core exercises with the boot on",
                 "Sitting with the leg elevated above heart level",
+                "Stairs on crutches: up with the good leg first, down with the booted leg first - or sit and " +
+                    "shuffle on your bottom",
                 "Washing with the boot off ONLY if seated, foot pointed down, no weight through it (if your clinic allows)"
             ),
             notAllowed = listOf(
@@ -68,7 +72,13 @@ object AchillesConservative {
                 "Driving",
                 "Running, jumping, sport of any kind - {sport} comes much later"
             ),
-            exercises = phase1Exercises()
+            exercises = phase1Exercises(),
+            physioQuestions = listOf(
+                "Can the boot come off to wash or sleep - and how do I keep my foot pointed down if it does?",
+                "When is my first heel-angle reduction, and will the steps be weekly or fortnightly?",
+                "How long will I need the blood thinner?",
+                "How much weight can I put through the boot, and when can I stop using crutches?"
+            )
         ),
         PhaseSpec(
             number = 2,
@@ -105,11 +115,17 @@ object AchillesConservative {
             notAllowed = listOf(
                 "Walking without the boot",
                 "Calf stretching or forcing the ankle upwards",
-                "Removing more wedges than planned to “speed things up”",
+                "Lowering the heel angle faster than planned to “speed things up”",
                 "Driving (most people cannot drive safely in a boot - ask your clinic and insurer)",
                 "Impact activity: running, jumping, {sport}"
             ),
-            exercises = phase2Exercises()
+            exercises = phase2Exercises(),
+            physioQuestions = listOf(
+                "Is my heel angle on track to reach neutral (foot flat) by around week 8?",
+                "When can I come off crutches completely?",
+                "Do I still need to sleep in the boot?",
+                "Does the blood thinner stop when the boot comes off?"
+            )
         ),
         PhaseSpec(
             number = 3,
@@ -120,7 +136,7 @@ object AchillesConservative {
             startWeek = 8,
             endWeek = 12,
             entryCriteria = listOf(
-                "Around 8 weeks since injury and all wedges out (boot at neutral) - confirm with your physio",
+                "Around 8 weeks since injury with the boot at neutral (foot flat) - confirm with your physio",
                 "Comfortable fully weight-bearing in the neutral boot",
                 "Physiotherapist has confirmed you can begin weaning out of the boot"
             ),
@@ -134,6 +150,8 @@ object AchillesConservative {
                 "No calf stretching until at least 12 weeks from injury - the tendon is still remodelling",
                 "Dorsiflexion (foot up) only to neutral; never push into stretch",
                 "Avoid slopes, stairs without rails, and uneven ground early in the wean",
+                "Use the heel raise your clinic advises (often in both shoes, so you stay level) and lower it only " +
+                    "as directed",
                 "Re-rupture risk is highest in this transition out of the boot - progress only as your physio directs",
                 "Keep wearing the boot in crowded or unpredictable places until cleared"
             ),
@@ -141,7 +159,8 @@ object AchillesConservative {
                 "Walking indoors in supportive shoes with heel raise (as physio directs)",
                 "Gentle active ankle movement: down fully, up to neutral only",
                 "Stationary cycling with low resistance once your physio approves",
-                "Swimming/pool walking once any wounds are healed and physio approves"
+                "Pool walking and gentle swimming once your physio approves - no pushing off the wall with the " +
+                    "injured foot"
             ),
             notAllowed = listOf(
                 "Calf stretches (before week 12, and after only when physio says)",
@@ -150,7 +169,14 @@ object AchillesConservative {
                 "Running, hopping, jumping",
                 "{Sport}, even a gentle session"
             ),
-            exercises = phase3Exercises()
+            exercises = phase3Exercises(),
+            physioQuestions = listOf(
+                "How should I wean out of the boot - indoors first, then outdoors? For how long each day?",
+                "Is the tendon healing at the right length? (Your physio can compare the resting angle of " +
+                    "each ankle.)",
+                "Do I need a heel raise in my shoes - in one or both, and for how long?",
+                "When can I stop wearing the boot at night and outdoors?"
+            )
         ),
         PhaseSpec(
             number = 4,
@@ -167,14 +193,17 @@ object AchillesConservative {
                 "Physiotherapist has confirmed progression to strengthening"
             ),
             goals = listOf(
-                "Rebuild calf strength: seated raises, double-leg raises, then towards single-leg",
+                "Rebuild calf strength step by step: two legs, then up-on-two-down-on-one, then single-leg - " +
+                    "adding load as your physio directs",
                 "Restore balance and proprioception on the injured side",
                 "Walk 30+ minutes comfortably with a symmetrical pattern",
                 "Build general leg strength: squats, step-ups, bridges"
             ),
             precautions = listOf(
-                "Strengthen before you stretch - aggressive stretching can still over-lengthen the tendon",
-                "Expect mild ache after sessions; sharp pain in the tendon means stop and tell your physio",
+                "Don't stretch the calf unless your physio prescribes it - most people regain movement by walking " +
+                    "and strengthening, and over-stretching can leave the tendon long and push-off weak",
+                "Use the pain rule: up to about 3-4/10 during exercise is OK if it settles by the next morning; " +
+                    "sharp pain, or worse the next day, means drop back a step and tell your physio",
                 "No impact work (running/jumping) until your physio clears it - usually phase 5",
                 "Progress one variable at a time: range, then reps, then load"
             ),
@@ -191,7 +220,13 @@ object AchillesConservative {
                 "Returning to {sport} - that is phase 5 work",
                 "Maximal single-leg hopping or sprinting"
             ),
-            exercises = phase4Exercises()
+            exercises = phase4Exercises(),
+            physioQuestions = listOf(
+                "When can I progress from two-leg to single-leg heel raises?",
+                "How much weight should I add to calf raises, and how often should I load them?",
+                "Is my heel-rise height on the injured side close to the other side?",
+                "What do I need to achieve before I can start jogging?"
+            )
         ),
         PhaseSpec(
             number = 5,
@@ -216,7 +251,9 @@ object AchillesConservative {
             precautions = listOf(
                 "Each step up (jog, hop, agility, rally, match) needs physio sign-off",
                 "Warm up thoroughly; fatigue is when re-injuries happen",
-                "The repaired tendon often stays slightly thicker - that is normal",
+                "The healed tendon often stays slightly thicker - that is normal",
+                "Keep calf strengthening going 2-3 times a week, even once you're back - it's the best " +
+                    "protection against re-injury",
                 "Morning tendon stiffness that worsens week-on-week means back off and ask your physio"
             ),
             allowed = listOf(
@@ -230,7 +267,13 @@ object AchillesConservative {
                 "Skipping progression steps after a good week",
                 "Playing through sharp tendon pain"
             ),
-            exercises = phase5Exercises()
+            exercises = phase5Exercises(),
+            physioQuestions = listOf(
+                "What heel-raise and hop numbers do you want to see before I run, hop or play?",
+                "How should I build my running and hopping from week to week?",
+                "What should the steps back to {sport} look like - drills, practice, then matches?",
+                "What should I keep doing long-term to protect the tendon?"
+            )
         )
     )
 
@@ -443,16 +486,30 @@ object AchillesConservative {
 
     private fun phase4Exercises() = listOf(
         ExerciseSpec(
-            id = "p4_double_raise", phase = 4, name = "Double-leg heel raises",
+            id = "p4_double_raise", phase = 4, name = "Heel-raise progression (two legs → one)",
             demoId = "double_heel_raise",
             cues = listOf(
-                "Stand by a wall or counter for balance",
-                "Push up through the balls of both feet",
-                "3 seconds up, pause, 3 seconds down"
+                "Stand by a wall or counter, fingertips on it for balance only",
+                "Stage 1 - both legs: 3 seconds up, pause, 3 seconds down, weight shared 50/50",
+                "Stage 2 - up on two, down on one: rise on both feet, lift the good foot at the top, lower slowly on the injured leg",
+                "Stage 3 - single-leg: rise and lower on the injured leg alone, full height",
+                "Move up a stage only when the current one is easy, full height and no worse the next morning - and your physio agrees"
             ),
-            sets = 3, reps = 12, holdSeconds = 1, sessionsPerDay = 2,
-            whyItMatters = "The cornerstone of Achilles rehab: progressive calf-raise load is what turns scar tissue into a strong, organised tendon.",
-            precaution = "Start sharing weight 50/50; shift weight toward the injured side only as your physio progresses you."
+            sets = 3, reps = 15, holdSeconds = 1, sessionsPerDay = 1,
+            whyItMatters = "The cornerstone of Achilles rehab: progressive calf-raise load is what turns scar tissue into a strong, organised tendon. Working from two legs to one builds the single-leg strength every later stage depends on.",
+            precaution = "Height matters as much as reps - a rep that doesn't reach full height doesn't count. Lower slowly; never bounce."
+        ),
+        ExerciseSpec(
+            id = "p4_soleus_raise", phase = 4, name = "Seated calf raises with weight",
+            demoId = "seated_heel_raise",
+            cues = listOf(
+                "Sit with the knee bent at 90 degrees, foot flat",
+                "Rest a weight on the injured knee - a heavy bag or dumbbell",
+                "Push up through the ball of the foot, pause at the top, lower over 3 seconds"
+            ),
+            sets = 3, reps = 12, holdSeconds = 1, sessionsPerDay = 1,
+            whyItMatters = "Bent-knee raises load the soleus, the deep calf muscle that takes the most force when you walk and run. Weight on the knee strengthens it without any balance demand.",
+            precaution = "Start light (around 5 kg) and add weight gradually as your physio directs - it should feel hard by the last few reps, never sharp."
         ),
         ExerciseSpec(
             id = "p4_balance", phase = 4, name = "Single-leg balance",
@@ -512,7 +569,8 @@ object AchillesConservative {
             ),
             sets = 1, reps = 1, holdSeconds = 1500, sessionsPerDay = 1,
             whyItMatters = "Rebuilds the aerobic engine so that returning to running in phase 5 is limited by the tendon plan, not by fitness.",
-            precaution = "No push-off turns in the pool off the injured foot yet."
+            precaution = "No push-off turns in the pool off the injured foot yet.",
+            intervalDays = 2
         )
     )
 
@@ -526,7 +584,7 @@ object AchillesConservative {
                 "Slow, controlled lowering every rep"
             ),
             sets = 3, reps = 15, holdSeconds = 1, sessionsPerDay = 1,
-            whyItMatters = "20-25 strong single-leg raises is the classic benchmark that the calf-tendon unit is ready for running and court work.",
+            whyItMatters = "20-25 strong single-leg raises - reaching the same height as the other side - is the classic benchmark that the calf-tendon unit is ready for running and court work.",
             precaution = "Quality first: a shaky half-height rep does not count."
         ),
         ExerciseSpec(
@@ -539,7 +597,8 @@ object AchillesConservative {
             ),
             sets = 1, reps = 8, holdSeconds = 180, sessionsPerDay = 1,
             whyItMatters = "Graded exposure to impact lets the tendon adapt to running loads without spikes - the safe road back to court speed.",
-            precaution = "Only after physio clearance and the single-leg raise benchmark."
+            precaution = "Only after physio clearance and the single-leg raise benchmark. Next-morning stiffness that settles within an hour is fine; if it's worse, repeat the last level.",
+            intervalDays = 2
         ),
         ExerciseSpec(
             id = "p5_hop", phase = 5, name = "Hop & plyometric progression",
@@ -551,7 +610,8 @@ object AchillesConservative {
             ),
             sets = 3, reps = 10, holdSeconds = 0, sessionsPerDay = 1,
             whyItMatters = "Sport is built on springs: plyometric capacity is the last physical quality the tendon needs before returning to {sport}.",
-            precaution = "Each new hop variation needs physio sign-off."
+            precaution = "Each new hop variation needs physio sign-off.",
+            intervalDays = 2
         ),
         ExerciseSpec(
             id = "p5_agility", phase = 5, name = "Direction-change drills",
@@ -563,7 +623,8 @@ object AchillesConservative {
             ),
             sets = 3, reps = 6, holdSeconds = 0, sessionsPerDay = 1,
             whyItMatters = "Sharp direction changes are exactly the load that ruptured the tendon - rehearse them progressively before they happen at match pace.",
-            precaution = "Fatigue ruins technique: stop while movements still feel crisp."
+            precaution = "Fatigue ruins technique: stop while movements still feel crisp.",
+            intervalDays = 2
         ),
         ExerciseSpec(
             id = "p5_padel", phase = 5, name = "{Sport}-specific drills",
@@ -575,7 +636,8 @@ object AchillesConservative {
             ),
             sets = 1, reps = 1, holdSeconds = 1200, sessionsPerDay = 1,
             whyItMatters = "Staged exposure to {sport} rebuilds timing and confidence while keeping loads predictable - the final bridge back to the game you are doing all this for.",
-            precaution = "Full competitive {sport} typically returns 9-12 months after injury, only with explicit physio sign-off."
+            precaution = "Full competitive {sport} typically returns 9-12 months after injury, only with explicit physio sign-off.",
+            intervalDays = 2
         )
     )
 
@@ -584,18 +646,18 @@ object AchillesConservative {
     // ------------------------------------------------------------------
 
     val milestones: List<Milestone> = listOf(
-        Milestone(0, "Injury & boot fitted", "Rupture confirmed; boot on in full equinus; clot-prevention plan started."),
-        Milestone(1, "Specialist review", "Consultant confirms the conservative pathway and the boot/wedge plan."),
-        Milestone(2, "Settled in the boot", "Pain and swelling settling; weight-bearing as tolerated becoming comfortable."),
-        Milestone(3, "First heel-angle reduction", "Heel-angle reduction typically begins (clinic-dependent: weekly or fortnightly)."),
-        Milestone(6, "Walking confidently in boot", "Full weight-bearing without crutches for most people."),
-        Milestone(8, "Boot at neutral", "Heel angle typically at neutral (0°); foot flat in the boot."),
-        Milestone(10, "Boot weaning", "Transition to supportive shoes with a heel raise, guided by your physio."),
-        Milestone(12, "Out of the boot", "Normal shoes; gentle stretching may begin ONLY if your physio approves."),
-        Milestone(16, "Strength building", "Double-leg heel raises strong; balance work progressing."),
-        Milestone(24, "Single-leg strength & jogging", "Single-leg raise benchmark approaching; walk-jog may begin once cleared."),
-        Milestone(39, "{Sport} drills", "Sport-specific drills and graded practice, physio-approved (~9 months)."),
-        Milestone(52, "Return to {sport}", "Typical window for full competitive return is 9-12 months with sign-off.")
+        Milestone(0, "Injury & boot fitted", "Rupture confirmed; boot on in full equinus; clot-prevention plan started.", phase = 1),
+        Milestone(1, "Specialist review", "Consultant confirms the conservative pathway and the boot plan.", phase = 1),
+        Milestone(2, "Settled in the boot", "Pain and swelling settling; weight-bearing as tolerated becoming comfortable.", phase = 1),
+        Milestone(3, "First heel-angle reduction", "Heel-angle reduction typically begins (clinic-dependent: weekly or fortnightly).", phase = 2),
+        Milestone(6, "Walking confidently in boot", "Full weight-bearing without crutches for most people.", phase = 2),
+        Milestone(8, "Boot at neutral", "Heel angle typically at neutral (0°); foot flat in the boot.", phase = 3),
+        Milestone(10, "Boot weaning", "Transition to supportive shoes with a heel raise, guided by your physio.", phase = 3),
+        Milestone(12, "Out of the boot", "Normal supportive shoes. No calf stretching unless your physio prescribes it.", phase = 4),
+        Milestone(16, "Strength building", "Two-leg heel raises strong and moving towards single-leg; balance work progressing.", phase = 4),
+        Milestone(24, "Single-leg strength & jogging", "Single-leg raise benchmark approaching; walk-jog may begin once cleared.", phase = 5),
+        Milestone(39, "{Sport} drills", "Sport-specific drills and graded practice, physio-approved (~9 months).", phase = 5),
+        Milestone(52, "Return to {sport}", "Typical window for full competitive return is 9-12 months with sign-off.", phase = 5)
     )
 
     // ------------------------------------------------------------------
@@ -631,14 +693,17 @@ object AchillesConservative {
         RedFlagSection(
             id = "rerupture",
             title = "Possible re-rupture",
-            urgency = "Urgent - contact your clinic / fracture clinic today",
+            urgency = "Urgent - contact your fracture clinic today (A&E if it's closed)",
             symptoms = listOf(
                 "A new snap, pop or sudden sharp pain at the back of the ankle",
                 "Sudden loss of push-off power",
                 "A new gap or dip you can feel in the tendon",
                 "Sudden new swelling around the heel cord"
             ),
-            action = "Put the boot back on (with the wedges you last used), avoid weight-bearing, and contact your clinic urgently. Re-rupture risk is highest from week 6 to week 12 and when transitioning out of the boot."
+            action = "Stop, put the boot back on at the last setting you used (or keep the foot pointed down if you no " +
+                "longer have it), keep weight off the leg and contact your fracture clinic today - if it's closed, go to " +
+                "A&E or an urgent treatment centre. Re-rupture is most common between about weeks 6 and 12 and when " +
+                "coming out of the boot."
         ),
         RedFlagSection(
             id = "bleeding",
@@ -649,9 +714,12 @@ object AchillesConservative {
                 "Unexplained or spreading bruising",
                 "Blood in urine, or black/tarry stools",
                 "Coughing or vomiting blood",
-                "Severe headache or sudden confusion"
+                "Severe headache or sudden confusion",
+                "Any knock to the head - e.g. from a fall on crutches - even if you feel fine"
             ),
-            action = "Clot-prevention medication slightly raises bleeding risk. Severe or persistent bleeding needs urgent assessment - and never stop the medication on your own without medical advice."
+            action = "Clot-prevention medication slightly raises bleeding risk. Severe or persistent bleeding needs urgent " +
+                "assessment, and any head injury while taking it needs same-day assessment at A&E even if you feel well - " +
+                "bleeding inside the head can show up hours later. Never stop the medication on your own without medical advice."
         ),
         RedFlagSection(
             id = "boot",
@@ -660,7 +728,8 @@ object AchillesConservative {
             symptoms = listOf(
                 "Numbness, tingling or colour change in the toes",
                 "Pressure sores, blisters or broken skin under the boot",
-                "Pain from the boot that adjustment does not fix"
+                "Pain from the boot that adjustment does not fix",
+                "Severe or increasing pain in the foot or calf that rest, elevation and loosening the straps don't ease"
             ),
             action = "A boot that fits badly can damage skin and nerves. Loosen the straps, recheck the padding, and contact your clinic if it does not settle quickly."
         )
@@ -680,7 +749,9 @@ object AchillesConservative {
                 "Clinically important: do not stop or skip without medical advice. " +
                 "This is usually a time-limited course (often while the boot is on) - " +
                 "the end date below is an editable placeholder, so confirm with your " +
-                "clinician when to stop.",
+                "clinician when to stop. Avoid anti-inflammatory painkillers (ibuprofen, " +
+                "naproxen) unless your doctor agrees, and get any head injury checked the " +
+                "same day. Missed a dose? Check the leaflet or ask a pharmacist - never double up.",
             active = true
         )
     )
@@ -722,12 +793,25 @@ object AchillesConservative {
             id = "heel_rise_sym", name = "Single-leg heel-rise count", unit = "reps",
             symmetry = true, passThreshold = 90.0, requirePainFree = true, lowerIsBetter = false,
             howTo = listOf(
-                "Stand by a wall or counter for light balance support only",
-                "On one leg, rise fully onto your toes and lower with control - that's one rep",
-                "Count good-quality reps until form drops or you fatigue, then test the other side",
-                "Record reps for each side"
+                "Stand on one leg facing a wall, fingertips on it for balance only - no pushing",
+                "Rise as high as you can and lower with control, at a steady pace of one rep every 2 seconds",
+                "Only count reps that reach close to the height of your first few; stop when you can't, or at sharp pain",
+                "Test the other side the same way and record both"
             ),
-            precaution = "Calf strength symmetry is the single best marker before impact. Stop at sharp tendon pain.",
+            precaution = "Calf endurance symmetry is one of the best markers before impact. Stop at sharp tendon pain.",
+            earliestPhase = 4
+        ),
+        SelfTest(
+            id = "heel_rise_height", name = "Single-leg heel-rise height", unit = "cm",
+            symmetry = true, passThreshold = 90.0, requirePainFree = true, lowerIsBetter = false,
+            howTo = listOf(
+                "Stand side-on to a wall with a ruler or tape measure held upright beside your heel",
+                "Rise onto your toes on one leg as high as you can and hold for a moment",
+                "Have someone read how high the back of your heel lifts (or mark the wall) - best of 3",
+                "Repeat on the other leg and record both"
+            ),
+            precaution = "Height matters as much as reps: a lower heel-rise on the injured side can mean the tendon has " +
+                "healed a little long - worth showing your physio.",
             earliestPhase = 4
         ),
         SelfTest(
@@ -815,7 +899,7 @@ object AchillesConservative {
         RtsRung(
             id = "rts_strength", order = 1, title = "Single-leg strength base", phase = 4,
             summary = "Rebuild calf strength, balance and walking tolerance before any impact.",
-            testIds = listOf("heel_rise_sym", "balance_eo", "calf_girth_sym", "walk_tol"),
+            testIds = listOf("heel_rise_sym", "heel_rise_height", "balance_eo", "calf_girth_sym", "walk_tol"),
             guidance = listOf(
                 "This is the foundation - skipping it is how tendons get re-injured later.",
                 "Re-test every week or two; expect steady, not overnight, gains."
@@ -905,7 +989,8 @@ object AchillesConservative {
             "Morning stiffness that eases as you move" to "A sudden snap or pop with loss of push-off power",
             "A tendon that looks/feels a little thicker than the other side" to "A new gap or dip you can feel in the tendon",
             "Mild ache for a day after a harder session" to "Sharp tendon pain that stops you mid-step",
-            "Twinges that settle within a day" to "New calf pain, heat, swelling or redness - think DVT"
+            "Twinges that settle within a day" to "New calf pain, heat, swelling or redness - think DVT",
+            "Ankle swelling by evening that's gone by morning" to "Swelling that won't settle with elevation"
         )
     )
 
@@ -919,13 +1004,14 @@ object AchillesConservative {
             listOf(
                 "Bruising and swelling down the calf, ankle and foot - normal as it settles",
                 "The boot feeling heavy and awkward; sleep can be disrupted",
-                "Throbbing when the leg hangs down - elevate above heart level to ease it"
+                "Throbbing when the leg hangs down - elevate above heart level to ease it",
+                "Needing regular simple pain relief for the first week or so - paracetamol is usually preferred on a blood thinner"
             ),
             "You're not being overcautious - early protection is exactly what gives the tendon the best result."),
         WeekExpectation(2, 8, "Weeks 2-8: weight-bearing & heel-angle reduction",
             "Build confidence on the leg as the heel angle steps down toward neutral.",
             listOf(
-                "Walking further in the boot, often off crutches by around week 6",
+                "Walking further in the boot - many people are off crutches somewhere between weeks 2 and 6",
                 "Each heel-angle reduction feeling odd for a day or two - that settles",
                 "Calf looking thinner than the other side - muscle wasting is expected and reversible"
             ),
@@ -935,7 +1021,9 @@ object AchillesConservative {
             listOf(
                 "First steps out of the boot feeling wobbly and the ankle very stiff",
                 "A limp at first - a heel raise in the shoe helps while strength returns",
-                "Re-rupture anxiety peaking around now; that's normal as protection comes off"
+                "Re-rupture anxiety peaking around now; that's normal as protection comes off",
+                "The tendon feeling thick or lumpy where it healed - normal scar tissue that remodels over months",
+                "The ankle swelling by the end of the day - common for 6-12 months and it settles overnight"
             ),
             "Nerves out of the boot are universal. Progress at your physio's pace and confidence follows strength."),
         WeekExpectation(12, 24, "Weeks 12-24: strengthening",
@@ -943,7 +1031,8 @@ object AchillesConservative {
             listOf(
                 "Steady strength gains - double-leg, then eventually single-leg heel raises",
                 "Mild ache after sessions is fine; sharp tendon pain is not",
-                "Frustration that strength lags expectations - it takes months, not weeks"
+                "Frustration that strength lags expectations - it takes months, not weeks",
+                "Calf still visibly smaller than the other side - it catches up slowly and may never fully match"
             ),
             "This phase does the real work. Consistency now is what gets you back to {sport}."),
         WeekExpectation(24, 52, "6-12 months: return to {sport}",
@@ -985,11 +1074,188 @@ object AchillesConservative {
         FitnessActivity("f_bike", "Stationary bike (light)", "Once out of the boot", 3,
             "Once your physio approves: easy spinning at low resistance, pedalling through the heel and midfoot."),
         FitnessActivity("f_swim", "Swimming & pool", "Once out of the boot", 3,
-            "Once any wounds are healed and your physio approves: pool walking and easy swimming are excellent " +
-                "low-impact cardio."),
+            "Once your physio approves (and any skin sores from the boot have healed): pool walking and easy " +
+                "swimming are excellent low-impact cardio. No pushing off the wall with the injured foot at first."),
         FitnessActivity("f_gym", "Good-side & gym strength", "Once out of the boot", 4,
             "Leg press, squats and step-ups within physio guidance; train the uninjured leg hard to limit overall " +
                 "strength loss while the injured side catches up.")
+    )
+
+    // ------------------------------------------------------------------
+    // Everyday questions for the offline Recovery coach (phase-aware)
+    // ------------------------------------------------------------------
+
+    private const val EVERYDAY = "Everyday life"
+    private const val SYMPTOMS = "Pain, swelling & medicines"
+    private const val ACTIVITY = "Exercise & activity"
+    private const val SAFETY = "Safety"
+
+    private val faqs: List<Faq> = listOf(
+        Faq("sleep", "Can I take the boot off to sleep?", EVERYDAY,
+            keywords = listOf("sleep", "sleeping", "bed", "bedtime", "night", "nights", "overnight"),
+            answers = mapOf(
+                1 to "Not yet. Most UK pathways keep the boot on day and night for the first 6-8 weeks - an " +
+                    "unguarded movement in your sleep, like pulling the toes up, can stretch the healing tendon. " +
+                    "Loosen the straps slightly for comfort and rest the leg on a pillow. Some clinics allow nights " +
+                    "out of the boot from around week 6 - only if yours has said so.",
+                3 to "Often yes by now, if your physio has agreed - many clinics stop night-time wear during the " +
+                    "wean. If you're not sure, keep it on until you've asked.",
+                4 to "Yes - the boot isn't needed at night at this stage."),
+            listToPhase = 3),
+        Faq("wash", "Can I shower or have a bath?", EVERYDAY,
+            keywords = listOf("shower", "showering", "bath", "baths", "bathe", "bathing", "wash", "washing"),
+            answers = mapOf(
+                1 to "Ask your clinic whether the boot can come off to wash. If it can: sit down to do it, keep the " +
+                    "foot pointed down (never pulled up), put no weight through it, and put the boot back on before " +
+                    "you stand. A shower stool and a waterproof cover help. Never stand in the shower without the " +
+                    "boot in these weeks.",
+                3 to "Usually yes, normally, once you're weaning out of the boot. Take care on wet floors - a " +
+                    "non-slip mat helps while balance and confidence come back."),
+            listToPhase = 2),
+        Faq("stairs", "How do I manage stairs?", EVERYDAY,
+            keywords = listOf("stairs", "stair", "staircase", "upstairs", "downstairs"),
+            answers = mapOf(
+                1 to "On crutches: going UP, lead with the good leg, then bring the booted leg and crutches. Going " +
+                    "DOWN, crutches and booted leg first, then the good leg ('up with the good, down with the bad'). " +
+                    "Use a rail if there is one. If you feel unsteady, sit and shuffle up or down on your bottom - " +
+                    "it's safe and very common.",
+                3 to "One step at a time with the rail: good leg leads going up, injured leg leads coming down. Your " +
+                    "physio will tell you when to try normal step-over-step.",
+                4 to "Build back to normal stairs as strength returns - step-ups in your exercises train exactly " +
+                    "this. Keep a hand on the rail coming down until it feels solid."),
+            listToPhase = 3),
+        Faq("crutches", "When can I stop using crutches?", EVERYDAY,
+            keywords = listOf("crutch", "crutches", "walking stick"),
+            answers = mapOf(
+                1 to "Use them whenever you walk for now. Most UK pathways let you put as much weight through the " +
+                    "boot as is comfortable, so you'll lean on them less and less.",
+                2 to "Many people come off crutches between weeks 2 and 6, once they can walk in the boot without " +
+                    "pain or a limp. Wean from two to one (held in the hand opposite the injured leg), then none.",
+                3 to "You should be walking in the boot without crutches by now. A single crutch or stick can help " +
+                    "for the first days out of the boot - hold it in the hand opposite the injured leg."),
+            listToPhase = 3),
+        Faq("work", "When can I go back to work?", EVERYDAY,
+            keywords = listOf("work", "job", "office", "desk", "back to work"),
+            answers = mapOf(
+                1 to "It depends on your job. Desk work: often from about 2 weeks, if you can get there safely and " +
+                    "keep the leg up. Standing or walking jobs: usually once you're out of the boot (around 8-12 " +
+                    "weeks). Heavy manual work, ladders or rough ground: often 3-6 months. Your GP can give a fit " +
+                    "note with adjustments such as phased hours or seated work.",
+                4 to "Most jobs are manageable now. Heavy manual work, ladders and uneven ground are the last to " +
+                    "return - often 4-6 months. Ask your physio about any specific demands of your job."),
+            listToPhase = 4),
+        Faq("travel", "Can I fly or take a long journey?", EVERYDAY,
+            keywords = listOf("fly", "flying", "flight", "flights", "plane", "holiday", "travel", "travelling",
+                "traveling", "journey", "abroad"),
+            answers = mapOf(
+                1 to "Talk to your clinic before any flight or journey over about 4 hours while you're in the boot " +
+                    "or on a blood thinner - immobility plus travel raises clot risk, and you may need clot " +
+                    "prevention for the trip. If you do travel: an aisle seat, toe and knee exercises every 30 " +
+                    "minutes, walk when you can and stay well hydrated.",
+                4 to "Usually fine once you're out of the boot and walking normally. Keep moving on long journeys - " +
+                    "walk the aisle, do calf and toe exercises - and drink plenty of water. Check with your clinic " +
+                    "if you're still on a blood thinner."),
+            listToPhase = 3),
+        Faq("painkillers", "What painkillers can I take?", SYMPTOMS,
+            keywords = listOf("painkiller", "painkillers", "pain killer", "pain killers", "ibuprofen", "nurofen",
+                "naproxen", "paracetamol", "nsaid", "nsaids", "anti inflammatory", "anti inflammatories",
+                "antiinflammatory", "co codamol", "codeine", "pain relief", "tablets for pain"),
+            answers = mapOf(
+                1 to "Paracetamol is usually the first choice. Avoid anti-inflammatories such as ibuprofen, " +
+                    "naproxen or high-dose aspirin while you're on a blood thinner unless your doctor says otherwise " +
+                    "- together they raise bleeding risk, and some clinicians prefer to avoid them while a tendon " +
+                    "heals. Check with your pharmacist or GP and follow the leaflets with your medicines."),
+            listToPhase = 3),
+        Faq("blood_thinner", "How long do I take the blood thinner for?", SYMPTOMS,
+            keywords = listOf("blood thinner", "blood thinners", "anticoagulant", "anticoagulants", "injection",
+                "injections", "clexane", "enoxaparin", "dalteparin", "fragmin", "apixaban", "eliquis",
+                "rivaroxaban", "xarelto", "tinzaparin"),
+            answers = mapOf(
+                1 to "Usually while your leg is immobilised in the boot or cast - often around 6-10 weeks - but it " +
+                    "varies, so follow your prescriber. Don't stop early or skip doses without medical advice. Set " +
+                    "the course end date under Medications so the reminders stop on time. Missed a dose? Check the " +
+                    "leaflet or ask a pharmacist - never double up."),
+            link = FaqLink.MEDICATIONS, listToPhase = 3),
+        Faq("swelling", "Is my swelling normal?", SYMPTOMS,
+            keywords = listOf("swelling", "swollen", "swell", "swells", "puffy", "fluid"),
+            answers = mapOf(
+                1 to "Some swelling and bruising down into the foot is normal, and it's worse when the leg hangs " +
+                    "down. Elevate above heart level for 20-30 minutes a few times a day and keep the toes moving. " +
+                    "But swelling that won't settle with elevation - especially with calf pain, heat or redness - " +
+                    "needs same-day advice in case it's a clot.",
+                3 to "Ankle swelling by the end of the day is very common for 6-12 months and usually settles " +
+                    "overnight with the leg up. New swelling with calf pain, heat or redness is different - treat " +
+                    "it as a possible clot and get same-day advice."),
+            link = FaqLink.RED_FLAGS),
+        Faq("elevate", "How long should I keep my leg up?", SYMPTOMS,
+            keywords = listOf("elevate", "elevating", "elevation", "leg up", "keep my leg up", "raise my leg"),
+            answers = mapOf(
+                1 to "Aim for 20-30 minutes a few times a day with the foot above heart level - lying down with " +
+                    "the leg on pillows. More if swelling is bad. A footstool while sitting isn't high enough to " +
+                    "drain swelling.",
+                4 to "Only as needed now - if the ankle swells after a busy day, 20-30 minutes with the leg up in " +
+                    "the evening helps."),
+            listToPhase = 3),
+        Faq("lump", "Is the lump on my tendon normal?", SYMPTOMS,
+            keywords = listOf("lump", "lumpy", "thick", "thicker", "thickened", "thickening", "bump", "knot"),
+            answers = mapOf(
+                1 to "Yes - a thicker, firmer area where the tendon healed is normal scar tissue. It remodels over " +
+                    "many months but often stays a little thicker than the other side for good. What's NOT normal " +
+                    "is a new gap or dip in the tendon, or a sudden snap with loss of push-off - that needs urgent " +
+                    "review."),
+            listFromPhase = 3),
+        Faq("exercise_pain", "How much pain is OK when I exercise?", SYMPTOMS,
+            keywords = listOf("hurt", "hurts", "painful", "ache", "aches", "aching", "sore", "soreness",
+                "how much pain", "pain during", "pain after"),
+            answers = mapOf(
+                1 to "A little discomfort is fine: up to about 3-4 out of 10 during exercise, settling within an " +
+                    "hour and no worse the next morning. If pain is sharp, goes above that, or the tendon is " +
+                    "stiffer and sorer the next day, drop back a step and tell your physio. A sudden sharp pain " +
+                    "with a snap is different - check the red flags."),
+            listFromPhase = 2),
+        Faq("shoes", "What shoes should I wear?", ACTIVITY,
+            keywords = listOf("shoe", "shoes", "trainer", "trainers", "footwear", "heel lift", "heel insert",
+                "insole", "insoles", "barefoot", "flip flops", "slippers", "heels"),
+            answers = mapOf(
+                1 to "The boot is your shoe for now. On the other foot, wear a supportive trainer with a similar " +
+                    "sole height to the boot (a thicker sole or a shoe 'leveller') so your hips stay level - it " +
+                    "prevents knee, hip and back aches.",
+                3 to "Supportive trainers with the heel raise your clinic advises - often in both shoes so you " +
+                    "stay level. Avoid flat shoes, slippers and barefoot walking for now.",
+                4 to "Normal supportive trainers. Your physio will wean you off any heel raise. Build up to barefoot " +
+                    "and flatter shoes gradually - they ask more of the calf."),
+            listFromPhase = 2),
+        Faq("gym", "Can I go to the gym?", ACTIVITY,
+            keywords = listOf("gym", "weights", "workout", "work out", "training", "fitness", "cardio"),
+            answers = mapOf(
+                1 to "Yes, for anything that doesn't load the ankle: seated upper-body work, core, and exercises for " +
+                    "the good leg. Keep the boot on and never push through the injured foot. Stay fit has ideas.",
+                3 to "Upper body, core and good-leg work, plus the stationary bike if your physio agrees. No jumping " +
+                    "and no machines that load the calf yet.",
+                4 to "Yes - leg press, squats, step-ups and calf work as prescribed. No jumping, running or heavy " +
+                    "single-leg calf loading until your physio clears it.",
+                5 to "Yes - build towards jumping and heavy calf loading as your physio progresses you."),
+            link = FaqLink.STAY_FIT),
+        Faq("rerupture_fear", "I'm scared of re-rupturing it", SAFETY,
+            keywords = listOf("re rupture", "rerupture", "re rupturing", "rerupturing", "rupture again",
+                "tear again", "snap again", "tear it again", "re tear", "retear"),
+            contextKeywords = listOf("scared", "afraid", "fear", "worried", "worry", "anxious", "nervous", "confidence"),
+            answers = mapOf(
+                1 to "That fear is completely normal - almost everyone feels a jolt at every twinge. Re-rupture is " +
+                    "uncommon when you follow the plan: the boot, the gradual steps and your physio's pace are " +
+                    "exactly what protect you. Ordinary healing sensations (stiffness, a thicker tendon, a mild " +
+                    "ache after a harder day) are not warning signs. A sudden snap, loss of push-off or a new gap " +
+                    "in the tendon is - that needs your clinic today."),
+            link = FaqLink.WELLBEING),
+        Faq("fall", "I've tripped or fallen - what should I do?", SAFETY,
+            keywords = listOf("fell", "fall", "fallen", "falling", "tripped", "trip", "slipped", "slip", "stumbled",
+                "twisted", "went over"),
+            answers = mapOf(
+                1 to "If you felt a snap or pop, can't push off, or can feel a new gap in the tendon, treat it as a " +
+                    "possible re-rupture: boot on, weight off, and contact your fracture clinic today (A&E if it's " +
+                    "closed). If you hit your head while on a blood thinner, go to A&E today even if you feel fine. " +
+                    "Otherwise rest, elevate, and mention it to your physio."),
+            link = FaqLink.RED_FLAGS)
     )
 
     // ------------------------------------------------------------------
@@ -1013,24 +1279,55 @@ object AchillesConservative {
         redFlags = redFlags,
         movementChecks = listOf(
             MovementCheckSpec("Walk without the boot", 3,
-                "Not before ~week 8-10, physio-confirmed", "Physio-guided weaning only"),
+                "Not before ~week 8-10, physio-confirmed", "Physio-guided weaning only - indoors first",
+                keywords = listOf("walk", "walking", "stop wearing", "come out of the boot", "out of the boot",
+                    "wean", "weaning", "without the boot", "without my boot", "without a boot"),
+                contextKeywords = listOf("boot off", "take off the boot", "take the boot off", "take my boot off",
+                    "remove the boot", "remove my boot")),
             MovementCheckSpec("Pull foot up past neutral / calf stretch", 4,
-                "Not before week 12 - tendon over-lengthening risk", "Gentle and physio-guided only"),
+                "Not before week 12 - tendon over-lengthening risk",
+                "Only if your physio prescribes it - many people never need to stretch the calf",
+                keywords = listOf("stretch", "stretching", "stretches", "dorsiflex", "dorsiflexion", "past neutral",
+                    "pull my foot up", "pull the foot up", "foot up"),
+                question = "Can I stretch my calf?"),
             MovementCheckSpec("Drive a car", 4,
-                "Not while you're in the boot. Most people are ready once out of the boot and able to do a safe " +
-                    "emergency stop - often around the time the boot comes off. If your car is automatic and it's " +
-                    "your left leg affected, you may manage sooner.",
-                "Tell your insurer before restarting - you are not covered driving in the boot. The DVLA puts the " +
-                    "responsibility on you to stay in full control, so only drive once you can brake hard and " +
-                    "comfortably. Confirm timing with your physio."),
+                "Not in the boot on the right leg - you can't brake safely. Most people are ready once out of the " +
+                    "boot and able to do an emergency stop, often around the time the boot comes off. With the left " +
+                    "leg injured and an automatic car you may manage sooner - check with your clinic and insurer.",
+                "Only once you can brake hard and comfortably - the DVLA puts the responsibility on you to stay in " +
+                    "full control. Check with your insurer before restarting (many won't cover driving in a boot) " +
+                    "and confirm timing with your physio.",
+                keywords = listOf("drive", "driving", "car", "drove"),
+                question = "Can I drive yet?"),
             MovementCheckSpec("Standing heel raises", 4,
-                "Phase 4 work - too early now", "Progress as prescribed"),
+                "Phase 4 work - too early now",
+                "Two legs first, then up on two and down on one, then single-leg - as your physio progresses you",
+                keywords = listOf("heel raises", "calf raise", "calf raises", "tiptoe", "tiptoes", "tip toe",
+                    "on my toes", "do a heel raise"),
+                question = "Can I do heel raises?"),
+            MovementCheckSpec("Swim or pool walk", 3,
+                "Not while the boot is on full-time - keep fit on land for now (see Stay fit)",
+                "Once your physio approves - pool walking first, no pushing off the wall with the injured foot",
+                keywords = listOf("swim", "swimming", "pool", "aqua")),
+            MovementCheckSpec("Ride a stationary bike", 3,
+                "Wait until you're out of the boot",
+                "Low resistance, pedalling through the heel or midfoot, once your physio approves",
+                keywords = listOf("bike", "biking", "cycle", "cycling", "exercise bike", "spin", "spinning")),
             MovementCheckSpec("Run / jump", 5,
-                "Phase 5 work after strength benchmarks", "Graded programme once physio clears it"),
-            MovementCheckSpec("Play {sport}", 5,
+                "Phase 5 work after strength benchmarks", "Graded walk-jog programme once physio clears it",
+                keywords = listOf("run", "running", "jog", "jogging", "jump", "jumping", "hop", "hopping", "sprint"),
+                question = "Can I run or jump?"),
+            MovementCheckSpec("Get back to {sport}", 5,
                 "The end goal - but not yet",
-                "Drills first; competitive play typically 9-12 months with sign-off")
+                "Drills first; competitive play typically 9-12 months with sign-off",
+                keywords = listOf("{sport}", "sport", "sports", "court", "match", "matches"),
+                contextKeywords = listOf("play", "playing"),
+                question = "Can I get back to {sport}?")
         ),
+        faqs = faqs,
+        exercisePainRule = "How it should feel: mild discomfort up to about 3-4/10 is fine if it settles within an " +
+            "hour and isn't worse the next morning. Sharp pain, or a stiffer, sorer tendon the next day, means drop " +
+            "back a step and tell your physio.",
         selfTests = selfTests,
         returnToSport = returnToSport,
         supportedSportIds = listOf("padel", "tennis", "football", "running", "hiking", "cycling", "swimming", "gym"),

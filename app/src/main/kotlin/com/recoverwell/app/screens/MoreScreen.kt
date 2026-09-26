@@ -107,7 +107,9 @@ object MoreScreen {
 
         col.addView(Ui.section(a, "Data"))
         val lastBackup = a.store.setting("last_backup", "")
-        col.addView(Ui.caption(a, "All data lives only on this phone - no account, no network. " +
+        col.addView(Ui.caption(a, "All data lives only on this phone - no account" +
+            (if (AiScreen.enabled(a)) " (AI features are on: questions and a short recovery summary go to Groq). "
+            else ", no network. ") +
             if (lastBackup.isBlank()) "No backup yet - turn on automatic backup or export one below."
             else "Last full backup: $lastBackup."))
         col.addView(Ui.spacer(a, 6))
@@ -173,8 +175,11 @@ object MoreScreen {
 
     fun profileEditor(a: MainActivity, onDone: (() -> Unit)? = null): View {
         var p = a.store.profile()
+        // first-run setup asks only what a new patient can answer; the rest has
+        // sensible defaults and stays editable here later
+        val onboarding = onDone != null
         val col = Ui.column(a)
-        if (onDone == null) col.addView(Ui.backRow(a, "Injury & goal") { a.popOverlay() })
+        if (!onboarding) col.addView(Ui.backRow(a, "Injury & goal") { a.popOverlay() })
 
         val card = Ui.card(a)
         card.addView(Forms.label(a, "Name · optional"))
@@ -189,19 +194,26 @@ object MoreScreen {
             it.name.lowercase().replaceFirstChar { c -> c.uppercase() }
         }, p.side) { p = p.copy(side = it) })
 
-        card.addView(Forms.label(a, "Injury & protocol"))
-        card.addView(Forms.choiceRow(a, ProtocolRegistry.all.map { it.id }, { id ->
-            ProtocolRegistry.byId(id).injuryName
-        }, p.protocolId) { id ->
-            val proto = ProtocolRegistry.byId(id)
-            p = p.copy(
-                protocolId = id,
-                wedgePlan = proto.supportDevice?.plan ?: p.wedgePlan,
-                currentWedges = proto.supportDevice?.plan?.initialWedges ?: 0
-            )
-        })
-        card.addView(Ui.caption(a, ProtocolRegistry.byId(p.protocolId).variantName +
-            " · more protocols can be added to the registry"))
+        // a protocol picker only when there's a real choice to make; with one
+        // protocol it just states what the plan is built for
+        if (ProtocolRegistry.all.size > 1) {
+            card.addView(Forms.label(a, "Injury & protocol"))
+            card.addView(Forms.choiceRow(a, ProtocolRegistry.all.map { it.id }, { id ->
+                ProtocolRegistry.byId(id).injuryName
+            }, p.protocolId) { id ->
+                val proto = ProtocolRegistry.byId(id)
+                p = p.copy(
+                    protocolId = id,
+                    wedgePlan = proto.supportDevice?.plan ?: p.wedgePlan,
+                    currentWedges = proto.supportDevice?.plan?.initialWedges ?: 0
+                )
+            })
+        } else {
+            card.addView(Forms.label(a, "Your plan"))
+        }
+        ProtocolRegistry.byId(p.protocolId).let { proto ->
+            card.addView(Ui.caption(a, "${proto.injuryName} · ${proto.variantName}"))
+        }
 
         val sports = ProtocolRegistry.byId(p.protocolId).supportedSportIds.mapNotNull { SportRegistry.byId(it) }
         if (sports.isNotEmpty()) {
@@ -228,13 +240,15 @@ object MoreScreen {
         // Estimated return-to-sport date: drives the overall recovery-days
         // timeline on Today ("day X of N"). Defaults to ~12 months post-injury;
         // always an estimate the physio's real timeline overrides.
-        card.addView(Forms.label(a, "Estimated return to sport · drives your recovery timeline"))
-        card.addView(Forms.dateRow(a, "Target date",
-            p.targetReturnDate ?: p.injuryDate.plusDays(Profile.DEFAULT_RETURN_DAYS)) {
-            p = p.copy(targetReturnDate = it)
-        })
-        card.addView(Ui.caption(a, "Just an estimate you can change anytime - many people return to " +
-            "sport around 9-12 months. Your physio guides the real timeline."))
+        if (!onboarding) {
+            card.addView(Forms.label(a, "Estimated return to sport · drives your recovery timeline"))
+            card.addView(Forms.dateRow(a, "Target date",
+                p.targetReturnDate ?: p.injuryDate.plusDays(Profile.DEFAULT_RETURN_DAYS)) {
+                p = p.copy(targetReturnDate = it)
+            })
+            card.addView(Ui.caption(a, "Just an estimate you can change anytime - many people return to " +
+                "sport around 9-12 months. Your physio guides the real timeline."))
+        }
         col.addView(card)
 
         col.addView(Ui.section(a, "Boot / cast & weight-bearing"))
@@ -248,18 +262,31 @@ object MoreScreen {
                 devices.firstOrNull { it.id == ProtocolRegistry.deviceFor(p)?.id }) { dev ->
                 // switching device resets the plan to that device's defaults
                 p = p.copy(deviceId = dev.id, wedgePlan = dev.plan, currentWedges = dev.plan.initialWedges)
-                rebuildBootSettings(a, p, bootCard, devicePickerCount = 2) { p = it }
+                rebuildBootSettings(a, p, bootCard, devicePickerCount = 2, showWean = !onboarding) { p = it }
             })
         }
-        rebuildBootSettings(a, p, bootCard, devicePickerCount = if (devices.size > 1) 2 else 0) { p = it }
+        rebuildBootSettings(a, p, bootCard, devicePickerCount = if (devices.size > 1) 2 else 0,
+            showWean = !onboarding) { p = it }
         col.addView(bootCard)
+
+        // one-tap "call my clinic" from the red-flag guide needs the number to hand
+        col.addView(Ui.section(a, "Your clinic"))
+        val clinicCard = Ui.card(a)
+        clinicCard.addView(Forms.label(a, "Fracture clinic or physio phone · optional"))
+        val phoneEdit = Forms.editText(a, p.clinicPhone, "e.g. 024 7696 5000")
+        phoneEdit.inputType = android.text.InputType.TYPE_CLASS_PHONE
+        clinicCard.addView(phoneEdit)
+        clinicCard.addView(Ui.caption(a, "Lets the red-flag guide call your clinic in one tap if something " +
+            "worries you. Find it on your clinic letter or appointment card."))
+        col.addView(clinicCard)
 
         // Appointments are managed in one place only - Physio visits - so they're
         // not duplicated here (and the onboarding path that mis-saved them is gone).
 
         col.addView(Ui.spacer(a, 10))
         col.addView(Ui.fullWidth(Ui.button(a, if (onDone == null) "Save" else "Confirm & continue") {
-            a.store.saveProfile(p.copy(name = nameEdit.text.toString().trim()))
+            a.store.saveProfile(p.copy(name = nameEdit.text.toString().trim(),
+                clinicPhone = phoneEdit.text.toString().trim()))
             Reminders.reschedule(a)
             if (onDone != null) onDone() else a.popOverlay()
         }, a))
@@ -270,7 +297,7 @@ object MoreScreen {
     /** (Re)builds the device-dependent boot controls below the device picker. */
     private fun rebuildBootSettings(
         a: MainActivity, p0: Profile, bootCard: android.widget.LinearLayout,
-        devicePickerCount: Int, onChange: (Profile) -> Unit
+        devicePickerCount: Int, showWean: Boolean = true, onChange: (Profile) -> Unit
     ) {
         while (bootCard.childCount > devicePickerCount) bootCard.removeViewAt(bootCard.childCount - 1)
         var prof = p0
@@ -279,12 +306,14 @@ object MoreScreen {
             // "out of the boot" is a real, physio-agreed event that need not line
             // up with phase timing - record it here and boot checks, boot-change
             // reminders and the leg view all follow
-            bootCard.addView(Forms.label(a, "Fully out of the ${device.name.lowercase()}?"))
-            bootCard.addView(Forms.toggle(a, prof.bootWeanedDate != null) { on ->
-                prof = prof.copy(bootWeanedDate = if (on) LocalDate.now() else null)
-                onChange(prof)
-                rebuildBootSettings(a, prof, bootCard, devicePickerCount, onChange)
-            })
+            if (showWean) {
+                bootCard.addView(Forms.label(a, "Fully out of the ${device.name.lowercase()}?"))
+                bootCard.addView(Forms.toggle(a, prof.bootWeanedDate != null) { on ->
+                    prof = prof.copy(bootWeanedDate = if (on) LocalDate.now() else null)
+                    onChange(prof)
+                    rebuildBootSettings(a, prof, bootCard, devicePickerCount, showWean, onChange)
+                })
+            }
             val weaned = prof.bootWeanedDate
             if (weaned != null) {
                 bootCard.addView(Forms.dateRow(a, "Out of it since", weaned) {
@@ -309,7 +338,7 @@ object MoreScreen {
                 bootCard.addView(Ui.fullWidth(Ui.textButton(a,
                     if (bootScheduleExpanded) "Hide reduction schedule" else "Edit reduction schedule") {
                     bootScheduleExpanded = !bootScheduleExpanded
-                    rebuildBootSettings(a, prof, bootCard, devicePickerCount, onChange)
+                    rebuildBootSettings(a, prof, bootCard, devicePickerCount, showWean, onChange)
                 }, a, 2))
                 if (bootScheduleExpanded) {
                     bootCard.addView(Forms.stepper(a, "Setting at start ($units)",
@@ -573,8 +602,8 @@ object MoreScreen {
             texts.addView(Ui.caption(a, "Reminders ${med.times.joinToString(", ")}"))
             med.courseEndDate?.let { end ->
                 val ended = end.isBefore(LocalDate.now())
-                texts.addView(Ui.caption(a, if (ended) "Course ended $end - reminders stopped"
-                    else "Reminders stop after $end"))
+                texts.addView(Ui.caption(a, if (ended) "Course ended ${Forms.friendlyDate(end)} - reminders stopped"
+                    else "Reminders stop after ${Forms.friendlyDate(end)}"))
             }
             head.addView(Ui.weight(texts, 1f))
             card.addView(head)
@@ -1019,13 +1048,15 @@ object MoreScreen {
         val priv = Ui.card(a)
         priv.addView(Ui.text(
             a,
-            "No account, no analytics. Every piece of your recovery data lives only on this " +
-                "phone and leaves it only when you export or back it up. The one exception is " +
-                "the exercise video player: when you tap \"Watch video demonstration\" it loads " +
-                "YouTube (in-app, or in the YouTube app - your choice in Settings). That is the " +
-                "only feature that uses the network, it only runs when you open a video, and it " +
-                "never uploads your data. Prefer zero network? Set videos to \"Open YouTube\" and " +
-                "the app itself stays silent.",
+            "No account, no analytics. Your recovery data lives only on this phone and leaves it " +
+                "only when you export or back it up - with two exceptions, both under your control. " +
+                "The exercise video player loads YouTube when you tap \"Watch video demonstration\" " +
+                "(in-app, or in the YouTube app - your choice in Settings); it never uploads your data. " +
+                "And the optional AI features, off unless you add your own key and switch them on, send " +
+                "the question you ask plus a short summary of your recovery to Groq to write a reply. " +
+                "Prefer zero network? Leave AI off and set videos to \"Open YouTube\" - the app itself " +
+                "then stays silent." +
+                if (AiScreen.enabled(a)) "\n\nAI features are currently ON." else "",
             14f
         ))
         col.addView(priv)

@@ -374,16 +374,13 @@ object Reminders {
     fun markNextExerciseSessionDone(context: Context) {
         val store = Store.get(context)
         val today = LocalDate.now()
-        val exercises = ScheduleEngine.mergedExercises(
-            com.recoverwell.core.logic.PhaseEngine.currentPhase(store.profile(), today).exercises,
-            store.exerciseOverrides()
-        )
-        if (exercises.isEmpty()) return
-        val sessions = ScheduleEngine.clampSessions(store.exerciseSessions())
+        val plan = ScheduleEngine.sessionPlan(
+            store.profile(), store.exerciseOverrides(), today, store.exerciseSessions())
+        if (plan.isEmpty()) return
         val events = store.eventsOn(today)
         val now = LocalTime.now()
-        for (s in 1..sessions) {
-            val slot = "session$s"
+        for ((s, exercises) in plan) {
+            val slot = ScheduleEngine.sessionSlot(s)
             val sessionDone = exercises.all { ex ->
                 events.lastOrNull {
                     it.type == EventType.EXERCISE && it.refId == ex.id && it.slotKey == slot

@@ -13,10 +13,12 @@ import java.time.temporal.ChronoUnit
 object PhysioPrep {
 
     data class Pack(
-        /** Auto-suggested questions/points, most clinically useful first. */
+        /** Auto-suggested questions/points from the user's own data, most clinically useful first. */
         val discussionPoints: List<String>,
         /** Objective current-state lines to show the physio. */
-        val summaryLines: List<String>
+        val summaryLines: List<String>,
+        /** Evergreen questions worth asking at this stage of recovery (protocol data). */
+        val stageQuestions: List<String> = emptyList()
     )
 
     fun build(
@@ -84,7 +86,14 @@ object PhysioPrep {
 
         // ---- summary numbers ----
         val digest = WeeklyDigest.generate(profile, logs, events, meds, tasks, today)
-        summary.add("Medication adherence (7 days): ${digest.adherencePct}%")
+        digest.adherencePct?.let { summary.add("Medication adherence (7 days): $it%") }
+        summary.add("Weight-bearing: ${profile.weightBearing.label}")
+        ProtocolRegistry.deviceFor(profile)?.let { dev ->
+            summary.add(if (!profile.usesDeviceOn(today))
+                "Out of the ${dev.name.lowercase()} since ${Dates.friendly(profile.bootWeanedDate!!, today)}"
+                else if (phase.deviceUsage != null) "${dev.name}: ${dev.format(profile.currentWedges)}"
+                else "${dev.name}: no longer part of this phase")
+        }
 
         val recentPain = recentLogs.mapNotNull { it.pain }
         if (recentPain.isNotEmpty())
@@ -104,6 +113,6 @@ object PhysioPrep {
         if (points.isEmpty())
             points.add("No flags from the app this period - is my plan still on track?")
 
-        return Pack(points, summary)
+        return Pack(points, summary, phase.physioQuestions)
     }
 }
