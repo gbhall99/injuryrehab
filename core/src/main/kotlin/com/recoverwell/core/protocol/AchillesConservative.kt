@@ -770,7 +770,8 @@ object AchillesConservative {
             kind = TaskKind.BOOT_CHECK,
             title = "Boot check",
             detail = "Straps snug, boot set as your plan expects, no rubbing or pressure points on the skin.",
-            times = listOf(LocalTime.of(9, 0)),
+            // with the morning dose: fewer separate interruptions
+            times = listOf(LocalTime.of(8, 0)),
             fromPhase = 1, toPhase = 3, dueDate = null, active = true
         ),
         RehabTask(
@@ -779,7 +780,8 @@ object AchillesConservative {
             title = "Circulation & calf check",
             detail = "Toes warm and pink? Any new calf pain, heat, swelling or redness? " +
                 "If yes - open Red Flags now.",
-            times = listOf(LocalTime.of(12, 0), LocalTime.of(21, 0)),
+            // paired with the blood-thinner doses: one "clot prevention" moment, morning and evening
+            times = listOf(LocalTime.of(8, 0), LocalTime.of(20, 0)),
             fromPhase = 1, toPhase = 3, dueDate = null, active = true
         )
     )

@@ -21,6 +21,7 @@ import java.time.format.DateTimeFormatter
 object TrackerScreen {
 
     private var chartMetric = "Pain"
+    private var showAllMilestones = false
 
     fun build(a: MainActivity): View {
         val today = LocalDate.now()
@@ -55,7 +56,7 @@ object TrackerScreen {
     private fun pastDayOverlay(a: MainActivity, date: LocalDate): View {
         val col = Ui.column(a)
         col.addView(Ui.backRow(a, "Log for $date") { a.popOverlay() })
-        col.addView(TodayScreen.checkInCard(a, date, expanded = true) {
+        col.addView(TodayScreen.checkInCard(a, date) {
             Toast.makeText(a, "Log saved", Toast.LENGTH_SHORT).show()
             a.popOverlay()
         })
@@ -200,7 +201,19 @@ object TrackerScreen {
         col.addView(Ui.spacer(a, 8))
         val profile = a.store.profile()
         val timeline = Ui.card(a)
-        val entries = MilestoneTimeline.build(profile, today)
+        val all = MilestoneTimeline.build(profile, today)
+        // what's behind you is one line; what's next is the detail - full list on request
+        val reached = all.count { it.status == MilestoneTimeline.Status.REACHED }
+        val entries = if (showAllMilestones) all
+            else all.filter { it.status != MilestoneTimeline.Status.REACHED }.take(3)
+        if (!showAllMilestones && reached > 0) {
+            val r = Ui.row(a)
+            r.addView(Ui.icon(a, "ic_check", 18, Ui.DONE))
+            val t = Ui.text(a, "$reached milestone${if (reached == 1) "" else "s"} reached", 15f, Ui.DONE, bold = true)
+            t.setPadding(Ui.dp(a, 10), 0, 0, Ui.dp(a, 8))
+            r.addView(t)
+            timeline.addView(r)
+        }
         entries.forEachIndexed { i, e ->
             val row = Ui.row(a)
             row.gravity = android.view.Gravity.TOP
@@ -244,7 +257,12 @@ object TrackerScreen {
             timeline.addView(row)
         }
         col.addView(timeline)
-        col.addView(Ui.spacer(a, 6))
-        col.addView(Ui.caption(a, "Export a PDF, CSV or full backup any time from More › Data."))
+        if (all.size > entries.size || showAllMilestones) {
+            col.addView(Ui.fullWidth(Ui.textButton(a,
+                if (showAllMilestones) "Show fewer" else "Show all ${all.size} milestones") {
+                showAllMilestones = !showAllMilestones
+                a.refresh()
+            }, a, 2))
+        }
     }
 }

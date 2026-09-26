@@ -214,7 +214,9 @@ object Forms {
         val span = (max - min).coerceAtLeast(1)
         val start = (initial ?: min).coerceIn(min, max)
         val col = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
-        val readout = Ui.text(ctx, start.toString(), 22f, Ui.PRIMARY, bold = true)
+        // an optional metric with no value yet reads "not logged" rather than a fake number
+        val readout = Ui.text(ctx, if (initial == null) "–" else start.toString(), 22f,
+            if (initial == null) Ui.TEXT_DIM else Ui.PRIMARY, bold = true)
         readout.gravity = Gravity.CENTER
         val bar = SeekBar(ctx).apply {
             this.max = span
@@ -235,6 +237,7 @@ object Forms {
                 override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                     val value = progress + min
                     readout.text = value.toString()
+                    readout.setTextColor(Ui.PRIMARY)
                     if (Build.VERSION.SDK_INT >= 30) seekBar?.stateDescription = "$value of $max"
                     onChange(value)
                 }

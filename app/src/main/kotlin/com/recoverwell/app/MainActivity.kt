@@ -251,7 +251,8 @@ class MainActivity : Activity() {
         render(animated = true)
     }
 
-    fun refresh() = render(animated = false)
+    /** Re-render in place; [keepScroll] = false jumps to the top (e.g. to show a new answer). */
+    fun refresh(keepScroll: Boolean = true) = render(animated = false, keepScroll = keepScroll)
 
     fun pushOverlay(title: String? = null, onDispose: (() -> Unit)? = null, factory: () -> View) {
         overlays.add(factory)
@@ -282,7 +283,7 @@ class MainActivity : Activity() {
         render(animated = true)
     }
 
-    private fun render(animated: Boolean) {
+    private fun render(animated: Boolean, keepScroll: Boolean = true) {
         rebuildTabBar()
         val onboarding = onboardingActive()
         // onboarding is a clean, full-screen modal flow: hide all the app chrome
@@ -298,7 +299,7 @@ class MainActivity : Activity() {
         // an in-place refresh (e.g. checking an item off) rebuilds the screen, which
         // would otherwise jump the scroll to the top - capture and restore it so the
         // user's attention stays where they acted. Navigation (animated) resets to top.
-        val priorScrollY = if (!animated)
+        val priorScrollY = if (!animated && keepScroll)
             (if (content.childCount > 0) findScroll(content.getChildAt(0))?.scrollY ?: 0 else 0) else 0
         for (i in 0 until content.childCount) content.getChildAt(i).animate().cancel()
         content.removeAllViews()

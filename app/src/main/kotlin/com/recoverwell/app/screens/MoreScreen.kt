@@ -22,6 +22,9 @@ object MoreScreen {
     // remembers whether the boot reduction-schedule disclosure is open
     private var bootScheduleExpanded = false
 
+    // which phase card is open in Configure my plan (null = the current phase, 0 = none)
+    private var planPhaseOpen: Int? = null
+
     fun build(a: MainActivity): View {
         val col = Ui.column(a)
 
@@ -50,13 +53,9 @@ object MoreScreen {
             a.pushOverlay("Configure my plan") { planEditor(a) }
         })
         col.addView(Ui.listRow(a, "ic_heart", "Injury & goal",
-            "Dates, side, boot plan, appointments") { a.pushOverlay("Injury & goal") { profileEditor(a) } })
+            "Injury date, side, sport, boot and clinic number") { a.pushOverlay("Injury & goal") { profileEditor(a) } })
         col.addView(Ui.listRow(a, "ic_pill", "Medications",
             "Doses, times and reminders") { a.pushOverlay("Medications") { medsEditor(a) } })
-        col.addView(Ui.listRow(a, "ic_calendar", "Phase dates",
-            "Adjust timings agreed with your physio") { a.pushOverlay("Phase dates") { phaseDatesEditor(a) } })
-        col.addView(Ui.listRow(a, "ic_boot", "Boot change dates",
-            "Pin each wedge change to your clinic's date") { a.pushOverlay("Boot change dates") { bootDatesEditor(a) } })
 
         // a single Reminders hub gathers medications, daily-care, exercise and
         // check-in nudges and the reliability checker (previously four+ sibling rows)
@@ -124,8 +123,15 @@ object MoreScreen {
         col.addView(Ui.listRow(a, "ic_export", "Full backup", "Save everything · restorable file") { a.exportBackup() })
         col.addView(Ui.listRow(a, "ic_restore", "Restore from backup", "Replaces all current data") { a.importBackup() })
         col.addView(Ui.listRow(a, "ic_export", "PDF report", "Share progress with your physio") { a.exportPdf() })
-        col.addView(Ui.listRow(a, "ic_export", "Daily logs", "Open in a spreadsheet") { a.exportLogsCsv() })
-        col.addView(Ui.listRow(a, "ic_export", "Medication & task history", "Open in a spreadsheet") { a.exportEventsCsv() })
+        col.addView(Ui.listRow(a, "ic_export", "Spreadsheets (CSV)", "Daily logs or medication & task history") {
+            AlertDialog.Builder(a)
+                .setTitle("Export a spreadsheet")
+                .setItems(arrayOf("Daily logs", "Medication & task history")) { _, which ->
+                    if (which == 0) a.exportLogsCsv() else a.exportEventsCsv()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        })
 
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
@@ -251,7 +257,7 @@ object MoreScreen {
         }
         col.addView(card)
 
-        col.addView(Ui.section(a, "Boot / cast & weight-bearing"))
+        col.addView(Ui.section(a, "Boot / cast"))
         val bootCard = Ui.card(a)
         // device-type picker: VACOped (degrees) vs Aircast (wedges) vs cast
         val devices = ProtocolRegistry.byId(p.protocolId).supportedDeviceIds
@@ -365,10 +371,6 @@ object MoreScreen {
                     "angle toward neutral at appointments, so there's no daily boot change to schedule."))
             }
         }
-        bootCard.addView(Forms.label(a, "Weight-bearing"))
-        bootCard.addView(Forms.choiceRow(a, WeightBearing.values().toList(), { it.shortLabel }, prof.weightBearing) {
-            prof = prof.copy(weightBearing = it); onChange(prof)
-        })
     }
 
     // ------------------------------------------------------------------
@@ -383,9 +385,8 @@ object MoreScreen {
     fun planEditor(a: MainActivity): View {
         val col = Ui.column(a)
         col.addView(Ui.backRow(a, "Configure my plan") { a.popOverlay() })
-        col.addView(Ui.caption(a, "Your plan is made of independent parts - phase timing, the exercises " +
-            "in each phase, your boot's reduction schedule, and your weight-bearing status. They don't " +
-            "have to move together: set each to match what your physio and consultant advised."))
+        col.addView(Ui.caption(a, "Everything your physio can change, in one place. Each part moves " +
+            "independently - set each to match what you were told."))
 
         val profile = a.store.profile()
         val protocol = ProtocolRegistry.forProfile(profile)
@@ -412,17 +413,43 @@ object MoreScreen {
             bootCard.addView(Ui.fullWidth(Ui.tonalButton(a, "Edit boot setting & reduction") {
                 a.pushOverlay("Injury & goal") { profileEditor(a) }
             }, a))
+            if (device.kind != com.recoverwell.core.protocol.DeviceKind.CAST) {
+                bootCard.addView(Ui.fullWidth(Ui.textButton(a, "Pin boot changes to your clinic's dates") {
+                    a.pushOverlay("Boot change dates") { bootDatesEditor(a) }
+                }, a, 2))
+            }
             col.addView(bootCard)
         }
 
-        // per-phase: start date + which exercises are included
+        // per-phase: start date + which exercises are included. Each phase is one
+        // summary line; tap to open it (the current phase starts open)
         col.addView(Ui.section(a, "Phases"))
+        val open = planPhaseOpen ?: current
         for (phase in protocol.phases) {
             val card = Ui.card(a)
             val head = Ui.row(a)
-            head.addView(Ui.weight(Ui.text(a, "Phase ${phase.number} · ${phase.title}", 15.5f, Ui.TEXT, bold = true), 1f))
+            head.isClickable = true
+            head.isFocusable = true
+            head.minimumHeight = Ui.dp(a, Ui.MIN_TOUCH_DP)
+            head.contentDescription = "Phase ${phase.number}, ${phase.title}, " +
+                if (open == phase.number) "open - tap to close" else "closed - tap to open"
+            head.setOnClickListener { planPhaseOpen = if (open == phase.number) 0 else phase.number; a.refresh() }
+            val titles = android.widget.LinearLayout(a).apply { orientation = android.widget.LinearLayout.VERTICAL }
+            titles.addView(Ui.text(a, "Phase ${phase.number} · ${phase.title}", 15.5f, Ui.TEXT, bold = true))
+            val start = com.recoverwell.core.logic.PhaseEngine.phaseStartDate(profile, phase)
+            val enabledCount = phase.exercises.count { a.store.exerciseOverrides()[it.id]?.enabled ?: true }
+            titles.addView(Ui.caption(a, "From ${Forms.friendlyDate(start)} · $enabledCount of " +
+                "${phase.exercises.size} exercises on"))
+            head.addView(Ui.weight(titles, 1f))
             if (phase.number == current) head.addView(Ui.pillBadge(a, "Now", Ui.ON_PRIMARY_CONTAINER, Ui.PRIMARY_CONTAINER))
+            head.addView(Ui.icon(a, "ic_chevron", 18, Ui.TEXT_DIM).apply {
+                rotation = if (open == phase.number) 90f else 0f
+            })
             card.addView(head)
+            if (open != phase.number) {
+                col.addView(card)
+                continue
+            }
 
             val defaultDate = profile.injuryDate.plusWeeks(phase.startWeek.toLong())
             val overridden = profile.phaseStartOverrides[phase.number]
@@ -430,6 +457,7 @@ object MoreScreen {
                 val p2 = a.store.profile()
                 a.store.saveProfile(p2.copy(phaseStartOverrides = p2.phaseStartOverrides + (phase.number to newDate)))
                 Reminders.reschedule(a)
+                a.refresh()
             })
             if (overridden != null) {
                 card.addView(Ui.fullWidth(Ui.textButton(a, "Reset to default date") {
@@ -474,51 +502,6 @@ object MoreScreen {
         })
         col.addView(confirmCard)
 
-        col.addView(Ui.spacer(a, 24))
-        return Ui.scroll(a, col)
-    }
-
-    fun phaseDatesEditor(a: MainActivity): View {
-        val col = Ui.column(a)
-        col.addView(Ui.backRow(a, "Phase dates") { a.popOverlay() })
-        col.addView(Ui.caption(a, "Defaults follow the typical conservative protocol, anchored to " +
-            "your injury date. Override them only to match what your physio agreed."))
-        val profile = a.store.profile()
-        for (phase in ProtocolRegistry.forProfile(profile).phases) {
-            val card = Ui.card(a)
-            card.addView(Ui.text(a, "Phase ${phase.number} · ${phase.title}", 15.5f, Ui.TEXT, bold = true))
-            val defaultDate = profile.injuryDate.plusWeeks(phase.startWeek.toLong())
-            val overridden = profile.phaseStartOverrides[phase.number]
-            card.addView(Ui.caption(a, "Default $defaultDate (week ${phase.startWeek})" +
-                if (overridden != null) " · overridden" else ""))
-            card.addView(Ui.spacer(a, 4))
-            card.addView(Forms.dateRow(a, "Starts", overridden ?: defaultDate) { newDate ->
-                val p2 = a.store.profile()
-                a.store.saveProfile(p2.copy(phaseStartOverrides = p2.phaseStartOverrides + (phase.number to newDate)))
-                Reminders.reschedule(a)
-            })
-            if (overridden != null) {
-                card.addView(Ui.fullWidth(Ui.textButton(a, "Clear override") {
-                    val p2 = a.store.profile()
-                    a.store.saveProfile(p2.copy(phaseStartOverrides = p2.phaseStartOverrides - phase.number))
-                    Reminders.reschedule(a)
-                    a.refresh()
-                }, a, 2))
-            }
-            col.addView(card)
-        }
-        val confirmCard = Ui.card(a)
-        val current = a.store.profile().physioConfirmedPhase
-        confirmCard.addView(Ui.text(a, "Physio-confirmed phase", 15.5f, Ui.TEXT, bold = true))
-        confirmCard.addView(Ui.caption(a, "If you progressed by mistake, wind this back."))
-        confirmCard.addView(Forms.stepper(a, "Confirmed up to", current, 1, 5) { v ->
-            val pp = a.store.profile()
-            val dates = if (v > pp.physioConfirmedPhase)
-                pp.phaseConfirmedDates + (v to LocalDate.now()) else pp.phaseConfirmedDates
-            a.store.saveProfile(pp.copy(physioConfirmedPhase = v, phaseConfirmedDates = dates))
-            Reminders.reschedule(a)
-        })
-        col.addView(confirmCard)
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
     }

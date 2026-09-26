@@ -21,7 +21,8 @@ progressive wedge reduction — built around a real recovery that started on
   "why this matters" for every exercise, plus a pain-monitoring rule. Daily
   sessions are dose-aware (each exercise appears in as many sessions as its own
   prescription; impact work runs on alternate days) with tick-off logging and a
-  guided mode that counts reps, holds and timed rounds. Progression is gated by
+  session player that plays the whole session through - one tap per set, timers
+  for holds and timed rounds. Progression is gated by
   *date AND physio confirmation*: the next
   phase only activates when its (editable) start date has been reached *and*
   you record that your physio approved it.
@@ -105,9 +106,11 @@ progressive wedge reduction — built around a real recovery that started on
 - **Calm, low-friction daily experience** — the home screen is a *prioritized*
   surface: safety items always show, the single most important prompt becomes
   the focus, and the rest collapse into a tidy "More for you" so the checklist
-  is never buried. A **10-second check-in** logs how today feels right on Today
-  (carrying forward boot/weight-bearing), and an optional **daily check-in
-  reminder** lets you log pain in one tap straight from the notification.
+  is never buried; finished groups fold to one line as the day goes. A dose is
+  one tap, and a **one-tap check-in** (0-10 pain) sits right on Today (carrying
+  forward boot/weight-bearing; mood and swelling are optional and never
+  invented), with an optional **daily check-in reminder** that logs pain in one
+  tap straight from the notification.
 - **"What to expect this week"** — week-banded, plain-language guidance for the
   stage you're actually in (what's common now, what's coming, what's
   reassuring), surfaced at the right moment to answer the anxious questions
@@ -131,7 +134,9 @@ progressive wedge reduction — built around a real recovery that started on
   rehab-exercise counts.
 
 A full UX-journey and specialist-physio content audit (scores, friction
-points, fixes, verification) lives in [`docs/UX_CLINICAL_AUDIT.md`](docs/UX_CLINICAL_AUDIT.md).
+points, fixes, verification) lives in [`docs/UX_CLINICAL_AUDIT.md`](docs/UX_CLINICAL_AUDIT.md),
+and the simplicity / customer-effort audit (measured taps and screen load, before
+and after) in [`docs/SIMPLICITY_EFFORT_AUDIT.md`](docs/SIMPLICITY_EFFORT_AUDIT.md).
 
 ## Rehab protocol (conservative / non-surgical only)
 

@@ -72,7 +72,7 @@ object HistoryScreen {
     private fun editLog(a: MainActivity, date: LocalDate): View {
         val col = Ui.column(a)
         col.addView(Ui.backRow(a, date.format(dayFmt)) { a.popOverlay() })
-        col.addView(TodayScreen.checkInCard(a, date, expanded = true) {
+        col.addView(TodayScreen.checkInCard(a, date) {
             Toast.makeText(a, "Saved", Toast.LENGTH_SHORT).show()
             a.popOverlay()
         })

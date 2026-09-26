@@ -317,3 +317,27 @@ Verification: 174 tests green (146 before; +22 core, +6 Robolectric journey
 tests); signed APK builds and verifies; invoke-dynamic guard clean. Not
 device- or patient-validated in this environment - see the report's residual
 risks.
+
+---
+
+# Simplicity & customer-effort audit (v3.8)
+
+Full report: [`docs/SIMPLICITY_EFFORT_AUDIT.md`](docs/SIMPLICITY_EFFORT_AUDIT.md).
+Same process and personas; effort measured, not guessed - taps counted by
+driving the real Activity, screen load by a probe run on the old code (a `main`
+worktree) and the new code with identical data.
+
+| Journey | Before → After | Measured change |
+|---|:-:|---|
+| Guided session | 2 → 10 | Phase-1 session 1: ~130 taps (a tap per rep, one exercise at a time) → 12 (session player, one tap per set) |
+| Plan settings | 4 → 10 | One home per setting; plan editor 129 → 54 texts, 76 → 32 targets |
+| Daily check-in | 5 → 10 | 3 steps → 1 tap on Today; untouched mood/energy/swelling no longer saved as fake values |
+| Today scan | 5 → 10 | End of day 84 → 62 texts (finished groups fold); duplicate chips/tiles removed |
+| Log a dose | 7 → 10 | 2 taps + dialog → 1 tap, "Taken at 08:12" |
+| Boot change | 5 → 10 | 4-5 taps via an unlabeled route → 3 taps on My leg |
+| Others (reminders, Progress, More, coach, detail, onboarding) | 6-9 → 10 | 8 → 5 reminder moments; Progress −44% words; coach answer scrolled into view |
+
+A phase-2 day with one guided session: ~168 taps → ~27. Verification: 179
+tests green (+5 `EffortBudgetTest` classes that count taps and guard screen
+load); signed APK builds and verifies. Not device- or patient-validated here.
+
