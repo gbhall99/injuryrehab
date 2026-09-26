@@ -384,10 +384,10 @@ object AchillesConservative {
             precaution = "Keep the booted foot flat; no pushing up onto the toes."
         ),
         ExerciseSpec(
-            id = "p2_clamshell", phase = 2, name = "Clamshells",
+            id = "p2_clamshell", phase = 2, name = "Clamshells (boot on)",
             demoId = "clamshell",
             cues = listOf(
-                "Lie on your side, knees bent, feet together",
+                "Lie on your uninjured side, boot on, knees bent, feet together",
                 "Open the top knee like a clamshell without rolling your pelvis back",
                 "Slow up, slow down"
             ),
@@ -487,7 +487,7 @@ object AchillesConservative {
     private fun phase4Exercises() = listOf(
         ExerciseSpec(
             id = "p4_double_raise", phase = 4, name = "Heel-raise progression (two legs → one)",
-            demoId = "double_heel_raise",
+            demoId = "heel_raise_progression",
             cues = listOf(
                 "Stand by a wall or counter, fingertips on it for balance only",
                 "Stage 1 - both legs: 3 seconds up, pause, 3 seconds down, weight shared 50/50",
@@ -501,7 +501,7 @@ object AchillesConservative {
         ),
         ExerciseSpec(
             id = "p4_soleus_raise", phase = 4, name = "Seated calf raises with weight",
-            demoId = "seated_heel_raise",
+            demoId = "seated_weighted_raise",
             cues = listOf(
                 "Sit with the knee bent at 90 degrees, foot flat",
                 "Rest a weight on the injured knee - a heavy bag or dumbbell",

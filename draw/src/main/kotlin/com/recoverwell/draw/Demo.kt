@@ -23,7 +23,7 @@ data class Pose(
     val arm: Float = 35f     // arm angle from vertical-down, + = forward
 )
 
-enum class Prop { NONE, BOOT, CRUTCHES, BAND, STEP, WALL, TOWEL, BIKE, CONES, RACQUET, CHAIR }
+enum class Prop { NONE, BOOT, CRUTCHES, BAND, STEP, WALL, TOWEL, BIKE, CONES, RACQUET, CHAIR, WEIGHT }
 
 /**
  * Which camera the demo is drawn from. SIDE is the default sagittal figure.
@@ -235,6 +235,14 @@ object DemoScene {
             s.stroke(PathSpec.line(toe.first - L * 0.34f, groundY - 5f, toe.first + L * 0.85f, groundY - 5f),
                 Palette.withAlpha(0xFF6B9BC3.toInt(), 0xCC), 8f)
         }
+        if (Prop.WEIGHT in demo.props) {
+            // a weight resting on the thigh just behind the knee (loaded seated raise)
+            val (txd, tyd) = dir(p.thighA)
+            val wx = hipX + txd * L * 0.78f
+            val wy = hipY + tyd * L * 0.78f - limbW * 0.55f
+            s.roundRect(wx - L * 0.18f, wy - L * 0.24f, wx + L * 0.18f, wy, 6f, PROP)
+            s.roundRect(wx - L * 0.07f, wy - L * 0.32f, wx + L * 0.07f, wy - L * 0.24f, 3f, PROP_SOFT)
+        }
 
         s.restore()
     }
@@ -436,8 +444,8 @@ object DemoLibrary {
             listOf(seated(88f) to 900L, seated(6f) to 900L, seated(88f) to 1000L)
         ))
         put("clamshell", Demo(
-            setOf(),
-            "Side-lying, knees bent, feet together: open the top knee, pelvis still",
+            setOf(Prop.BOOT),
+            "Side-lying, boot on, knees bent, feet together: open the top knee, pelvis still",
             listOf(
                 Pose(thighA = 6f) to 800L,
                 Pose(thighA = 44f) to 800L,
@@ -469,6 +477,12 @@ object DemoLibrary {
             "Knee at 90 degrees - push through the ball of the foot, heel up",
             listOf(seated(85f, 0f) to 800L, seated(85f, 32f) to 800L, seated(85f, 0f) to 1000L)
         ))
+        put("seated_weighted_raise", Demo(
+            setOf(Prop.CHAIR, Prop.WEIGHT),
+            "Weight on the knee - heel up, pause, lower over three seconds",
+            listOf(seated(85f, 0f) to 800L, seated(85f, 30f) to 900L, seated(85f, 30f) to 400L,
+                seated(85f, 0f) to 1500L)
+        ))
         put("gait_walk", Demo(
             setOf(),
             "Heel strikes, roll through, gentle push-off - even steps",
@@ -494,13 +508,16 @@ object DemoLibrary {
             "Heel stays down - drag the towel in with the toes",
             listOf(seated(60f, 6f, 0f) to 700L, seated(60f, 6f, 34f) to 700L, seated(60f, 6f, 0f) to 800L)
         ))
-        put("double_heel_raise", Demo(
+        // up on two, lift the good foot, lower slowly on the injured leg alone
+        put("heel_raise_progression", Demo(
             setOf(Prop.WALL),
-            "Both heels rise together - slow up, pause, slower down",
+            "Up on two, lift the good foot, lower slowly on one - single-leg when ready",
             listOf(
-                Pose() to 900L,
-                Pose(ankleA = 30f, ankleB = 30f, hipY = -0.22f) to 900L,
-                Pose() to 1100L
+                Pose() to 700L,
+                Pose(ankleA = 30f, ankleB = 30f, hipY = -0.22f) to 800L,
+                Pose(ankleA = 30f, hipY = -0.22f, thighB = 18f, kneeB = 50f) to 500L,
+                Pose(thighB = 18f, kneeB = 50f) to 1500L,
+                Pose() to 500L
             )
         ))
         put("single_balance", Demo(

@@ -2,6 +2,7 @@ package com.recoverwell.core
 
 import com.recoverwell.core.protocol.ExerciseVideo
 import com.recoverwell.core.protocol.ProtocolRegistry
+import com.recoverwell.core.protocol.VideoTier
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -9,14 +10,50 @@ class ExerciseVideoTest {
 
     private val protocol = ProtocolRegistry.default
 
+    private val allExercises = ProtocolRegistry.all.flatMap { p -> p.phases.flatMap { it.exercises } }
+
     @Test
-    fun queryDropsParentheticalsAndAddsContext() {
-        val ankle = protocol.phases.flatMap { it.exercises }.first { it.id == "p3_ankle_pump" }
+    fun fallbackQueryDropsParentheticalsAndAddsContext() {
+        val ankle = protocol.phases.flatMap { it.exercises }.first { it.id == "p3_ankle_pump" }.copy(videoQuery = "")
         // name is "Active ankle pumps (to neutral only)"
         val q = ExerciseVideo.query(ankle, protocol.videoContext)
         assertFalse("parenthetical removed", q.contains("("))
         assertTrue(q.startsWith("Active ankle pumps"))
         assertTrue(q.contains("Achilles"))
+    }
+
+    /** Audit finding: "<name> Achilles rupture rehab physiotherapy" surfaced surgical
+     *  protocols, stretching and whole programmes. Every exercise now has its own query. */
+    @Test
+    fun everyExerciseHasItsOwnTunedQuery() {
+        for (ex in allExercises) assertTrue("${ex.id} needs a tuned videoQuery", ex.videoQuery.isNotBlank())
+        val dupes = allExercises.groupBy { it.videoQuery.lowercase() }.filterValues { it.size > 1 }
+        assertTrue("each exercise searches for itself: $dupes", dupes.isEmpty())
+    }
+
+    /** A conservative (non-surgical) patient must never be steered to surgical,
+     *  stretching or tendinopathy content by the app's own words. */
+    @Test
+    fun tunedQueriesAvoidTermsThatSurfaceTheWrongVideos() {
+        val banned = listOf("surg", "post-op", "post op", "postop", "repair", "stretch", "tendinopathy",
+            "tendonitis", "tendinitis", "→", "{", "}")
+        for (sport in com.recoverwell.core.protocol.SportRegistry.all) {
+            val p = com.recoverwell.core.protocol.SportText.resolveProtocol(protocol, sport.name)
+            for (ex in p.phases.flatMap { it.exercises }) {
+                val q = ExerciseVideo.query(ex, p.videoContext).lowercase()
+                for (b in banned) assertFalse("${ex.id} query \"$q\" contains \"$b\"", q.contains(b))
+                assertTrue("${ex.id} query is specific enough", q.split(" ").size >= 3)
+            }
+        }
+    }
+
+    @Test
+    fun sportDrillsSearchForTheUsersOwnSport() {
+        for (sport in com.recoverwell.core.protocol.SportRegistry.all) {
+            val p = com.recoverwell.core.protocol.SportText.resolveProtocol(protocol, sport.name)
+            val drills = p.phases.flatMap { it.exercises }.first { it.id == "p5_padel" }
+            assertTrue(ExerciseVideo.query(drills, p.videoContext).contains(sport.name, ignoreCase = true))
+        }
     }
 
     @Test
@@ -30,10 +67,10 @@ class ExerciseVideoTest {
     }
 
     @Test
-    fun explicitOverrideWins() {
-        val spec = protocol.phases.first().exercises.first().copy(videoQuery = "my custom phrase")
-        assertEquals("my custom phrase Achilles rupture rehab physiotherapy",
-            ExerciseVideo.query(spec, protocol.videoContext))
+    fun tunedQueryIsUsedVerbatim() {
+        // appending the generic context is what dragged in programmes and surgical protocols
+        val spec = protocol.phases.first().exercises.first().copy(videoQuery = "  my custom phrase ")
+        assertEquals("my custom phrase", ExerciseVideo.query(spec, protocol.videoContext))
     }
 
     @Test
@@ -59,6 +96,65 @@ class ExerciseVideoTest {
         // user's pin always wins; with no pin and no curated entry, returns null -> search
         assertEquals("PINNED12345", ExerciseVideo.resolveVideoId("p1_toe_scrunch", "PINNED12345"))
         assertNull(ExerciseVideo.resolveVideoId("p1_toe_scrunch", null))
+    }
+
+    @Test
+    fun resolveGoesPinnedThenCuratedThenSuggestedThenSearch() {
+        val (id, picks) = ExerciseVideo.suggested.entries.first()
+        assertEquals(VideoTier.PINNED, ExerciseVideo.resolve(id, "PINNED12345").tier)
+        assertEquals("PINNED12345", ExerciseVideo.resolve(id, "PINNED12345").videoId)
+        val r = ExerciseVideo.resolve(id, null)
+        assertEquals(VideoTier.SUGGESTED, r.tier)
+        assertEquals(picks.first(), r.pick)
+        // "Next suggestion" cycles and wraps, never out of range
+        assertEquals(picks[1 % picks.size], ExerciseVideo.resolve(id, null, 1).pick)
+        assertEquals(picks.first(), ExerciseVideo.resolve(id, null, picks.size).pick)
+        assertEquals(picks.last(), ExerciseVideo.resolve(id, " ", -1).pick)
+        val unsuggested = allExercises.map { it.id }.first { it !in ExerciseVideo.suggested }
+        assertEquals(VideoTier.SEARCH, ExerciseVideo.resolve(unsuggested, null).tier)
+        assertNull(ExerciseVideo.resolve(unsuggested, "").pick)
+    }
+
+    /** Nothing is labelled physio-checked until a clinician has actually watched it. */
+    @Test
+    fun noVideoIsPresentedAsPhysioCheckedWithoutBeingWatched() {
+        assertTrue(ExerciseVideo.curated.isEmpty())
+    }
+
+    @Test
+    fun suggestionsAreWellFormedAndSafeByTitle() {
+        val ids = allExercises.map { it.id }.toSet()
+        assertTrue("the audit shipped suggestions", ExerciseVideo.suggested.isNotEmpty())
+        val unsafe = listOf("surg", "post-op", "post op", "postop", "repair", "stretch", "tendinopathy",
+            "tendonitis", "tendinitis", "sprain")
+        for ((exId, picks) in ExerciseVideo.suggested) {
+            assertTrue("$exId is a real exercise", exId in ids)
+            assertTrue("$exId has picks", picks.isNotEmpty())
+            assertEquals("$exId has no duplicate picks", picks.size, picks.map { it.videoId }.toSet().size)
+            for (pick in picks) {
+                assertTrue("${pick.videoId} is an 11-char id", Regex("[A-Za-z0-9_-]{11}").matches(pick.videoId))
+                assertEquals(pick.videoId, ExerciseVideo.parseVideoId(pick.videoId))
+                assertTrue(pick.title.isNotBlank() && pick.source.isNotBlank())
+                assertTrue(pick.startSeconds >= 0)
+                val title = pick.title.lowercase().replace("non-surgical", "").replace("non surgical", "")
+                    .replace("nonsurgical", "")
+                for (b in unsafe) assertFalse("$exId pick \"${pick.title}\" has \"$b\"", title.contains(b))
+            }
+        }
+    }
+
+    /** The video brief must describe exactly the clips the app can use - it had drifted
+     *  (a removed demo, the wrong count) and a producer would have filmed the wrong list. */
+    @Test
+    fun productionBriefsListExactlyTheAppsDemoClips() {
+        val demoIds = allExercises.map { it.demoId }.toSortedSet()
+        for (path in listOf("../docs/exercise-demo-video-prompts.md", "../docs/exercise-demo-video-prompts-standalone.md")) {
+            val text = java.io.File(path).readText()
+            val listed = Regex("(?m)^(?:## |\\*\\*)`([a-z_]+)`").findAll(text).map { it.groupValues[1] }.toList()
+            assertEquals("$path lists each clip once", listed.size, listed.toSet().size)
+            assertEquals(path, demoIds, listed.toSortedSet())
+            assertTrue("$path states the clip count", text.contains("${demoIds.size}"))
+        }
     }
 
     @Test

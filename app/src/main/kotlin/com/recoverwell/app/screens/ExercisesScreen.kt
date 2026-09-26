@@ -5,8 +5,8 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import com.recoverwell.app.MainActivity
 import com.recoverwell.app.notify.Reminders
-import com.recoverwell.app.ui.ExerciseDemoView
 import com.recoverwell.app.ui.Forms
+import com.recoverwell.app.ui.OwnClips
 import com.recoverwell.app.ui.Ui
 import com.recoverwell.core.logic.PhaseEngine
 import com.recoverwell.core.logic.ScheduleEngine
@@ -135,21 +135,17 @@ object ExercisesScreen {
         val col = Ui.column(a)
         col.addView(Ui.backRow(a, spec.name) { a.popOverlay() })
 
-        val videoContext = ProtocolRegistry.forProfile(a.store.profile()).videoContext
-        val videoUrl = com.recoverwell.core.protocol.ExerciseVideo.youtubeSearchUrl(spec, videoContext)
         val playInApp = a.store.setting("video_inapp", "true") != "false"
-        val pinnedId = a.store.exerciseOverrides()[spec.id]?.videoId
-        val resolvedId = com.recoverwell.core.protocol.ExerciseVideo.resolveVideoId(spec.id, pinnedId)
 
         // animated quick reference (offline); a play overlay opens a real video
         val demoCard = Ui.frame(a)
         demoCard.background = Ui.rounded(Ui.SURFACE_HIGH)
         demoCard.clipToOutline = true
-        val demo = ExerciseDemoView(a)
-        demo.demoId = spec.demoId
-        demoCard.addView(demo, ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(a, 230))
+        // the user's own offline clip, when they've added one, replaces the animation
+        val ownClip = OwnClips.clipFor(a, spec) != null
+        demoCard.addView(OwnClips.demoView(a, spec), ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(a, 230))
         // "Quick reference" tag, top-left
-        val tag = Ui.text(a, "Quick reference", 11.5f, Ui.TEXT_DIM, bold = true)
+        val tag = Ui.text(a, if (ownClip) "Your clip" else "Quick reference", 11.5f, Ui.TEXT_DIM, bold = true)
         tag.background = Ui.rounded(com.recoverwell.draw.Palette.withAlpha(Ui.CARD, 0xE6), 10f)
         tag.setPadding(Ui.dp(a, 8), Ui.dp(a, 3), Ui.dp(a, 8), Ui.dp(a, 3))
         val tagLp = android.widget.FrameLayout.LayoutParams(
@@ -167,8 +163,7 @@ object ExercisesScreen {
         watchRow.isClickable = true
         watchRow.contentDescription = "Watch a video demonstration"
         watchRow.setOnClickListener {
-            if (playInApp) VideoScreen.open(a, spec.name, resolvedId, videoUrl)
-            else a.openUrl(if (resolvedId != null) "https://www.youtube.com/watch?v=$resolvedId" else videoUrl)
+            if (playInApp) VideoScreen.open(a, spec) else a.openUrl(VideoScreen.externalUrl(a, spec))
         }
         watchRow.addView(Ui.icon(a, "ic_play", 20, com.recoverwell.draw.Palette.ON_PRIMARY))
         val wlabel = Ui.text(a, "Watch video demonstration", 15.5f, com.recoverwell.draw.Palette.ON_PRIMARY, bold = true)
@@ -391,11 +386,26 @@ object ExercisesScreen {
         // not on the exercise screen people read every day
         col.addView(Ui.section(a, "Demonstration video"))
         val pinned = existing?.videoId
-        col.addView(Ui.caption(a, if (pinned != null) "Your pinned video always plays for this exercise."
-            else "\"Watch video\" plays the best YouTube match; the animation always works offline."))
-        col.addView(Ui.buttonPair(a,
-            Ui.tonalButton(a, if (pinned != null) "Change video" else "Use a specific video") { pinVideoDialog(a, spec) },
-            Ui.textButton(a, "Use best match", Ui.TEXT_DIM) { setPinnedVideo(a, spec, null); a.refresh() }))
+        val suggested = com.recoverwell.core.protocol.ExerciseVideo.suggested[spec.id].orEmpty().isNotEmpty()
+        col.addView(Ui.caption(a, when {
+            pinned != null -> "Your pinned video always plays for this exercise."
+            suggested -> "\"Watch video\" plays a suggested demonstration - tap \"Use this video\" there to keep " +
+                "it, or paste one your physio recommends. The animation always works offline."
+            else -> "\"Watch video\" shows YouTube results for this exercise. Paste one your physio recommends " +
+                "to always play it. The animation always works offline."
+        }))
+        if (pinned != null) {
+            col.addView(Ui.buttonPair(a,
+                Ui.tonalButton(a, "Change video") { pinVideoDialog(a, spec) },
+                Ui.textButton(a, "Remove my video", Ui.TEXT_DIM) { setPinnedVideo(a, spec, null); a.refresh() }))
+        } else {
+            col.addView(Ui.fullWidth(Ui.tonalButton(a, "Use a specific video") { pinVideoDialog(a, spec) }, a))
+        }
+        // own clips: say exactly which file this exercise looks for
+        if (OwnClips.enabled(a)) {
+            col.addView(Ui.caption(a, if (OwnClips.clipFor(a, spec) != null) "Your own clip replaces the animation."
+                else "Own clip: add ${spec.demoId}.mp4 (or ${spec.id}.mp4) to your clips folder."))
+        }
 
         col.addView(Ui.spacer(a, 12))
         col.addView(Ui.fullWidth(Ui.button(a, "Save changes") {

@@ -54,6 +54,7 @@ class MainActivity : Activity() {
     private val REQ_IMPORT = 42
     private val REQ_AUTOBACKUP = 43
     private val REQ_MIC = 44
+    private val REQ_CLIPS = 45
     private var pendingMicResult: ((Boolean) -> Unit)? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -413,6 +414,29 @@ class MainActivity : Activity() {
         startActivityForResult(intent, REQ_AUTOBACKUP)
     }
 
+    /** Pick the folder holding the user's own demo clips (read-only, persisted grant). */
+    fun chooseClipFolder() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+        }
+        startActivityForResult(intent, REQ_CLIPS)
+    }
+
+    /** Stop using the clip folder and release its grant. */
+    fun forgetClipFolder() {
+        val uriStr = store.setting(com.recoverwell.app.ui.OwnClips.KEY_FOLDER, "")
+        if (uriStr.isNotBlank()) {
+            try {
+                contentResolver.releasePersistableUriPermission(
+                    android.net.Uri.parse(uriStr), Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            } catch (e: Exception) { /* grant may already be gone */ }
+        }
+        store.saveSetting(com.recoverwell.app.ui.OwnClips.KEY_FOLDER, "")
+        store.saveSetting(com.recoverwell.app.ui.OwnClips.KEY_FOLDER_NAME, "")
+        com.recoverwell.app.ui.OwnClips.rescan()
+        refresh()
+    }
+
     fun autoBackupEnabled(): Boolean =
         store.setting("auto_backup_uri", "").isNotBlank()
 
@@ -564,6 +588,17 @@ class MainActivity : Activity() {
                     }
                     Toast.makeText(this, pendingExportToast, Toast.LENGTH_LONG).show()
                     pendingExport = null
+                    refresh()
+                }
+                REQ_CLIPS -> {
+                    contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    store.saveSetting(com.recoverwell.app.ui.OwnClips.KEY_FOLDER, uri.toString())
+                    store.saveSetting(com.recoverwell.app.ui.OwnClips.KEY_FOLDER_NAME,
+                        uri.lastPathSegment?.substringAfterLast(':')?.ifBlank { null } ?: "your folder")
+                    com.recoverwell.app.ui.OwnClips.rescan()
+                    val n = com.recoverwell.app.ui.OwnClips.count(this)
+                    Toast.makeText(this, if (n == 0) "No video clips found in that folder"
+                        else "$n clip${if (n == 1) "" else "s"} found", Toast.LENGTH_LONG).show()
                     refresh()
                 }
                 REQ_AUTOBACKUP -> {
