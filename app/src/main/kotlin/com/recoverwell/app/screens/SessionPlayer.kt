@@ -93,12 +93,11 @@ object SessionPlayer {
         col.addView(demoCard, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         // a real demonstration is one tap away mid-session (the animation is the quick reference)
-        col.addView(Ui.textButton(a, "Watch video demonstration") {
+        if (VideoScreen.hasVideo(a, ex)) col.addView(Ui.textButton(a, "Watch video demonstration") {
             // a running hold would otherwise finish behind the video and rebuild it
             timer?.cancel()
             timer = null
-            if (a.store.setting("video_inapp", "true") != "false") VideoScreen.open(a, ex)
-            else a.openUrl(VideoScreen.externalUrl(a, ex))
+            VideoScreen.watch(a, ex)
         }.apply { contentDescription = "Watch a video demonstration of ${ex.name}" })
         col.addView(Ui.headline(a, ex.name))
         col.addView(Ui.text(a, ScheduleEngine.exercisePrescription(ex), 14.5f, Ui.PRIMARY, bold = true))

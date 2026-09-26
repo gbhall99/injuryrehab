@@ -26,9 +26,29 @@ class ExerciseVideoTest {
      *  protocols, stretching and whole programmes. Every exercise now has its own query. */
     @Test
     fun everyExerciseHasItsOwnTunedQuery() {
-        for (ex in allExercises) assertTrue("${ex.id} needs a tuned videoQuery", ex.videoQuery.isNotBlank())
-        val dupes = allExercises.groupBy { it.videoQuery.lowercase() }.filterValues { it.size > 1 }
+        for (ex in allExercises) {
+            if (ex.noVideoSearchReason.isBlank()) assertTrue("${ex.id} needs a tuned videoQuery", ex.videoQuery.isNotBlank())
+            else assertTrue("${ex.id} withholds search, so it has no query", ex.videoQuery.isBlank())
+        }
+        val dupes = allExercises.filter { it.videoQuery.isNotBlank() }
+            .groupBy { it.videoQuery.lowercase() }.filterValues { it.size > 1 }
         assertTrue("each exercise searches for itself: $dupes", dupes.isEmpty())
+    }
+
+    /** Clinical guard: no search could be made safe for ankle pumps (nearly every video pulls
+     *  the foot past neutral), so the app offers none - only the animation, an own clip or a pin. */
+    @Test
+    fun anklePumpsAreNeverSentToASearch() {
+        val pump = allExercises.first { it.id == "p3_ankle_pump" }
+        assertTrue(pump.noVideoSearchReason.contains("neutral"))
+        assertFalse(pump.id in ExerciseVideo.suggested)
+        assertEquals(VideoTier.NONE, ExerciseVideo.resolve(pump, null).tier)
+        assertNull(ExerciseVideo.resolve(pump, null).pick)
+        // the user's (or their physio's) own chosen video is always respected
+        assertEquals(VideoTier.PINNED, ExerciseVideo.resolve(pump, "PHYSIO12345").tier)
+        // everything else keeps a search as the floor
+        for (ex in allExercises.filter { it.noVideoSearchReason.isBlank() })
+            assertNotEquals(ex.id, VideoTier.NONE, ExerciseVideo.resolve(ex, null).tier)
     }
 
     /** A conservative (non-surgical) patient must never be steered to surgical,
@@ -39,7 +59,7 @@ class ExerciseVideoTest {
             "tendonitis", "tendinitis", "→", "{", "}")
         for (sport in com.recoverwell.core.protocol.SportRegistry.all) {
             val p = com.recoverwell.core.protocol.SportText.resolveProtocol(protocol, sport.name, sport.drillVideoQuery)
-            for (ex in p.phases.flatMap { it.exercises }) {
+            for (ex in p.phases.flatMap { it.exercises }.filter { it.noVideoSearchReason.isBlank() }) {
                 val q = ExerciseVideo.query(ex, p.videoContext).lowercase()
                 for (b in banned) assertFalse("${ex.id} query \"$q\" contains \"$b\"", q.contains(b))
                 assertTrue("${ex.id} query is specific enough", q.split(" ").size >= 3)
@@ -96,13 +116,6 @@ class ExerciseVideoTest {
     }
 
     @Test
-    fun pinnedIdBeatsCuratedDefault() {
-        // user's pin always wins; with no pin and no curated entry, returns null -> search
-        assertEquals("PINNED12345", ExerciseVideo.resolveVideoId("p1_toe_scrunch", "PINNED12345"))
-        assertNull(ExerciseVideo.resolveVideoId("p1_toe_scrunch", null))
-    }
-
-    @Test
     fun resolveGoesPinnedThenCuratedThenSuggestedThenSearch() {
         val (id, picks) = ExerciseVideo.suggested.entries.first()
         assertEquals(VideoTier.PINNED, ExerciseVideo.resolve(id, "PINNED12345").tier)
@@ -114,7 +127,7 @@ class ExerciseVideoTest {
         assertEquals(picks[1 % picks.size], ExerciseVideo.resolve(id, null, 1).pick)
         assertEquals(picks.first(), ExerciseVideo.resolve(id, null, picks.size).pick)
         assertEquals(picks.last(), ExerciseVideo.resolve(id, " ", -1).pick)
-        val unsuggested = allExercises.map { it.id }.first { it !in ExerciseVideo.suggested }
+        val unsuggested = allExercises.first { it.id !in ExerciseVideo.suggested && it.noVideoSearchReason.isBlank() }.id
         assertEquals(VideoTier.SEARCH, ExerciseVideo.resolve(unsuggested, null).tier)
         assertNull(ExerciseVideo.resolve(unsuggested, "").pick)
     }

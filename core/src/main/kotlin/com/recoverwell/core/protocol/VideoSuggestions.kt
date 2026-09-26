@@ -19,7 +19,73 @@ object VideoSuggestions {
     private fun pick(id: String, title: String, source: String) = VideoPick(id, title, source)
 
     val byExercise: Map<String, List<VideoPick>> = linkedMapOf(
-        // P1_P3_PICKS
+        // -- Phase 1: protect & activate (boot on - the videos show bare legs) --
+        "p1_toe_scrunch" to listOf(
+            // curls a towel; in the boot, just curl and spread the toes
+            pick("FxHeokSwEes", "Toe Curl Exercise", "Rehab My Patient physiotherapy exercise library")
+        ),
+        "p1_knee_flex" to listOf(
+            pick("TQyUvwnWdVs", "Knee Exercises in Sitting", "NHS Greater Glasgow and Clyde"),
+            pick("gd7Y9gmDBOE", "Seated Knee Bending Exercise", "Concord Hospital rehabilitation services")
+        ),
+        "p1_slr" to listOf(
+            pick("ie-tyGqon0w", "Straight Leg Raise", "Nottingham University Hospitals NHS physiotherapy"),
+            pick("EWGR5mTPzsU", "Straight Leg Raise Exercise • How To Do Properly", "Margaret Martin, physical therapist")
+        ),
+        "p1_hip_abd" to listOf(
+            pick("UmmBtOG2N_s", "How to Do a Sidelying Hip Abduction", "MedBridge clinical exercise library"),
+            pick("dBQXWsdrnfo", "Strengthen Your “Gluteus Medius” with Side-Lying Hip Abduction",
+                "Pain Science Physical Therapy")
+        ),
+        "p1_glute_squeeze" to listOf(
+            pick("TPUcaCNKwnY", "Glute Sets", "VNA Health Group physical therapy"),
+            pick("PhTDzR0TpZs", "How to Do a Glute Bridge Exercise: A Guide from Physical Therapists", "Physical therapists")
+        ),
+
+        // -- Phase 2: controlled loading (still in the boot) ---------------
+        "p2_boot_walk" to listOf(
+            // crutch technique for partial / as-tolerated weight bearing; the boot stays on
+            pick("TdIESUPLSMw", "Learn Crutches, Partial Weight Bearing (PWB), in 45sec", "Physiotherapist")
+        ),
+        "p2_leg_ext" to listOf(
+            pick("VuJZ6dqMf8M", "Seated Knee Extension (LAQ)", "Ask Doctor Jo, physical therapist"),
+            pick("v_R4c04GuKE", "Seated Knee Extension - PT Exercise", "OneStep Digital Physical Therapy")
+        ),
+        "p2_bridge" to listOf(
+            pick("PhTDzR0TpZs", "How to Do a Glute Bridge Exercise: A Guide from Physical Therapists", "Physical therapists"),
+            pick("XLXGydU5DdU", "How to do a glute bridge", "Bupa Health")
+        ),
+        "p2_clamshell" to listOf(
+            pick("EG5_gXcfozw", "How To Do The Clamshell Exercise", "Kinetic Sports Rehab physical therapy"),
+            pick("2c5xiz4q7ow", "Clam Shell Exercise: Strengthen Your Hip & Knees by Physical Therapist",
+                "Physical therapist")
+        ),
+        "p2_core" to listOf(
+            // each covers part of the circuit: band work, then trunk rotation
+            pick("sbzR-daGhag", "Upper Body Seated Resistance Band Exercises", "Intermountain Healthcare exercise physiologist"),
+            pick("esNSztn8OWQ", "Seated Trunk Rotation", "Ask Doctor Jo, physical therapist")
+        ),
+
+        // -- Phase 3: motion & gait -----------------------------------------
+        // p3_ankle_pump: deliberately none - see its noVideoSearchReason
+        "p3_inv_ev" to listOf(
+            pick("9CJkHt7Cbag", "Seated Inversion Eversion Exercise for Foot and Ankle",
+                "Congruency Therapy & Wellness physical therapy"),
+            pick("sd8WSPKMIYs", "Seated ankle inversion & eversion ROM", "Doctor of Physical Therapy")
+        ),
+        "p3_seated_raise" to listOf(
+            pick("M5j_CfIobHE", "Seated heel raise", "Northamptonshire Healthcare NHS physiotherapy (NHFT)")
+        ),
+        // p3_gait: no clinical-source demo found - the tuned search ranks two rupture-specific ones first
+        "p3_bike" to listOf(
+            // covers the set-up cue (saddle height); the easy-pedalling cues are the app's own
+            pick("B5jBa94dNZ4", "Bicycle Seat Height: Do It Right For Comfort & Speed (Stop Knee Pain)",
+                "Bob & Brad, physical therapists")
+        ),
+        "p3_towel" to listOf(
+            pick("ztgcEsuqves", "Towel scrunch | Foot exercises", "Pocket Physio"),
+            pick("FxHeokSwEes", "Toe Curl Exercise", "Rehab My Patient physiotherapy exercise library")
+        ),
 
         // -- Phase 4: strength & balance ----------------------------------
         "p4_double_raise" to listOf(

@@ -21,10 +21,12 @@ data class VideoPick(
  *    honest "not yet checked, does it match your plan?" banner and a one-tap
  *    "Use this video" that pins it;
  *  - [SEARCH]: a YouTube search, tuned per exercise to find a single-movement
- *    demo rather than whole programmes, post-operative protocols or stretching.
+ *    demo rather than whole programmes, post-operative protocols or stretching;
+ *  - [NONE]: no video at all, because no search could be made safe for this
+ *    pathway ([com.recoverwell.core.model.ExerciseSpec.noVideoSearchReason]).
  * The bundled animation (or the user's own offline clip) is always the floor.
  */
-enum class VideoTier { PINNED, CURATED, SUGGESTED, SEARCH }
+enum class VideoTier { PINNED, CURATED, SUGGESTED, SEARCH, NONE }
 
 data class VideoResolution(val tier: VideoTier, val pick: VideoPick?) {
     val videoId: String? get() = pick?.videoId
@@ -55,8 +57,13 @@ object ExerciseVideo {
     /** Pre-screened candidates keyed by exercise id (title + source checks only). */
     val suggested: Map<String, List<VideoPick>> = VideoSuggestions.byExercise
 
-    /** The best available demonstration, by tier. [suggestionIndex] cycles candidates. */
-    fun resolve(exerciseId: String, pinnedId: String?, suggestionIndex: Int = 0): VideoResolution {
+    /** The best available demonstration for [spec], by tier. [suggestionIndex] cycles candidates. */
+    fun resolve(spec: ExerciseSpec, pinnedId: String?, suggestionIndex: Int = 0): VideoResolution =
+        resolve(spec.id, pinnedId, suggestionIndex, searchSafe = spec.noVideoSearchReason.isBlank())
+
+    /** As above by id; with no pin, curated or suggested video, [searchSafe] = false means NONE. */
+    fun resolve(exerciseId: String, pinnedId: String?, suggestionIndex: Int = 0,
+                searchSafe: Boolean = true): VideoResolution {
         pinnedId?.takeIf { it.isNotBlank() }?.let {
             return VideoResolution(VideoTier.PINNED, VideoPick(it, "", ""))
         }
@@ -65,14 +72,8 @@ object ExerciseVideo {
         if (picks.isNotEmpty()) {
             return VideoResolution(VideoTier.SUGGESTED, picks[Math.floorMod(suggestionIndex, picks.size)])
         }
-        return VideoResolution(VideoTier.SEARCH, null)
+        return VideoResolution(if (searchSafe) VideoTier.SEARCH else VideoTier.NONE, null)
     }
-
-    /** Resolved id to embed, preferring the user's pin over any curated default. */
-    fun resolveVideoId(exerciseId: String, pinnedId: String?): String? =
-        pinnedId?.takeIf { it.isNotBlank() } ?: curated[exerciseId]?.videoId
-
-    fun embedUrl(id: String): String = "https://www.youtube-nocookie.com/embed/$id"
 
     /**
      * Extracts an 11-character YouTube video id from a pasted link or a bare id.

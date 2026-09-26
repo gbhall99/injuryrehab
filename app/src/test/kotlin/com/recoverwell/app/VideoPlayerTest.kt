@@ -7,6 +7,7 @@ import com.recoverwell.app.screens.ExercisesScreen
 import com.recoverwell.app.screens.VideoScreen
 import com.recoverwell.app.ui.ExerciseDemoView
 import com.recoverwell.app.ui.OwnClips
+import com.recoverwell.core.model.ExerciseOverride
 import com.recoverwell.core.model.ExerciseSpec
 import com.recoverwell.core.protocol.ExerciseVideo
 import com.recoverwell.core.protocol.ProtocolRegistry
@@ -132,5 +133,38 @@ class OwnClipsFallbackTest : VideoBase() {
         assertTrue(screen(a).has("Quick reference"))
         assertFalse(screen(a).has("Your clip"))
         assertEquals(0, OwnClips.count(a))
+    }
+}
+
+/** Ankle pumps: no safe search exists, so the app explains instead of showing risky videos. */
+@RunWith(RobolectricTestRunner::class)
+@Config(manifest = "src/main/AndroidManifest.xml", sdk = [26])
+class NoSafeVideoTest : VideoBase() {
+    @Test
+    fun anklePumpsExplainInsteadOfSearching() {
+        val a = Robolectric.setupActivity(MainActivity::class.java)
+        ExerciseDemoView.frameLoopEnabled = false
+        onboarded(a, 10, 3) // no data notice acknowledged: nothing streams, so none is needed
+        val spec = exercise(a, "p3_ankle_pump")
+        a.pushOverlay(spec.name) { ExercisesScreen.exerciseDetail(a, spec) }
+        assertTrue(screen(a).has("No YouTube video for this one"))
+        assertTrue(screen(a).has("past neutral"))
+        assertFalse("no button into an unsafe search", screen(a).has("Watch video demonstration"))
+        assertNotNull("the animation (stops at neutral) is the demo", first(a.window.decorView, ExerciseDemoView::class.java))
+
+        VideoScreen.open(a, spec)
+        assertNull("nothing loads", first(a.window.decorView, WebView::class.java))
+        assertTrue(screen(a).has("No YouTube video for this one"))
+        assertNull(VideoScreen.externalUrl(a, spec))
+        a.popOverlay()
+        a.popOverlay()
+
+        com.recoverwell.app.screens.SessionPlayer.open(a, "Exercise session 1", "ex1", listOf(spec.id))
+        assertFalse(screen(a).has("Watch video demonstration"))
+        com.recoverwell.app.screens.SessionPlayer.reset()
+
+        // a video from the user's physio can still be pinned, and then it plays
+        a.store.saveExerciseOverride(ExerciseOverride(spec.id, null, null, null, null, true, "PHYSIO12345"))
+        assertTrue(VideoScreen.hasVideo(a, spec))
     }
 }

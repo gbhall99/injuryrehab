@@ -40,7 +40,8 @@ object VideoScreen {
      */
     fun open(a: MainActivity, spec: ExerciseSpec) {
         val go = { a.pushOverlay(spec.name) { build(a, spec) } }
-        if (a.store.setting(NOTICE_ACK, "") == "1") {
+        // nothing will stream, so no data notice
+        if (a.store.setting(NOTICE_ACK, "") == "1" || !hasVideo(a, spec)) {
             go()
             return
         }
@@ -56,16 +57,26 @@ object VideoScreen {
             .show()
     }
 
-    /** The link handed to the YouTube app in "Open YouTube" mode. */
-    fun externalUrl(a: MainActivity, spec: ExerciseSpec): String {
+    /** The link handed to the YouTube app in "Open YouTube" mode; null when no video is offered. */
+    fun externalUrl(a: MainActivity, spec: ExerciseSpec): String? {
         val r = resolution(a, spec)
+        if (r.tier == VideoTier.NONE) return null
         val pick = r.pick ?: return searchUrl(a, spec)
         return "https://www.youtube.com/watch?v=${pick.videoId}" +
             if (pick.startSeconds > 0) "&t=${pick.startSeconds}s" else ""
     }
 
     fun resolution(a: MainActivity, spec: ExerciseSpec): VideoResolution =
-        ExerciseVideo.resolve(spec.id, a.store.exerciseOverrides()[spec.id]?.videoId, suggestionIndex[spec.id] ?: 0)
+        ExerciseVideo.resolve(spec, a.store.exerciseOverrides()[spec.id]?.videoId, suggestionIndex[spec.id] ?: 0)
+
+    /** False when the app deliberately offers no video (no safe search exists for this exercise). */
+    fun hasVideo(a: MainActivity, spec: ExerciseSpec): Boolean = resolution(a, spec).tier != VideoTier.NONE
+
+    /** "Watch video" from the exercise screen or the session player, honouring the playback setting. */
+    fun watch(a: MainActivity, spec: ExerciseSpec) {
+        if (a.store.setting("video_inapp", "true") != "false" || !hasVideo(a, spec)) open(a, spec)
+        else externalUrl(a, spec)?.let { a.openUrl(it) }
+    }
 
     private fun searchUrl(a: MainActivity, spec: ExerciseSpec): String =
         ExerciseVideo.youtubeSearchUrl(spec, ProtocolRegistry.forProfile(a.store.profile()).videoContext)
@@ -86,6 +97,12 @@ object VideoScreen {
     @SuppressLint("SetJavaScriptEnabled")
     fun build(a: MainActivity, spec: ExerciseSpec): View {
         val r = resolution(a, spec)
+        if (r.tier == VideoTier.NONE) {
+            val col = Ui.column(a)
+            col.addView(Ui.backRow(a, spec.name) { a.popOverlay() })
+            col.addView(noVideoCard(a, spec))
+            return Ui.scroll(a, col)
+        }
         val search = searchUrl(a, spec)
         val root = LinearLayout(a).apply {
             orientation = LinearLayout.VERTICAL
@@ -93,7 +110,6 @@ object VideoScreen {
         }
         val head = Ui.column(a).apply { setPadding(paddingLeft, paddingTop, paddingRight, 0) }
         head.addView(Ui.backRow(a, spec.name) { a.popOverlay() })
-        head.addView(sourceBanner(a, spec, r))
         root.addView(head)
 
         val web = PlayerView(a).apply {
@@ -140,6 +156,14 @@ object VideoScreen {
         val stage = android.widget.FrameLayout(a)
         stage.addView(web, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         stage.addView(offline, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        // the tuned search, in this same player
+        val showSearch = {
+            if (isOnline(a)) {
+                offline.visibility = View.GONE
+                web.loadUrl(search)
+            } else offline.visibility = View.VISIBLE
+        }
+        head.addView(sourceBanner(a, spec, r, showSearch))
         val pick = r.pick
         if (!isOnline(a)) {
             offline.visibility = View.VISIBLE
@@ -160,13 +184,8 @@ object VideoScreen {
             maxLines = 3
         })
         val row = Ui.row(a)
-        row.addView(Ui.weight(Ui.tonalButton(a, "Open in YouTube") { a.openUrl(externalUrl(a, spec)) }, 1f))
-        val browse = Ui.tonalButton(a, "Search results") {
-            if (isOnline(a)) {
-                offline.visibility = View.GONE
-                web.loadUrl(search)
-            } else offline.visibility = View.VISIBLE
-        }
+        row.addView(Ui.weight(Ui.tonalButton(a, "Open in YouTube") { externalUrl(a, spec)?.let { a.openUrl(it) } }, 1f))
+        val browse = Ui.tonalButton(a, "Search results") { showSearch() }
         val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         lp.setMargins(Ui.dp(a, 8), Ui.dp(a, 10), 0, 0)
         browse.layoutParams = lp
@@ -176,8 +195,16 @@ object VideoScreen {
         return root
     }
 
+    /** Why this exercise has no video, and what to use instead. Shared with the exercise screen. */
+    fun noVideoCard(a: MainActivity, spec: ExerciseSpec): View {
+        val card = Ui.card(a, Ui.INFO_BG)
+        card.addView(Ui.text(a, "No YouTube video for this one", 14.5f, Ui.ON_INFO_BG, bold = true))
+        card.addView(Ui.text(a, spec.noVideoSearchReason, 13.5f, Ui.ON_INFO_BG))
+        return card
+    }
+
     /** Says plainly where this video came from and what the user can do about it. */
-    private fun sourceBanner(a: MainActivity, spec: ExerciseSpec, r: VideoResolution): View {
+    private fun sourceBanner(a: MainActivity, spec: ExerciseSpec, r: VideoResolution, showSearch: () -> Unit): View {
         val card = Ui.card(a, if (r.tier == VideoTier.SUGGESTED) Ui.INFO_BG else Ui.CARD)
         when (r.tier) {
             VideoTier.PINNED -> pinnedBanner(a, card)
@@ -204,10 +231,11 @@ object VideoScreen {
                     if (total > 1) {
                         suggestionIndex[spec.id] = (suggestionIndex[spec.id] ?: 0) + 1
                         a.refresh()
-                    } else a.openUrl(searchUrl(a, spec))
+                    } else showSearch()
                 }
                 card.addView(Ui.buttonPair(a, use, next, marginTopDp = 6))
             }
+            VideoTier.NONE -> {} // handled by build(): no player at all
             VideoTier.SEARCH -> {
                 card.addView(Ui.text(a, "YouTube results - tap one to play", 14.5f, Ui.TEXT, bold = true))
                 card.addView(Ui.caption(a, "Searching “${ExerciseVideo.query(spec,

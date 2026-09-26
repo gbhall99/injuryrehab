@@ -162,16 +162,16 @@ object ExercisesScreen {
         watchRow.setPadding(Ui.dp(a, 18), Ui.dp(a, 8), Ui.dp(a, 18), Ui.dp(a, 8))
         watchRow.isClickable = true
         watchRow.contentDescription = "Watch a video demonstration"
-        watchRow.setOnClickListener {
-            if (playInApp) VideoScreen.open(a, spec) else a.openUrl(VideoScreen.externalUrl(a, spec))
-        }
+        watchRow.setOnClickListener { VideoScreen.watch(a, spec) }
         watchRow.addView(Ui.icon(a, "ic_play", 20, com.recoverwell.draw.Palette.ON_PRIMARY))
         val wlabel = Ui.text(a, "Watch video demonstration", 15.5f, com.recoverwell.draw.Palette.ON_PRIMARY, bold = true)
         wlabel.setPadding(Ui.dp(a, 10), 0, 0, 0)
         watchRow.addView(Ui.weight(wlabel, 1f))
         watchRow.addView(Ui.text(a, if (playInApp) "In-app" else "YouTube",
             12f, com.recoverwell.draw.Palette.withAlpha(com.recoverwell.draw.Palette.ON_PRIMARY, 0xCC)))
-        col.addView(Ui.fullWidth(watchRow, a, 10))
+        // no safe YouTube search exists for some exercises: say why instead of offering one
+        if (VideoScreen.hasVideo(a, spec)) col.addView(Ui.fullWidth(watchRow, a, 10))
+        else col.addView(VideoScreen.noVideoCard(a, spec))
 
 
         // prescription as stat tiles

@@ -38,7 +38,8 @@ object SportText {
                             cues = e.cues.resolved(n),
                             whyItMatters = resolve(e.whyItMatters, n),
                             precaution = resolve(e.precaution, n),
-                            videoQuery = resolve(e.videoQuery.replace("{sportDrills}", drills), n)
+                            videoQuery = resolve(e.videoQuery.replace("{sportDrills}", drills), n),
+                            noVideoSearchReason = resolve(e.noVideoSearchReason, n)
                         )
                     },
                     physioQuestions = ph.physioQuestions.resolved(n)
