@@ -34,6 +34,26 @@ class DemoLibraryTest {
         }
     }
 
+    /** Phases 1-2 are boot phases: an animation without the boot shows an unprotected
+     *  ankle (the audit found clamshells drawn bare). Phases 4-5 are out of the boot. */
+    @Test
+    fun animationsShowTheBootExactlyWhenThePlanDoes() {
+        for (protocol in ProtocolRegistry.all) for (phase in protocol.phases) for (ex in phase.exercises) {
+            val boot = com.recoverwell.draw.Prop.BOOT in DemoLibrary.demos.getValue(ex.demoId).props
+            when (ex.phase) {
+                1, 2 -> assertTrue("${ex.id} is a boot-phase exercise: its animation must show the boot", boot)
+                4, 5 -> assertFalse("${ex.id} is out of the boot: its animation must not show one", boot)
+            }
+        }
+    }
+
+    /** No leftover animations: every demo belongs to an exercise in the plan. */
+    @Test
+    fun everyDemoIsUsed() {
+        val used = ProtocolRegistry.all.flatMap { p -> p.phases.flatMap { ph -> ph.exercises.map { it.demoId } } }.toSet()
+        assertEquals(emptySet<String>(), DemoLibrary.demos.keys - used)
+    }
+
     @Test
     fun earlyPhaseAnkleDemosNeverShowDorsiflexionPastNeutral() {
         // Clinical guard: the phase 3 ankle pump demo must not animate the

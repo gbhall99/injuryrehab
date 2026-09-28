@@ -341,3 +341,32 @@ A phase-2 day with one guided session: ~168 taps → ~27. Verification: 179
 tests green (+5 `EffortBudgetTest` classes that count taps and guard screen
 load); signed APK builds and verifies. Not device- or patient-validated here.
 
+---
+
+# Exercise-video quality audit (v3.9)
+
+Full report: [`docs/EXERCISE_VIDEO_AUDIT.md`](docs/EXERCISE_VIDEO_AUDIT.md).
+Same process: measure, score, fix, re-measure. Search results were measured for
+all 28 exercises (proxy: a YouTube-restricted web search), before and after
+tuning. youtube.com itself was blocked here, so nothing was watched: picks are
+pre-screened from title and source, labelled as such, and a review sheet
+covers each one.
+
+| Measure | Before | After |
+|---|:-:|:-:|
+| Top-5 results that are right and safe | 15/140 | 123/135 (ankle pumps withheld) |
+| Unsafe top-5 results, phases 1-3 (surgical, stretching, premature) | 53/80 | 3/75 |
+| Exercises with a specific pre-screened demo | 0 | 24/28 |
+| Per-exercise score (avg /10) | 1.1 | 8.0 (9 is the cap until a clinician watches) |
+| Video journeys (watch, mid-session, keep, offline, own clips, a11y, safety, animations) | 1-6 | 10 |
+
+Clinical calls:
+
+- Ankle pumps get no YouTube video: no query could be made safe.
+- Clamshells now show the boot (phase 2 is a boot phase).
+- The phase-4 heel-raise progression and weighted seated raise get their own animations.
+- Every video carries a safety strip.
+
+Verification: 193 tests green (179 before; +14). Signed APK builds and verifies.
+Not device- or patient-validated here.
+

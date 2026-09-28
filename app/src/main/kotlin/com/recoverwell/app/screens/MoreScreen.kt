@@ -96,6 +96,19 @@ object MoreScreen {
         videoCard.addView(Ui.caption(a, "In-app playback loads YouTube inside the app (the only thing " +
             "that uses the network). \"Open YouTube\" hands off to the YouTube app instead."))
         col.addView(videoCard)
+        // the user's own offline demo clips (e.g. produced from the video brief)
+        val clipsOn = com.recoverwell.app.ui.OwnClips.enabled(a)
+        col.addView(Ui.listRow(a, "ic_play", "Your own demo clips",
+            if (clipsOn) "${com.recoverwell.app.ui.OwnClips.count(a)} matched in " +
+                "${a.store.setting(com.recoverwell.app.ui.OwnClips.KEY_FOLDER_NAME, "your folder")} · tap to change"
+            else "Play your own offline clips instead of the animations - pick a folder") {
+            a.chooseClipFolder()
+        })
+        if (clipsOn) {
+            col.addView(Ui.caption(a, "Name each file by exercise or demo id, e.g. p3_seated_raise.mp4 or " +
+                "seated_heel_raise.mp4 - clips play offline, looped and muted."))
+            col.addView(Ui.fullWidth(Ui.textButton(a, "Stop using my clips", Ui.TEXT_DIM) { a.forgetClipFolder() }, a, 2))
+        }
 
         col.addView(Ui.section(a, "Safety & info"))
         col.addView(Ui.listRow(a, "ic_alert", "Red flags",

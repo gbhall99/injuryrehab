@@ -1,6 +1,8 @@
 # Exercise demonstration videos — production brief / AI prompt
 
-**Purpose.** RecoverWell currently ships lightweight 2-D "stick-figure" animations as exercise references. They read as crude and undersell the clinical quality of the content. This document is a complete brief you can hand to a video-generation AI (or a physio + videographer) to produce **proper demonstration clips** — one per movement — that drop straight back into the app.
+**Purpose.** RecoverWell ships lightweight 2-D animations as offline exercise references, and "Watch video" finds a YouTube demonstration. The exercise-video audit (`docs/EXERCISE_VIDEO_AUDIT.md`) found that general YouTube content is a poor fit for a **conservative** Achilles plan: results are dominated by post-surgical protocols, calf stretching and tendinopathy programmes. **Bespoke clips are the only route to a 10/10 demonstration for every exercise.** This document is a complete brief you can hand to a video-generation AI (or a physio and videographer) to produce **proper demonstration clips**, one per movement, that drop straight into the app.
+
+**How clips reach the app (no rebuild needed).** Put the finished files in one folder (on the phone, SD card or a cloud drive). In the app, go to **More › Your own demo clips** and pick that folder. A clip named after an exercise then **replaces its animation** in the exercise screen and the session player. It plays offline, looped and muted. Nothing is uploaded.
 
 **App context.** RecoverWell coaches a patient through a **conservative (non-surgical) Achilles tendon rupture** on a UK NHS-style pathway. Patients are often in a **walking boot** (OPED VACOped or an Aircast-style walker) for the early phases, progress through five rehab phases over ~6–9 months, and many are working back toward a sport (padel/tennis/running/football/etc.). The audience is anxious, non-athletic-by-default adults who need to *trust* the movement and copy it safely.
 
@@ -19,7 +21,9 @@
 - **Safety overlays:** where an exercise has a hard limit (e.g. "to neutral only — no stretch," "band must not pull the foot up"), bake that as a persistent caution caption.
 
 ### Deliverable naming (critical for app integration)
-Name each file by its **`demoId`** exactly, e.g. `toe_scrunch.mp4`, `single_heel_raise.mp4`. The app maps videos to exercises by this id. There are **25 distinct clips** below covering 29 exercises (a few exercises intentionally share a clip — noted as "Used by").
+Name each file by its **`demoId`** exactly, e.g. `toe_scrunch.mp4`, `single_heel_raise.mp4`. The app maps videos to exercises by this id. There are **26 distinct clips** below covering the plan's 28 exercises. Two clips are intentionally shared, noted as "Used by".
+
+To give one exercise its own version of a shared clip, name the file by the **exercise id** instead, e.g. `p2_bridge.mp4`. An exercise-id file wins over a demo-id file. Accepted formats are `.mp4`, `.webm`, `.m4v`, `.mov` and `.3gp`; H.264 MP4 plays on every Android phone.
 
 ---
 
@@ -52,8 +56,8 @@ Each block: **Equipment · Setup · Action · Form cues to caption · Tempo/reps
 **`leg_ext`** — *Seated knee extensions (boot on)*
 - Equipment: boot on. Setup: sit tall on a chair. Action: straighten the affected knee until the boot is level, hold, lower slowly. Cues: "Move only the knee"; "Ankle stays protected in the boot"; "Hold, then lower slow". Depict: 3×10, 3 s hold. Avoid: ankle motion. Camera: side-on, full leg.
 
-**`clamshell`** — *Clamshells*
-- Equipment: none (boot may be off-camera/resting). Setup: side-lying, knees bent, feet together. Action: open the top knee like a clamshell without rolling the pelvis back. Cues: "Don't roll the pelvis back"; "Slow up, slow down"; "Feel it in the hip, not the ankle". Depict: 3×12, 1 s hold. Avoid: pelvis rocking. Camera: front-on to subject's back, hips in frame.
+**`clamshell`** — *Clamshells (boot on)*
+- Equipment: walking **boot on** (this is the boot phase, so the ankle stays protected even for hip work). Setup: lie on the **un-affected** side, knees bent, feet (boot) together. Action: open the top knee like a clamshell without rolling the pelvis back. Cues: "Boot stays on"; "Don't roll the pelvis back"; "Slow up, slow down"; "Feel it in the hip, not the ankle". Depict: 3×12, 1 s hold. Avoid: pelvis rocking; taking the boot off. Camera: front-on to subject's back, hips in frame.
 
 **`seated_core`** — *Seated core & upper-body circuit*
 - Equipment: light resistance band, chair. Setup: sit tall, booted foot resting flat. Action: montage of shoulder presses, band rows, gentle trunk rotations. Cues: "Sit tall, booted foot rests flat"; "Quality over speed"; "Nothing pushing through the foot". Depict: a few reps of each. Avoid: loading the foot. Camera: front-on, upper body.
@@ -80,8 +84,11 @@ Each block: **Equipment · Setup · Action · Form cues to caption · Tempo/reps
 
 ### Phase 4 — Build strength & balance (out of boot)
 
-**`double_heel_raise`** — *Double-leg heel raises*
-- Equipment: wall/counter for balance. Action: push up through the balls of both feet, 3 s up, pause, 3 s down. Cues: "3 s up, pause, 3 s down"; "Share weight 50/50 at first". Depict: 3×12, slow. Avoid: fast bouncing, uneven weight. Camera: side-on + rear for heel height.
+**`heel_raise_progression`** — *Heel-raise progression (two legs → one)* — the phase-4 centrepiece
+- Equipment: wall/counter, fingertips for balance only; bare lower legs so heel height is visible. Action: **three stages in one clip, each clearly titled.** Stage 1, both legs: 3 s up, pause, 3 s down, weight 50/50. Stage 2, "up on two, down on one": rise on both feet, lift the good foot at the top, lower slowly on the affected leg. Stage 3, single-leg: rise and lower on the affected leg alone, full height. Cues: "Stage 1 · both legs, 3 s up, 3 s down"; "Stage 2 · up on two, down on one"; "Stage 3 · one leg, full height"; persistent caution "Full height every rep; lower slowly, never bounce". Depict: 2 reps per stage. Avoid: bouncing, half-height reps, weight drifting to the good side. Camera: side-on + rear for heel height.
+
+**`seated_weighted_raise`** — *Seated calf raises with weight* (soleus loading)
+- Equipment: sturdy chair, a dumbbell or heavy bag (~5 kg shown, as a starting load). Setup: sit with the knee bent 90°, foot flat, weight resting on the affected knee. Action: push up through the ball of the foot, pause at the top, lower over 3 seconds. Cues: "Weight on the knee"; "Pause at the top"; "Lower over 3 seconds"; "Hard by the last reps, never sharp". Depict: 3×12 (show 3 reps). Avoid: bouncing, a load that makes the heel barely move. Camera: side-on, knee to foot.
 
 **`single_balance`** — *Single-leg balance*
 - Equipment: support within reach. Action: balance on the affected leg, soft knee, tall posture; show progression eyes-closed then cushion underfoot. Cues: "Soft knee, eyes ahead"; "Support always within reach"; "Progress: eyes closed, then cushion". Depict: 30 s holds (excerpt). Avoid: locked knee, no support nearby. Camera: front-on full body.
@@ -115,8 +122,8 @@ Each block: **Equipment · Setup · Action · Form cues to caption · Tempo/reps
 ---
 
 ## 3. Acceptance checklist
-- [ ] 25 clips, each named exactly by `demoId`, portrait 4:5 + 1:1, silent, looping, 12–25 s, with poster stills.
+- [ ] 26 clips, each named exactly by `demoId` (or by exercise id for an exercise-specific version), portrait 4:5 + 1:1, silent, looping, 12–25 s, with poster stills.
 - [ ] On-screen captions carry all guidance; hard-limit cautions persistent where noted.
-- [ ] Boot worn for the phase-1/2 "boot on" clips; bare lower leg elsewhere; affected side mirror-safe.
+- [ ] Boot worn for every phase-1/2 clip (including clamshells); bare lower leg elsewhere; affected side mirror-safe.
 - [ ] Form is slow and controlled; no fatigue, no end-range stretching; phase-3 ankle work never passes neutral; band clip never dorsiflexes past neutral.
 - [ ] Consistent subject/wardrobe/set across the library; calm, clinical, reassuring tone.

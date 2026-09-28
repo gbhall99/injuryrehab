@@ -3,24 +3,46 @@ package com.recoverwell.core.protocol
 import com.recoverwell.core.model.ExerciseSpec
 import java.net.URLEncoder
 
+/** A specific YouTube demonstration for an exercise, with who made it. */
+data class VideoPick(
+    val videoId: String,
+    val title: String,
+    /** Who made it, e.g. a physio or clinic channel. */
+    val source: String,
+    /** Seconds of intro to skip; 0 = play from the start. */
+    val startSeconds: Int = 0
+)
+
 /**
- * Demonstrations are resolved through a self-healing chain so a video is always
- * available:
- *   1. a user-pinned YouTube id for this exercise (survives in the backup), else
- *   2. a curated default id for the movement (verified, may be empty), else
- *   3. a YouTube *search* scoped to the movement + rehab context.
- * The in-app player embeds an id when there is one and falls back to the search
- * (in-app, then external) on any embed error; the bundled animation is the
- * offline floor. Searches never rot into a dead hard-coded link.
+ * Where "Watch video" plays from, best first:
+ *  - [PINNED]: the video the user chose for this exercise (kept in the backup);
+ *  - [CURATED]: a video a physio has WATCHED and confirmed matches the plan;
+ *  - [SUGGESTED]: pre-screened from its title and source only - shown with an
+ *    honest "not yet checked, does it match your plan?" banner and a one-tap
+ *    "Use this video" that pins it;
+ *  - [SEARCH]: a YouTube search, tuned per exercise to find a single-movement
+ *    demo rather than whole programmes, post-operative protocols or stretching;
+ *  - [NONE]: no video at all, because no search could be made safe for this
+ *    pathway ([com.recoverwell.core.model.ExerciseSpec.noVideoSearchReason]).
+ * The bundled animation (or the user's own offline clip) is always the floor.
  */
+enum class VideoTier { PINNED, CURATED, SUGGESTED, SEARCH, NONE }
+
+data class VideoResolution(val tier: VideoTier, val pick: VideoPick?) {
+    val videoId: String? get() = pick?.videoId
+}
+
 object ExerciseVideo {
 
-    /** Search phrase for an exercise: explicit override, else name + context. */
+    /**
+     * Search phrase for an exercise. A per-exercise [ExerciseSpec.videoQuery] is
+     * complete on its own and used verbatim - appending the generic context is
+     * what pulled in whole programmes, post-operative protocols and stretching.
+     * Without one: the name (parentheticals dropped) plus the protocol context.
+     */
     fun query(spec: ExerciseSpec, context: String): String {
-        val base = spec.videoQuery.ifBlank {
-            // drop parentheticals like "(to neutral only)" for a cleaner search
-            spec.name.replace(Regex("\\(.*?\\)"), "").trim()
-        }
+        if (spec.videoQuery.isNotBlank()) return spec.videoQuery.trim()
+        val base = spec.name.replace(Regex("\\(.*?\\)"), "").trim()
         return listOf(base, context).filter { it.isNotBlank() }.joinToString(" ").trim()
     }
 
@@ -28,15 +50,30 @@ object ExerciseVideo {
         "https://www.youtube.com/results?search_query=" +
             URLEncoder.encode(query(spec, context), "UTF-8")
 
-    /** Curated, verified demonstration ids keyed by exercise id. Empty until
-     *  confirmed - the search fallback covers everything in the meantime. */
-    val curated: Map<String, String> = emptyMap()
+    /** Physio-watched, confirmed demonstrations keyed by exercise id. Empty until
+     *  a clinician has watched each one - see docs/EXERCISE_VIDEO_AUDIT.md. */
+    val curated: Map<String, VideoPick> = emptyMap()
 
-    /** Resolved id to embed, preferring the user's pin over any curated default. */
-    fun resolveVideoId(exerciseId: String, pinnedId: String?): String? =
-        pinnedId?.takeIf { it.isNotBlank() } ?: curated[exerciseId]
+    /** Pre-screened candidates keyed by exercise id (title + source checks only). */
+    val suggested: Map<String, List<VideoPick>> = VideoSuggestions.byExercise
 
-    fun embedUrl(id: String): String = "https://www.youtube-nocookie.com/embed/$id"
+    /** The best available demonstration for [spec], by tier. [suggestionIndex] cycles candidates. */
+    fun resolve(spec: ExerciseSpec, pinnedId: String?, suggestionIndex: Int = 0): VideoResolution =
+        resolve(spec.id, pinnedId, suggestionIndex, searchSafe = spec.noVideoSearchReason.isBlank())
+
+    /** As above by id; with no pin, curated or suggested video, [searchSafe] = false means NONE. */
+    fun resolve(exerciseId: String, pinnedId: String?, suggestionIndex: Int = 0,
+                searchSafe: Boolean = true): VideoResolution {
+        pinnedId?.takeIf { it.isNotBlank() }?.let {
+            return VideoResolution(VideoTier.PINNED, VideoPick(it, "", ""))
+        }
+        curated[exerciseId]?.let { return VideoResolution(VideoTier.CURATED, it) }
+        val picks = suggested[exerciseId].orEmpty()
+        if (picks.isNotEmpty()) {
+            return VideoResolution(VideoTier.SUGGESTED, picks[Math.floorMod(suggestionIndex, picks.size)])
+        }
+        return VideoResolution(if (searchSafe) VideoTier.SEARCH else VideoTier.NONE, null)
+    }
 
     /**
      * Extracts an 11-character YouTube video id from a pasted link or a bare id.
@@ -61,4 +98,3 @@ object ExerciseVideo {
         return Regex("[/=]($id)(?:[?&#/]|$)").find(s)?.groupValues?.get(1)
     }
 }
-

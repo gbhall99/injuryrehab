@@ -1,6 +1,6 @@
 # Exercise demonstration videos — self-contained prompts
 
-Each block below is a **complete, standalone prompt** for a video-generation AI. Every prompt repeats the full technical, style and safety specification, so you can copy any single block on its own and get a correct clip — there are no shared "general instructions" to read first. There are **25 prompts** covering 29 exercises (a few exercises share a clip — noted in the prompt). Name each delivered file by the `demoId` shown in the prompt heading (e.g. `toe_scrunch.mp4`); the app maps videos to exercises by that id.
+Each block below is a **complete, standalone prompt** for a video-generation AI. Every prompt repeats the full technical, style and safety specification, so you can copy any single block on its own and get a correct clip — there are no shared "general instructions" to read first. There are **26 prompts** covering the plan's 28 exercises (two clips are shared — noted in the prompt). Name each delivered file by the `demoId` shown in the prompt heading (e.g. `toe_scrunch.mp4`); the app maps videos to exercises by that id. To load them, put the files in one folder and pick it under **More › Your own demo clips** in the app: each clip then replaces that exercise's animation, offline.
 
 ---
 
@@ -102,16 +102,16 @@ Generate a short, silent, seamlessly-looping exercise demonstration video. Forma
 
 ---
 
-## `clamshell` — Clamshells
+## `clamshell` — Clamshells (boot on)
 
-Generate a short, silent, seamlessly-looping exercise demonstration video. Format: 12–25 seconds, MP4 (H.264); deliver primary **portrait 1080×1350 (4:5)**, plus a 1:1 square crop and a single still poster frame. It plays inside a phone card about 230 dp tall. There is **no audio** — convey all guidance as on-screen text: a short title and 2–3 rotating form-cue captions, large and high-contrast, in the lower third (≥24 px equivalent, WCAG-AA contrast, smooth motion, no fast flashing). Show **one person**, calm and controlled, in neutral plain athletic clothing on a calm, uncluttered light-studio background with soft even lighting; keep the look clinical and reassuring. Film the **affected leg as the LEFT leg** and keep framing **mirror-safe** — bake **no** left/right words into the video. Context: conservative (non-surgical) Achilles tendon rupture rehab, controlled-loading phase; the boot may be off-camera and resting for this hip-focused exercise.
+Generate a short, silent, seamlessly-looping exercise demonstration video. Format: 12–25 seconds, MP4 (H.264); deliver primary **portrait 1080×1350 (4:5)**, plus a 1:1 square crop and a single still poster frame. It plays inside a phone card about 230 dp tall. There is **no audio** — convey all guidance as on-screen text: a short title and 2–3 rotating form-cue captions, large and high-contrast, in the lower third (≥24 px equivalent, WCAG-AA contrast, smooth motion, no fast flashing). Show **one person**, calm and controlled, in neutral plain athletic clothing on a calm, uncluttered light-studio background with soft even lighting; keep the look clinical and reassuring. Film the **affected leg as the LEFT leg** and keep framing **mirror-safe** — bake **no** left/right words into the video. Context: conservative (non-surgical) Achilles tendon rupture rehab, controlled-loading phase; the patient is still in the walking boot, so it stays on even for this hip exercise.
 
-- **Equipment:** none (boot may be off-camera/resting); lower legs bare so the ankle is visible.
-- **Setup:** side-lying with the knees bent and feet together.
+- **Equipment:** walking **boot on** the affected leg.
+- **Setup:** lie on the **un-affected** side (booted leg on top), knees bent, feet together.
 - **Action:** open the top knee like a clamshell without rolling the pelvis backward, then close slowly; the effort is felt in the hip, not the ankle.
-- **Caption cues:** "Don't roll the pelvis back" · "Slow up, slow down" · "Feel it in the hip, not the ankle".
+- **Caption cues:** "Boot stays on" · "Don't roll the pelvis back" · "Slow up, slow down" · "Feel it in the hip, not the ankle".
 - **Tempo/reps to depict:** 3×12 with a 1-second hold; show 2–3 clean reps.
-- **Avoid:** pelvis rocking backward.
+- **Avoid:** pelvis rocking backward; taking the boot off.
 - **Camera:** filmed from behind the subject (front-on to their back), hips in frame.
 
 ---
@@ -214,17 +214,31 @@ Generate a short, silent, seamlessly-looping exercise demonstration video. Forma
 
 ---
 
-## `double_heel_raise` — Double-leg heel raises
+## `heel_raise_progression` — Heel-raise progression (two legs → one)
 
-Generate a short, silent, seamlessly-looping exercise demonstration video. Format: 12–25 seconds, MP4 (H.264); deliver primary **portrait 1080×1350 (4:5)**, plus a 1:1 square crop and a single still poster frame. It plays inside a phone card about 230 dp tall. There is **no audio** — convey all guidance as on-screen text: a short title and 2–3 rotating form-cue captions, large and high-contrast, in the lower third (≥24 px equivalent, WCAG-AA contrast, smooth motion, no fast flashing). Show **one person**, calm and controlled, in neutral plain athletic clothing on a calm, uncluttered light-studio background with soft even lighting; keep the look clinical and reassuring. Film the **affected leg as the LEFT leg** and keep framing **mirror-safe** — bake **no** left/right words into the video. Context: conservative (non-surgical) Achilles tendon rupture rehab, strength-and-balance phase, out of the boot.
+Generate a short, silent, seamlessly-looping exercise demonstration video. Format: 12–25 seconds, MP4 (H.264); deliver primary **portrait 1080×1350 (4:5)**, plus a 1:1 square crop and a single still poster frame. It plays inside a phone card about 230 dp tall. There is **no audio** — convey all guidance as on-screen text: a short title and 2–3 rotating form-cue captions, large and high-contrast, in the lower third (≥24 px equivalent, WCAG-AA contrast, smooth motion, no fast flashing). Show **one person**, calm and controlled, in neutral plain athletic clothing on a calm, uncluttered light-studio background with soft even lighting; keep the look clinical and reassuring. Film the **affected leg as the LEFT leg** and keep framing **mirror-safe** — bake **no** left/right words into the video. Context: conservative (non-surgical) Achilles tendon rupture rehab, strength-and-balance phase, out of the boot. This is the key strengthening exercise of the phase, so the clip must show all three stages clearly.
 
-- **Equipment:** a wall or counter for balance; lower legs bare so the heels are visible.
+- **Equipment:** a wall or counter, fingertips for balance only; lower legs bare so heel height is visible.
 - **Setup:** stand tall facing the support, feet hip-width apart.
-- **Action:** push up through the balls of both feet (3 seconds up), pause at the top, then lower over 3 seconds; share weight evenly between the legs.
-- **Caption cues:** "3 s up, pause, 3 s down" · "Share weight 50/50 at first" · "Tall and controlled".
-- **Tempo/reps to depict:** 3×12, slow; show 2–3 clean reps.
-- **Avoid:** fast bouncing or uneven weight.
+- **Action:** three titled stages, two clean reps each. **Stage 1 (both legs):** 3 seconds up, pause, 3 seconds down, weight shared 50/50. **Stage 2 (up on two, down on one):** rise on both feet, lift the good foot at the top, lower slowly on the affected leg alone. **Stage 3 (single-leg):** rise and lower on the affected leg alone, to full height.
+- **Caption cues:** "Stage 1 · both legs, 3 s up, 3 s down" · "Stage 2 · up on two, down on one" · "Stage 3 · one leg, full height"; persistent caution: "Full height every rep - lower slowly, never bounce".
+- **Tempo/reps to depict:** slow, 2 reps per stage.
+- **Avoid:** bouncing, half-height reps, weight drifting onto the good side.
 - **Camera:** side-on, plus a rear angle to show heel height.
+
+---
+
+## `seated_weighted_raise` — Seated calf raises with weight
+
+Generate a short, silent, seamlessly-looping exercise demonstration video. Format: 12–25 seconds, MP4 (H.264); deliver primary **portrait 1080×1350 (4:5)**, plus a 1:1 square crop and a single still poster frame. It plays inside a phone card about 230 dp tall. There is **no audio** — convey all guidance as on-screen text: a short title and 2–3 rotating form-cue captions, large and high-contrast, in the lower third (≥24 px equivalent, WCAG-AA contrast, smooth motion, no fast flashing). Show **one person**, calm and controlled, in neutral plain athletic clothing on a calm, uncluttered light-studio background with soft even lighting; keep the look clinical and reassuring. Film the **affected leg as the LEFT leg** and keep framing **mirror-safe** — bake **no** left/right words into the video. Context: conservative (non-surgical) Achilles tendon rupture rehab, strength-and-balance phase, out of the boot; this loads the deep calf (soleus) with the knee bent.
+
+- **Equipment:** a sturdy chair and a dumbbell or heavy bag (about 5 kg, a typical starting load).
+- **Setup:** sit with the affected knee bent at 90 degrees, foot flat, the weight resting on top of that knee.
+- **Action:** push up through the ball of the foot to lift the heel, pause at the top, then lower over 3 seconds.
+- **Caption cues:** "Weight rests on the knee" · "Pause at the top" · "Lower over 3 seconds"; persistent caution: "Hard by the last reps - never sharp".
+- **Tempo/reps to depict:** 3×12; show 3 clean reps.
+- **Avoid:** bouncing; a load so heavy the heel barely moves.
+- **Camera:** side-on, knee to foot in frame.
 
 ---
 

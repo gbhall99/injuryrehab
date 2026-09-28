@@ -19,7 +19,12 @@ data class Sport(
     /** Which foundation rung ids (from InjuryProtocol.returnToSport) apply. */
     val foundationRungIds: List<String>,
     /** Sport-specific stages appended after the foundation. */
-    val tailRungs: List<RtsRung>
+    val tailRungs: List<RtsRung>,
+    /** YouTube search for this sport's drills (the "{Sport}-specific drills"
+     *  exercise). Checked against real results in the video audit: "<sport>
+     *  footwork drills" suits court sports but means nothing for cycling or
+     *  swimming, so each sport names its own. */
+    val drillVideoQuery: String = ""
 )
 
 /**
@@ -49,7 +54,8 @@ object SportRegistry {
                     "Stage it: shadow movement, cooperative rallies, friendly games, competition.",
                     "Each stage needs physio sign-off; full competitive padel is typically 9-12 months after injury."),
                 requiresPhysioSignoff = true)
-        )
+        ),
+        drillVideoQuery = "padel footwork drills"
     )
 
     private val TENNIS = Sport(
@@ -67,7 +73,8 @@ object SportRegistry {
                 phase = 5, testIds = listOf("hop_sym"),
                 guidance = listOf("Cooperative rallies first, then points, then matches - each physio-approved."),
                 requiresPhysioSignoff = true)
-        )
+        ),
+        drillVideoQuery = "tennis footwork drills"
     )
 
     private val FOOTBALL = Sport(
@@ -91,7 +98,8 @@ object SportRegistry {
                 phase = 5, testIds = listOf("hop_sym"),
                 guidance = listOf("Build match minutes gradually; first matches are often as a substitute."),
                 requiresPhysioSignoff = true)
-        )
+        ),
+        drillVideoQuery = "football footwork drills"
     )
 
     // -- endurance / linear -------------------------------------------------
@@ -111,7 +119,8 @@ object SportRegistry {
                 phase = 5, testIds = listOf("run_long"),
                 guidance = listOf("Add hills and speed last; they load the tendon most."),
                 requiresPhysioSignoff = true)
-        )
+        ),
+        drillVideoQuery = "running form drills for beginners"
     )
 
     private val HIKING = Sport(
@@ -129,7 +138,8 @@ object SportRegistry {
                 phase = 4, testIds = listOf("heel_rise_sym"),
                 guidance = listOf("Add distance first, then carry weight - one change at a time."),
                 requiresPhysioSignoff = true)
-        )
+        ),
+        drillVideoQuery = "downhill hiking technique tips"
     )
 
     // -- low impact ---------------------------------------------------------
@@ -145,7 +155,8 @@ object SportRegistry {
                     "Stationary bike first, then flat roads, then gradient and distance.",
                     "Clipless pedals load the calf more - reintroduce them last."),
                 requiresPhysioSignoff = true)
-        )
+        ),
+        drillVideoQuery = "cycling pedalling technique drills"
     )
 
     private val SWIMMING = Sport(
@@ -159,7 +170,8 @@ object SportRegistry {
                     "Wait until your physio approves the pool (and any skin sores from the boot have healed).",
                     "Reintroduce strong kicking and wall push-offs last."),
                 requiresPhysioSignoff = true)
-        )
+        ),
+        drillVideoQuery = "freestyle kick drills swimming"
     )
 
     // -- general ------------------------------------------------------------
@@ -175,7 +187,8 @@ object SportRegistry {
                     "Reintroduce jumping and plyometrics gradually.",
                     "Heavy single-leg calf work is the goal - build load slowly."),
                 requiresPhysioSignoff = true)
-        )
+        ),
+        drillVideoQuery = "beginner plyometric exercises progression physiotherapy"
     )
 
     val all: List<Sport> = listOf(

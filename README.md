@@ -239,42 +239,40 @@ runtime smoke check. In a normal environment the same two modules drop into
 a standard AGP build without code changes (`core` is build-system agnostic;
 `app` is plain Kotlin + resources).
 
-### Demonstrations: real YouTube video, in-app, with an offline animation fallback
+### Demonstrations: honest, pathway-safe video, with an offline floor
 
-Each exercise leads with a **"Watch video demonstration"** button backed by a
-**self-healing resolution chain**, so a demonstration is always available:
+Each exercise leads with **"Watch video demonstration"** (also one tap from the
+session player). Video is resolved best-first, and the player always says which
+tier it is showing:
 
-1. a **user-pinned** YouTube video for that exercise (paste any link; the id is
-   stored and kept in your backup) — the way to make any exercise *always* play
-   the exact clip you trust;
-2. a **curated** default id for the movement (verified; empty until confirmed);
-3. a scoped **YouTube search** (e.g. *"Seated heel raises Achilles rupture rehab
-   physiotherapy"*) — a search can never rot into a dead hard-coded id.
+1. **Your chosen video**: one tap on "Use this video", or paste a link from
+   your physio. Kept in the backup.
+2. **Physio-checked**: videos a clinician has watched. Deliberately empty until
+   that happens; a test enforces it.
+3. **Suggested**: pre-screened from title and clinical source only (NHS
+   trusts, MedBridge, named physios). Labelled "not yet checked by a physio",
+   with a "Next suggestion" option. 24 of the 28 exercises have one.
+4. **Tuned YouTube search**: a per-exercise query, measured against real
+   results, so it finds a single-movement demo rather than surgical protocols,
+   stretching or whole programmes. Sport drills search for the user's own
+   sport.
+5. **None, on purpose**: ankle pumps get no video. Almost every ankle-pump
+   video online pulls the foot up past neutral, which this plan forbids, so the
+   app explains that and points to the animation instead.
 
-When there is a specific id, the in-app player embeds it via the reliable
-`youtube-nocookie.com/embed` IFrame and, on any embed/playback error (or if the
-API fails to load), **falls back to the search in the same WebView** — then to
-the external YouTube app, then to the offline animation. (The earlier
-`listType:'search'` embed was dropped: YouTube deprecated it in 2020, which is
-why it played unreliably.) A Settings toggle switches the whole thing to hand
-off to the YouTube app instead.
+Every video carries a persistent **"your plan comes first"** safety strip. Captions
+are on by default, and being offline shows a plain message instead of a browser error.
+The bundled animation (`ExerciseDemoView`, from the `draw/` module) is always
+the offline floor. **Your own clips** replace the animations: pick a folder under
+More › Your own demo clips, holding files named by demo id (e.g. `seated_heel_raise.mp4`).
+The production brief for those clips is `docs/exercise-demo-video-prompts.md`, and a
+test keeps it in step with the app.
 
-- the demonstrations are **real video from reputable physios**, not a stylised
-  figure, and a search can never rot into a dead hard-coded video id;
-- the video player is the **only** feature that uses the network. It holds the
-  `INTERNET` permission solely for this, only runs when you open a video, and
-  never uploads your data - all recovery data stays on-device (stated in-app
-  under About). Prefer zero network? Set videos to "Open YouTube" and the app
-  itself stays silent;
-- the bundled **procedural animation** (`ExerciseDemoView`, rendered from the
-  `draw/` module) remains as an offline at-a-glance quick reference - the figure
-  faces forward with the boot correctly oriented (locked by a `draw` unit test),
-  paired with written cues, prescription and a precaution line.
-
-The search phrase is data: `InjuryProtocol.videoContext` plus an optional
-per-exercise `videoQuery` override, so a new injury links to its own videos
-with no code change.
-
+The measurements, per-exercise scores and a physio review sheet for every pick
+are in [`docs/EXERCISE_VIDEO_AUDIT.md`](docs/EXERCISE_VIDEO_AUDIT.md). The player
+is the only feature that uses the network, and only when a video is opened.
+Prefer zero network? Set videos to "Open YouTube" and the app itself stays
+silent.
 
 ### Storage: app-private SQLite, offline-only, export-first
 

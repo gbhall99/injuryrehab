@@ -323,7 +323,7 @@ object ProtocolRegistry {
         val device = deviceFor(profile)
         val key = base.id + "|" + (sport?.id ?: "-") + "|" + (device?.id ?: "-")
         return resolvedCache.getOrPut(key) {
-            var p = if (sport != null) SportText.resolveProtocol(base, sport.name) else base
+            var p = if (sport != null) SportText.resolveProtocol(base, sport.name, sport.drillVideoQuery) else base
             if (device != null && device.id != base.supportDevice?.id) p = p.copy(supportDevice = device)
             p
         }

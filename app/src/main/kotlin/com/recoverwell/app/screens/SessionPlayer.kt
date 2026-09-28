@@ -7,7 +7,7 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import com.recoverwell.app.MainActivity
 import com.recoverwell.app.notify.Reminders
-import com.recoverwell.app.ui.ExerciseDemoView
+import com.recoverwell.app.ui.OwnClips
 import com.recoverwell.app.ui.Ui
 import com.recoverwell.core.logic.ScheduleEngine
 import com.recoverwell.core.model.EventStatus
@@ -86,15 +86,19 @@ object SessionPlayer {
             col.addView(Ui.setDots(a, list.size, st.index).apply { gravity = Gravity.START })
             col.addView(Ui.spacer(a, 8))
         }
-        val demo = ExerciseDemoView(a)
-        demo.demoId = ex.demoId
         val demoCard = Ui.frame(a)
         demoCard.background = Ui.rounded(Ui.SURFACE_HIGH)
         demoCard.clipToOutline = true
-        demoCard.addView(demo, ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(a, 170))
+        demoCard.addView(OwnClips.demoView(a, ex), ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(a, 170))
         col.addView(demoCard, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        col.addView(Ui.spacer(a, 8))
+        // a real demonstration is one tap away mid-session (the animation is the quick reference)
+        if (VideoScreen.hasVideo(a, ex)) col.addView(Ui.textButton(a, "Watch video demonstration") {
+            // a running hold would otherwise finish behind the video and rebuild it
+            timer?.cancel()
+            timer = null
+            VideoScreen.watch(a, ex)
+        }.apply { contentDescription = "Watch a video demonstration of ${ex.name}" })
         col.addView(Ui.headline(a, ex.name))
         col.addView(Ui.text(a, ScheduleEngine.exercisePrescription(ex), 14.5f, Ui.PRIMARY, bold = true))
         ex.cues.forEachIndexed { i, c -> col.addView(Ui.text(a, "${i + 1}. $c", 14f, Ui.TEXT)) }

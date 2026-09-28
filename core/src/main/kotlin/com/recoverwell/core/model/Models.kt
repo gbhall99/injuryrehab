@@ -258,9 +258,16 @@ data class ExerciseSpec(
     val sessionsPerDay: Int,
     val whyItMatters: String,
     val precaution: String,
-    /** Optional override search phrase for the "watch on YouTube" link;
-     *  blank = derive from the exercise name + protocol video context. */
+    /** YouTube search phrase for "Watch video", used verbatim (tuned per
+     *  exercise in the video audit); blank = the name + protocol video context. */
     val videoQuery: String = "",
+    /**
+     * Set when YouTube search must NOT be offered for this exercise, because
+     * typical results show technique this pathway rules out (e.g. ankle pumps
+     * that pull the foot up past neutral). Says why, in the user's words; the
+     * app then offers the animation, the user's own clip or a pinned video.
+     */
+    val noVideoSearchReason: String = "",
     /**
      * Days between sessions of this exercise: 1 = daily, 2 = alternate days
      * (impact work such as running and hopping needs a recovery day between
