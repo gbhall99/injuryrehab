@@ -40,6 +40,13 @@ object WhatToExpectScreen {
             card.addView(Ui.spacer(a, 4))
             card.addView(Ui.text(a, exp.summary, 14.5f, com.recoverwell.draw.Palette.withAlpha(onHero, 0xF2)))
             col.addView(card)
+        }
+        // the full phase guide (goals, what's OK, what's not yet) - opened from here now
+        // that Today's hero says "What to expect" in people's own words
+        col.addView(Ui.listRow(a, "ic_info", "Phase ${phase.number} guide", "Goals, what's OK now and what's not yet") {
+            a.pushOverlay("Phase ${phase.number}") { TodayScreen.phaseDetail(a, phase.number) }
+        })
+        if (exp != null) {
 
             col.addView(Ui.section(a, "Common around now"))
             val likely = Ui.card(a)

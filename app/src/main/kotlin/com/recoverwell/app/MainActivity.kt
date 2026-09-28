@@ -29,7 +29,9 @@ class MainActivity : Activity() {
         EXERCISES("Exercises", "ic_exercises"),
         TRACKER("Progress", "ic_progress"),
         TWIN("My leg", "ic_leg"),
-        MORE("More", "ic_more")
+        // named for what people come here to change: backups, reminders,
+        // injury & sport - "More" said nothing about any of them
+        MORE("Settings", "ic_more")
     }
 
     lateinit var store: Store
@@ -37,6 +39,7 @@ class MainActivity : Activity() {
     private lateinit var tabBar: LinearLayout
     private lateinit var appBar: LinearLayout
     private lateinit var tools: LinearLayout
+    private lateinit var journalTool: View
     private lateinit var disclaimer: android.widget.TextView
     private lateinit var appBarTitle: android.widget.TextView
     var currentTab = Tab.TODAY
@@ -100,13 +103,26 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        val coach = Ui.iconButton(this, "ic_ask", Ui.ON_PRIMARY_CONTAINER, Ui.PRIMARY_CONTAINER,
-            "Recovery coach - answers about your plan") { openAsk() }
-        val journal = Ui.iconButton(this, "ic_edit", Ui.ON_PRIMARY_CONTAINER, Ui.PRIMARY_CONTAINER,
+        // the coach carries a word, not just a glyph: "Ask" is what people want to do
+        val coach = Ui.row(this).apply {
+            background = Ui.ripple(this@MainActivity, Ui.rounded(Ui.PRIMARY_CONTAINER, 20f))
+            setPadding(Ui.dp(this@MainActivity, 10), Ui.dp(this@MainActivity, 6),
+                Ui.dp(this@MainActivity, 12), Ui.dp(this@MainActivity, 6))
+            isClickable = true
+            isFocusable = true
+            contentDescription = "Ask - recovery coach, answers about your plan"
+            setOnClickListener { openAsk() }
+            addView(Ui.icon(this@MainActivity, "ic_ask", 18, Ui.ON_PRIMARY_CONTAINER))
+            addView(Ui.text(this@MainActivity, "Ask", 13f, Ui.ON_PRIMARY_CONTAINER, bold = true).apply {
+                setPadding(Ui.dp(this@MainActivity, 6), 0, 0, 0)
+            })
+        }
+        // the journal is an AI feature (off by default): its icon shows only when AI is on
+        journalTool = Ui.iconButton(this, "ic_edit", Ui.ON_PRIMARY_CONTAINER, Ui.PRIMARY_CONTAINER,
             "Recovery journal - daily check-in") { openJournal() }
-        (journal.layoutParams as LinearLayout.LayoutParams).marginStart = Ui.dp(this, 8)
+        (journalTool.layoutParams as LinearLayout.LayoutParams).marginStart = Ui.dp(this, 8)
         tools.addView(coach)
-        tools.addView(journal)
+        tools.addView(journalTool)
         appBar.addView(tools)
         // safety action reads as a labelled danger pill (icon + "Red flags"),
         // not a bare glyph, so its purpose is never ambiguous
@@ -295,6 +311,7 @@ class MainActivity : Activity() {
         // squeeze a long overlay title, so show them only on the top-level tabs;
         // the red-flags safety button stays put in every state
         tools.visibility = if (onboarding || overlays.isNotEmpty()) View.GONE else View.VISIBLE
+        journalTool.visibility = if (com.recoverwell.app.screens.AiScreen.enabled(this)) View.VISIBLE else View.GONE
         appBarTitle.text = if (overlays.isNotEmpty())
             (overlayTitles.lastOrNull() ?: currentTab.label) else currentTab.label
         // an in-place refresh (e.g. checking an item off) rebuilds the screen, which

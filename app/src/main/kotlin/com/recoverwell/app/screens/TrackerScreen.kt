@@ -36,6 +36,10 @@ object TrackerScreen {
                 a.pushOverlay("Daily check-in") { TodayScreen.checkInOverlay(a, today) }
             })
         }
+        // "send my progress to my physio" starts where the progress is
+        col.addView(Ui.listRow(a, "ic_export", "Share with your physio", "A PDF of your progress, logs and plan") {
+            a.exportPdf()
+        })
         buildReview(a, today, col)
 
         col.addView(Ui.listRow(a, "ic_edit", "Add a check-in for a day you missed",
