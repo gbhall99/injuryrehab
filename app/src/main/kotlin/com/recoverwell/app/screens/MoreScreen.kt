@@ -53,12 +53,9 @@ object MoreScreen {
 
         col.addView(Ui.section(a, "Data"))
         val lastBackup = a.store.setting("last_backup", "")
-        col.addView(Ui.caption(a, "All data lives only on this phone - no account" +
-            (if (AiScreen.enabled(a)) " (AI features are on: questions and a short recovery summary go to Groq). "
-            else ", no network. ") +
-            if (lastBackup.isBlank()) "No backup yet - turn on automatic backup or export one below."
-            else "Last full backup: $lastBackup."))
-        col.addView(Ui.spacer(a, 6))
+        col.addView(Ui.listRow(a, "ic_export", "Full backup",
+            if (lastBackup.isBlank()) "Save everything · restorable file · none yet"
+            else "Save everything · restorable file · last $lastBackup") { a.exportBackup() })
         val autoOn = a.autoBackupEnabled()
         col.addView(Ui.listRow(a, "ic_restore", "Automatic backup",
             if (autoOn) "On · saves once a day to ${a.store.setting("auto_backup_name", "your file")}"
@@ -67,7 +64,6 @@ object MoreScreen {
             iconBg = if (autoOn) Ui.PRIMARY_CONTAINER else Ui.SURFACE_HIGH) {
             a.pushOverlay("Automatic backup") { autoBackupEditor(a) }
         })
-        col.addView(Ui.listRow(a, "ic_export", "Full backup", "Save everything · restorable file") { a.exportBackup() })
         col.addView(Ui.listRow(a, "ic_restore", "Restore from backup", "Replaces all current data") { a.importBackup() })
         col.addView(Ui.listRow(a, "ic_export", "PDF report", "Share progress with your physio") { a.exportPdf() })
         col.addView(Ui.listRow(a, "ic_export", "Spreadsheets (CSV)", "Daily logs or medication & task history") {
@@ -79,6 +75,9 @@ object MoreScreen {
                 .setNegativeButton("Cancel", null)
                 .show()
         })
+        col.addView(Ui.caption(a, "All data lives only on this phone - no account" +
+            (if (AiScreen.enabled(a)) " (AI features are on: questions and a short recovery summary go to Groq)."
+            else ", no network.")))
 
         col.addView(Ui.section(a, "Safety & info"))
         col.addView(Ui.listRow(a, "ic_alert", "Red flags",
@@ -229,11 +228,6 @@ object MoreScreen {
                     currentWedges = proto.supportDevice?.plan?.initialWedges ?: 0
                 )
             })
-        } else {
-            card.addView(Forms.label(a, "Your plan"))
-        }
-        ProtocolRegistry.byId(p.protocolId).let { proto ->
-            card.addView(Ui.caption(a, "${proto.injuryName} · ${proto.variantName}"))
         }
 
         col.addView(card)
@@ -312,24 +306,19 @@ object MoreScreen {
         // Appointments are managed in one place only - Physio visits - so they're
         // not duplicated here (and the onboarding path that mis-saved them is gone).
 
+        // what the plan is built for is read-only here, so it sits at the end rather than
+        // between the fields people come to change
+        if (ProtocolRegistry.all.size == 1) ProtocolRegistry.byId(p.protocolId).let { proto ->
+            col.addView(Ui.caption(a, "Your plan: ${proto.injuryName} · ${proto.variantName}"))
+        }
         col.addView(Ui.spacer(a, 12))
         // the action stays pinned below the form: a long form never hides its button
-        val bar = android.widget.LinearLayout(a).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            setPadding(Ui.dp(a, 16), 0, Ui.dp(a, 16), Ui.dp(a, 10))
-            setBackgroundColor(Ui.BG)
-        }
-        bar.addView(Ui.fullWidth(Ui.button(a, if (onDone == null) "Save" else "Confirm & continue") {
+        return Ui.withActionBar(a, Ui.scroll(a, col), Ui.fullWidth(Ui.button(a, if (onDone == null) "Save" else "Confirm & continue") {
             a.store.saveProfile(p.copy(name = nameEdit.text.toString().trim(),
                 clinicPhone = phoneEdit.text.toString().trim()))
             Reminders.reschedule(a)
             if (onDone != null) onDone() else a.popOverlay()
         }, a, 8))
-        return android.widget.LinearLayout(a).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            addView(Ui.scroll(a, col), android.widget.LinearLayout.LayoutParams(android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
-            addView(bar)
-        }
     }
 
     /** (Re)builds the device-dependent boot controls below the device picker. */
@@ -599,9 +588,11 @@ object MoreScreen {
 
     // ------------------------------------------------------------------
 
-    fun medsEditor(a: MainActivity, onDone: (() -> Unit)? = null): View {
+    /** [header] scrolls with the list (setup's step intro), so the pinned button always shows. */
+    fun medsEditor(a: MainActivity, header: View? = null, onDone: (() -> Unit)? = null): View {
         val col = Ui.column(a)
         if (onDone == null) col.addView(Ui.backRow(a, "Medications") { a.popOverlay() })
+        header?.let { col.addView(it) }
         col.addView(Ui.caption(a, "Each time gets its own reminder with taken/missed logging. " +
             "Change doses only with your prescriber."))
         col.addView(Ui.spacer(a, 4))
@@ -652,10 +643,10 @@ object MoreScreen {
                 medEditor(a, Medication(UUID.randomUUID().toString(), "", "", listOf(LocalTime.of(9, 0)), "", true))
             }
         }, a))
-        if (onDone != null) {
-            col.addView(Ui.fullWidth(Ui.button(a, "Confirm & continue") { onDone() }, a))
-        }
         col.addView(Ui.spacer(a, 24))
+        if (onDone != null) {
+            return Ui.withActionBar(a, Ui.scroll(a, col), Ui.fullWidth(Ui.button(a, "Confirm & continue") { onDone() }, a, 8))
+        }
         return Ui.scroll(a, col)
     }
 

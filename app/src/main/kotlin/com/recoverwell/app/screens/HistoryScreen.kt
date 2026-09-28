@@ -72,12 +72,13 @@ object HistoryScreen {
     private fun editLog(a: MainActivity, date: LocalDate): View {
         val col = Ui.column(a)
         col.addView(Ui.backRow(a, date.format(dayFmt)) { a.popOverlay() })
-        col.addView(TodayScreen.checkInCard(a, date) {
+        var save: View? = null
+        col.addView(TodayScreen.checkInCard(a, date, pinSave = { save = it }) {
             Toast.makeText(a, "Saved", Toast.LENGTH_SHORT).show()
             a.popOverlay()
         })
         col.addView(Ui.spacer(a, 24))
-        return Ui.scroll(a, col)
+        return Ui.withActionBar(a, Ui.scroll(a, col), save!!)
     }
 
     // ---- medication history -------------------------------------------------

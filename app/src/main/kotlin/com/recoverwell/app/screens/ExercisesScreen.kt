@@ -408,17 +408,17 @@ object ExercisesScreen {
         }
 
         col.addView(Ui.spacer(a, 12))
-        col.addView(Ui.fullWidth(Ui.button(a, "Save changes") {
+        val save = Ui.fullWidth(Ui.button(a, "Save changes") {
             a.store.saveExerciseOverride(ExerciseOverride(spec.id, sets, reps, hold,
                 perDay.takeIf { it != spec.sessionsPerDay }, enabled, existing?.videoId))
             a.popOverlay()
-        }, a))
+        }, a, 8)
         col.addView(Ui.fullWidth(Ui.textButton(a, "Reset to protocol default") {
             // keep any pinned demonstration video; only the prescription resets
             a.store.saveExerciseOverride(ExerciseOverride(spec.id, null, null, null, null, true, existing?.videoId))
             a.popOverlay()
         }, a, 4))
         col.addView(Ui.spacer(a, 24))
-        return Ui.scroll(a, col)
+        return Ui.withActionBar(a, Ui.scroll(a, col), save)
     }
 }

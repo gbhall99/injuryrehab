@@ -99,6 +99,23 @@ object Ui {
         return view
     }
 
+    /**
+     * Scrolling [content] with its main action(s) pinned underneath: a long form or
+     * player never hides the button people came to press (and it sits where the
+     * thumb is).
+     */
+    fun withActionBar(context: Context, content: View, vararg actions: View): LinearLayout =
+        LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(content, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+            addView(LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(context, 16), dp(context, 2), dp(context, 16), dp(context, 10))
+                setBackgroundColor(BG)
+                for (v in actions) addView(v)
+            })
+        }
+
     fun fullWidth(view: View, context: Context, marginTopDp: Int = 10): View {
         val lp = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
@@ -196,7 +213,7 @@ object Ui {
         text(context, value, 13f, TEXT_DIM, bold = true).apply {
             letterSpacing = 0.08f
             isAllCaps = true
-            setPadding(dp(context, 4), dp(context, 22), 0, dp(context, 8))
+            setPadding(dp(context, 4), dp(context, 16), 0, dp(context, 8))
             // keep the spoken label normal-case (not letter-by-letter) and jumpable
             contentDescription = value
             asHeading(this)

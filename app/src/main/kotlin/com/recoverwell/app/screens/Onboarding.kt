@@ -187,7 +187,7 @@ object Onboarding {
         rebuild()
         editor.addView(phases)
         if (device != null) editor.addView(deviceCard)
-        editor.addView(Ui.fullWidth(Ui.button(a, "Confirm & continue") {
+        val confirm = Ui.fullWidth(Ui.button(a, "Confirm & continue") {
             val p = a.store.profile()
             a.store.saveProfile(p.copy(
                 physioConfirmedPhase = chosen,
@@ -200,9 +200,10 @@ object Onboarding {
             Reminders.reschedule(a)
             a.popOverlay()
             a.pushOverlay { stepMeds(a) }
-        }, a))
+        }, a, 8)
         editor.addView(Ui.spacer(a, 24))
-        col.addView(Ui.scroll(a, editor),
+        // every setup step keeps its button in view, however long the step
+        col.addView(Ui.withActionBar(a, Ui.scroll(a, editor), confirm),
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         return col
     }
@@ -274,8 +275,8 @@ object Onboarding {
             }
             banner.addView(careCard)
         }
-        col.addView(banner)
-        col.addView(MoreScreen.medsEditor(a) {
+        // the intro scrolls with the list, so "Confirm & continue" is never pushed off-screen
+        col.addView(MoreScreen.medsEditor(a, header = banner) {
             a.popOverlay()
             a.pushOverlay { stepRoutine(a) }
         }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
@@ -362,7 +363,7 @@ object Onboarding {
             "folded into the daily check-in, so a dose is never missed.", 13.5f, Ui.ON_INFO_BG))
         editor.addView(note)
 
-        editor.addView(Ui.fullWidth(Ui.button(a, "Finish setup") {
+        val finish = Ui.fullWidth(Ui.button(a, "Finish setup") {
             a.store.saveSetting("checkin_reminder",
                 if (checkInOn) "%02d:%02d".format(checkInTime.hour, checkInTime.minute) else "off")
             a.store.saveSetting("exercise_reminder",
@@ -371,11 +372,11 @@ object Onboarding {
             a.store.saveProfile(a.store.profile().copy(onboardingComplete = true))
             Reminders.reschedule(a)
             a.show(MainActivity.Tab.TODAY)
-        }, a))
+        }, a, 8)
         editor.addView(Ui.spacer(a, 24))
 
         col.addView(banner)
-        col.addView(Ui.scroll(a, editor),
+        col.addView(Ui.withActionBar(a, Ui.scroll(a, editor), finish),
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         return col
     }

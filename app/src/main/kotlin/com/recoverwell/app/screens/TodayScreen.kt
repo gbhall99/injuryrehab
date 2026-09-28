@@ -48,17 +48,23 @@ object TodayScreen {
             profile, a.store.exerciseOverrides(), allEvents, today, a.store.exerciseSessions())
 
         // ---- hero card -------------------------------------------------
+        // compact on purpose: the morning's actions (doses, the pain check-in) must fit
+        // on the first screen beneath it - see docs/CUSTOMER_THINKING_AUDIT.md
         val hero = Ui.card(a, Ui.HERO_BG)
-        hero.setPadding(Ui.dp(a, 20), Ui.dp(a, 18), Ui.dp(a, 20), Ui.dp(a, 18))
+        hero.setPadding(Ui.dp(a, 18), Ui.dp(a, 14), Ui.dp(a, 18), Ui.dp(a, 14))
         val heroRow = Ui.row(a)
         val heroTexts = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
         val onHero = Ui.ON_HERO
         val onHeroDim = com.recoverwell.draw.Palette.withAlpha(onHero, 0xCC)
-        val dateLine = today.format(DateTimeFormatter.ofPattern("EEEE d MMMM"))
+        // the next physio visit rides on the date line (a dated chip would wrap the chips)
+        val nextVisit = profile.appointments.filter { !it.completed && !it.date.isBefore(today) }.minByOrNull { it.date }
+        val dateLine = if (nextVisit == null) today.format(DateTimeFormatter.ofPattern("EEEE d MMMM"))
+            else today.format(DateTimeFormatter.ofPattern("EEE d MMM")) + " · physio " +
+                (if (nextVisit.date == today) "today" else nextVisit.date.format(DateTimeFormatter.ofPattern("EEE d MMM")))
         heroTexts.addView(Ui.text(a,
             if (profile.name.isBlank()) dateLine else "Hi ${profile.name} · $dateLine",
-            13f, onHeroDim, bold = true))
-        heroTexts.addView(Ui.text(a, "Week $week", 30f, onHero, bold = true))
+            13f, onHeroDim, bold = true).apply { maxLines = 1 })
+        heroTexts.addView(Ui.text(a, "Week $week", 24f, onHero, bold = true))
         heroTexts.addView(Ui.text(a, "Phase ${phase.number} · ${phase.title}", 14f,
             com.recoverwell.draw.Palette.withAlpha(onHero, 0xE6)))
         heroRow.addView(Ui.weight(heroTexts, 1f))
@@ -75,30 +81,30 @@ object TodayScreen {
             addUpdateListener { sweep = it.animatedValue as Float; ring.invalidate() }
             start()
         }
-        ringBox.addView(ring, FrameLayout.LayoutParams(Ui.dp(a, 92), Ui.dp(a, 92)))
+        ringBox.addView(ring, FrameLayout.LayoutParams(Ui.dp(a, 68), Ui.dp(a, 68)))
         // the ring's % says it at a glance; the count stays for TalkBack
         ringBox.contentDescription = "${(dayProgress * 100).toInt()}% of today's care done, $doneCount of $totalCount"
-        val pct = Ui.text(a, "${(dayProgress * 100).toInt()}%", 19f, onHero, bold = true)
+        val pct = Ui.text(a, "${(dayProgress * 100).toInt()}%", 16f, onHero, bold = true)
         val pctLp = FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         pctLp.gravity = Gravity.CENTER
         ringBox.addView(pct, pctLp)
         heroRow.addView(ringBox)
         hero.addView(heroRow)
-        hero.addView(Ui.spacer(a, 10))
+        hero.addView(Ui.spacer(a, 8))
         // the three things people come looking for between daily tasks, each named in
         // their words and one tap from home (they used to sit under Settings or a
         // "Phase guide" chip that named none of them)
         fun heroChip(label: String, desc: String, onTap: () -> Unit) =
-            Ui.text(a, label, 13.5f, onHero, bold = true).apply {
+            Ui.text(a, label, 13f, onHero, bold = true).apply {
                 background = Ui.ripple(a, Ui.rounded(com.recoverwell.draw.Palette.withAlpha(onHero, 0x28), 22f), 0x40FFFFFF)
-                setPadding(Ui.dp(a, 14), Ui.dp(a, 9), Ui.dp(a, 14), Ui.dp(a, 9))
+                setPadding(Ui.dp(a, 12), Ui.dp(a, 8), Ui.dp(a, 12), Ui.dp(a, 8))
                 maxLines = 1
                 isClickable = true
                 isFocusable = true
                 contentDescription = desc
                 setOnClickListener { onTap() }
             }
-        val chips = Ui.FlowRow(a, Ui.dp(a, 8))
+        val chips = Ui.FlowRow(a, Ui.dp(a, 6))
         chips.addView(heroChip("What to expect", "What to expect now, phase ${phase.number}") {
             a.pushOverlay("What to expect") { WhatToExpectScreen.build(a) }
         })
@@ -108,9 +114,7 @@ object TodayScreen {
                 TwinScreen.adjustDevice(a, device)
             })
         }
-        val nextVisit = profile.appointments.filter { !it.completed && !it.date.isBefore(today) }.minByOrNull { it.date }
-        chips.addView(heroChip(
-            if (nextVisit == null) "Physio" else "Physio " + nextVisit.date.format(DateTimeFormatter.ofPattern("d MMM")),
+        chips.addView(heroChip("Physio",
             if (nextVisit == null) "Physio visits - add your next appointment"
             else "Physio visits - next on ${Forms.friendlyDate(nextVisit.date)}") {
             a.pushOverlay("Physio visits") { PhysioScreen.build(a) }
@@ -434,7 +438,8 @@ object TodayScreen {
         // the daily check-in: one tap on a number logs today's pain. It sits above
         // daily care until it's done, so the morning's one-off is on the first screen
         if (a.store.dailyLog(today).pain == null && items.isNotEmpty()) {
-            col.addView(Ui.section(a, "Check-in"))
+            // the question is the heading - no separate title line to read past
+            col.addView(Ui.section(a, "How's your pain today?"))
             col.addView(quickPainCard(a))
         }
         addDailyCare()
@@ -857,10 +862,9 @@ object TodayScreen {
      */
     private fun quickPainCard(a: MainActivity): View {
         val card = Ui.card(a)
-        card.addView(Ui.text(a, "How's your pain today?", 15.5f, Ui.TEXT, bold = true))
         card.addView(Ui.caption(a, "One tap logs it · 0 none, 10 worst"))
         // the other thing people come to log sits by the question, not under the scale
-        card.addView(Ui.textButton(a, "Log swelling, mood or a note instead") {
+        card.addView(Ui.textButton(a, "Log swelling, mood or a note") {
             a.pushOverlay("Daily check-in") { checkInOverlay(a, LocalDate.now()) }
         }.apply { gravity = Gravity.START or Gravity.CENTER_VERTICAL })
         for (values in listOf(0..5, 6..10)) {
@@ -900,9 +904,10 @@ object TodayScreen {
     fun checkInOverlay(a: MainActivity, date: LocalDate): View {
         val col = Ui.column(a)
         col.addView(Ui.backRow(a, "Daily check-in") { a.popOverlay() })
-        col.addView(checkInCard(a, date) { a.popOverlay(); a.refresh() })
+        var save: View? = null
+        col.addView(checkInCard(a, date, pinSave = { save = it }) { a.popOverlay(); a.refresh() })
         col.addView(Ui.spacer(a, 24))
-        return Ui.scroll(a, col)
+        return Ui.withActionBar(a, Ui.scroll(a, col), save!!)
     }
 
     /**
@@ -911,7 +916,8 @@ object TodayScreen {
      * them, so untouched sliders never become fake data in trends and insights.
      * No boot/ROM here - boot is profile state, ROM is captured at physio visits.
      */
-    fun checkInCard(a: MainActivity, date: LocalDate, onSaved: () -> Unit): View {
+    /** The check-in form. With [pinSave] the host pins the save button below its scroll area. */
+    fun checkInCard(a: MainActivity, date: LocalDate, pinSave: ((View) -> Unit)? = null, onSaved: () -> Unit): View {
         val today = LocalDate.now()
         val log = a.store.dailyLog(date)
         val card = Ui.card(a)
@@ -943,13 +949,14 @@ object TodayScreen {
         val notesEdit = Forms.editText(a, log.notes ?: "", "Anything worth remembering", multiline = true)
         card.addView(notesEdit)
 
-        card.addView(Ui.fullWidth(Ui.button(a, if (date == today) "Save check-in" else "Save log for $date") {
+        val save = Ui.fullWidth(Ui.button(a, if (date == today) "Save check-in" else "Save log for $date") {
             a.store.saveDailyLog(log.copy(
                 pain = pain, mood = mood, energy = energy,
                 swelling = swellingScore?.let { s -> Swelling.values().firstOrNull { it.score == s } },
                 notes = notesEdit.text?.toString()?.ifBlank { null }))
             onSaved()
-        }, a))
+        }, a, if (pinSave != null) 8 else 10)
+        if (pinSave != null) pinSave(save) else card.addView(save)
         // voice front-end: speak your day and let AI fill the check-in for you
         if (date == today && AiScreen.enabled(a)) {
             card.addView(Ui.fullWidth(Ui.textButton(a, "🎙  Speak your check-in instead") {

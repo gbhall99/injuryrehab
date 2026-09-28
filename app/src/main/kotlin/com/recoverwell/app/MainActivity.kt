@@ -149,7 +149,8 @@ class MainActivity : Activity() {
         root.addView(content, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
 
         // persistent disclaimer: quiet but always present and tappable
-        disclaimer = Ui.caption(this, "Supports - never replaces - your physio and consultant")
+        // one line on a normal phone, so it never eats into the first screen
+        disclaimer = Ui.caption(this, "Supports - never replaces - your clinical team")
         disclaimer.gravity = Gravity.CENTER
         disclaimer.setPadding(Ui.dp(this, 12), Ui.dp(this, 6), Ui.dp(this, 12), Ui.dp(this, 6))
         disclaimer.setOnClickListener { Forms.info(this, "Medical disclaimer", RehabFramework.DISCLAIMER) }

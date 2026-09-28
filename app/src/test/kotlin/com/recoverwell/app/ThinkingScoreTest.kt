@@ -108,7 +108,41 @@ object Thinking {
         return ""
     }
 
+    /**
+     * Robolectric doesn't measure text (TextViews have no text width or height in the
+     * JVM), which would make every screen look shorter than on a phone. Give each text
+     * its real size - Roboto metrics: line height 1.17 x text size (+ font padding),
+     * average glyph 0.5 x text size (0.55 bold), wrapped to its real width - then lay
+     * the window out again, so "on screen" means what it would on a device.
+     */
+    fun realistic(root: View) {
+        for (v in all(root)) {
+            if (v !is TextView) continue
+            val text = if (v is EditText) (v.text?.toString().takeUnless { it.isNullOrEmpty() } ?: v.hint?.toString() ?: "")
+                else v.text.toString()
+            if (text.isEmpty()) continue
+            val size = v.textSize
+            val glyph = size * (if (v.typeface?.isBold == true) 0.55f else 0.5f)
+            val padH = v.paddingLeft + v.paddingRight
+            // room to grow into: the nearest ancestor with a real (not wrap-content) width
+            var box: View? = v.parent as? View
+            while (box != null && box.layoutParams?.width == ViewGroup.LayoutParams.WRAP_CONTENT) box = box.parent as? View
+            val parentW = (box?.width ?: WIDTH) - (box?.let { it.paddingLeft + it.paddingRight } ?: 0)
+            val wrap = v.layoutParams?.width == ViewGroup.LayoutParams.WRAP_CONTENT
+            val longest = text.split("\n").maxOf { it.length } * glyph
+            if (wrap) v.minWidth = maxOf(v.minWidth, minOf(longest.toInt() + padH, parentW))
+            val avail = ((if (wrap) parentW else v.width) - padH).coerceAtLeast(1)
+            var lines = text.split("\n").sumOf { Math.ceil((it.length * glyph / avail).toDouble()).toInt().coerceAtLeast(1) }
+            if (v.maxLines in 1 until lines) lines = v.maxLines
+            v.minHeight = maxOf(v.minHeight, (lines * size * 1.17f + size * 0.16f).toInt() + v.paddingTop + v.paddingBottom)
+        }
+        root.measure(View.MeasureSpec.makeMeasureSpec(WIDTH, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(HEIGHT, View.MeasureSpec.EXACTLY))
+        root.layout(0, 0, WIDTH, HEIGHT)
+    }
+
     fun measure(journey: String, step: String, root: View, target: View, words: List<String>, dialog: Boolean): Step {
+        if (!dialog) realistic(root)
         val views = all(root)
         val clickables = views.filter { it.isClickable }
         val visible = clickables.filter { onScreen(it, dialog) }

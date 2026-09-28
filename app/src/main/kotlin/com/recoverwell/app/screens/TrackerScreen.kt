@@ -60,12 +60,13 @@ object TrackerScreen {
     private fun pastDayOverlay(a: MainActivity, date: LocalDate): View {
         val col = Ui.column(a)
         col.addView(Ui.backRow(a, "Log for $date") { a.popOverlay() })
-        col.addView(TodayScreen.checkInCard(a, date) {
+        var save: View? = null
+        col.addView(TodayScreen.checkInCard(a, date, pinSave = { save = it }) {
             Toast.makeText(a, "Log saved", Toast.LENGTH_SHORT).show()
             a.popOverlay()
         })
         col.addView(Ui.spacer(a, 24))
-        return Ui.scroll(a, col)
+        return Ui.withActionBar(a, Ui.scroll(a, col), save!!)
     }
 
     /** The review surfaces: trends, pace, return-to-sport, insights, milestones. */
