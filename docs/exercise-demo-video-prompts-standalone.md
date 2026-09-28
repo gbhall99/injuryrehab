@@ -1,6 +1,6 @@
 # Exercise demonstration videos — self-contained prompts
 
-Each block below is a **complete, standalone prompt** for a video-generation AI. Every prompt repeats the full technical, style and safety specification, so you can copy any single block on its own and get a correct clip — there are no shared "general instructions" to read first. There are **26 prompts** covering the plan's 28 exercises (two clips are shared — noted in the prompt). Name each delivered file by the `demoId` shown in the prompt heading (e.g. `toe_scrunch.mp4`); the app maps videos to exercises by that id. To load them, put the files in one folder and pick it under **More › Your own demo clips** in the app: each clip then replaces that exercise's animation, offline.
+Each block below is a **complete, standalone prompt** for a video-generation AI. Every prompt repeats the full technical, style and safety specification, so you can copy any single block on its own and get a correct clip — there are no shared "general instructions" to read first. There are **26 prompts** covering the plan's 28 exercises (two clips are shared — noted in the prompt). Name each delivered file by the `demoId` shown in the prompt heading (e.g. `toe_scrunch.mp4`); the app maps videos to exercises by that id. To load them, put the files in one folder and pick it under **Settings › Your own demo clips** in the app: each clip then replaces that exercise's animation, offline.
 
 ---
 

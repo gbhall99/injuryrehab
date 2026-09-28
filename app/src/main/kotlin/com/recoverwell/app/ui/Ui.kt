@@ -185,10 +185,18 @@ object Ui {
         }
 
         override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-            val width = MeasureSpec.getSize(widthMeasureSpec)
-            val maxW = (width - paddingLeft - paddingRight).coerceAtLeast(0)
-            for (i in 0 until childCount) getChildAt(i).measure(
-                MeasureSpec.makeMeasureSpec(maxW, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
+            // unbounded width (e.g. inside a horizontal scroller): one line, never squashed
+            val unbounded = MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.UNSPECIFIED
+            val maxW = if (unbounded) Int.MAX_VALUE / 2
+                else (MeasureSpec.getSize(widthMeasureSpec) - paddingLeft - paddingRight).coerceAtLeast(0)
+            var lineW = 0
+            for (i in 0 until childCount) {
+                val c = getChildAt(i)
+                c.measure(MeasureSpec.makeMeasureSpec(maxW, if (unbounded) MeasureSpec.UNSPECIFIED else MeasureSpec.AT_MOST),
+                    MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
+                if (c.visibility != View.GONE) lineW += c.measuredWidth + gap
+            }
+            val width = if (unbounded) lineW + paddingLeft + paddingRight else MeasureSpec.getSize(widthMeasureSpec)
             setMeasuredDimension(width, place(maxW, lay = false) + paddingTop + paddingBottom)
         }
 
