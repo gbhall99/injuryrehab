@@ -119,7 +119,7 @@ progressive wedge reduction — built around a real recovery that started on
 - **Simple by design, and kept that way** — every screen has a decision-load
   budget: at most 15 controls, 4 sections and 2 screens of scrolling (3 for
   pages you open to read), and no destination is scattered over several menus.
-  `DecisionLoadTest` crawls 22 screens on an ordinary day and fails the build if
+  `DecisionLoadTest` crawls 25 screens on an ordinary day and fails the build if
   one goes over (see `docs/SIMPLIFICATION_DECISION_LOAD_AUDIT.md`).
 - **Home-screen widget** — week/phase, today's progress, your check-in status,
   the next reminder, and a one-tap way back in.

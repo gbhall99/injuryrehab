@@ -39,7 +39,8 @@ object PhysioScreen {
         if (upcoming.isEmpty() && outlook.overdue.isEmpty()) {
             apptCard.addView(Ui.text(a, if (outlook.needsRebooking) "Time to book your next visit"
                 else "No visit booked yet", 15.5f, Ui.TEXT, bold = true))
-            apptCard.addView(Ui.caption(a, "Add it and the app reminds you the day before, with your questions ready."))
+            apptCard.addView(Ui.caption(a, "Once it's added, Today shows the date - and in the week before, " +
+                "a nudge to get your questions ready."))
         }
         upcoming.firstOrNull()?.let { appt ->
             val days = java.time.temporal.ChronoUnit.DAYS.between(today, appt.date)
