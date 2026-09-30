@@ -5,7 +5,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import com.recoverwell.app.screens.PhysioScreen
 import com.recoverwell.app.screens.ReturnToSportScreen
-import com.recoverwell.app.screens.WellbeingScreen
+import com.recoverwell.app.screens.PlanGuideScreen
 import com.recoverwell.app.ui.SceneView
 import org.junit.Assert.*
 import org.junit.Test
@@ -63,11 +63,11 @@ class IconLabelAccessibilityTest {
 @Config(manifest = "src/main/AndroidManifest.xml", sdk = [26])
 class NewScreensAccessibilityTest {
     @Test
-    fun returnToSportPhysioAndWellbeingBuildWithoutCrashing() {
+    fun returnToSportPhysioAndPlanGuideBuildWithoutCrashing() {
         val a = Robolectric.setupActivity(MainActivity::class.java)
         a.makeReady()
         assertTrue(collect(ReturnToSportScreen.build(a)).size > 5)
         assertTrue(collect(PhysioScreen.build(a)).size > 5)
-        assertTrue(collect(WellbeingScreen.build(a)).size > 5)
+        assertTrue(collect(PlanGuideScreen.build(a)).size > 5)
     }
 }

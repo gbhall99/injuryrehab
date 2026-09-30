@@ -28,8 +28,10 @@ object MoreScreen {
     fun build(a: MainActivity): View {
         val col = Ui.column(a)
 
-        // Settings, in the order people come for them: their plan and medicines,
-        // reminders, then backups & reports - all on the first screen.
+        // Two groups, a row each: what's in your plan, and how the app behaves. Every
+        // row opens exactly one place, and nothing here repeats a button that lives
+        // elsewhere (red flags are in the app bar, the coach is "Ask", physio visits
+        // and what to expect are in Guide, stay fit is in Exercises).
         col.addView(Ui.section(a, "Your plan"))
         col.addView(Ui.listRow(a, "ic_heart", "Injury & goal",
             "Injury date, side, sport, boot and clinic number") { a.pushOverlay("Injury & goal") { profileEditor(a) } })
@@ -39,9 +41,7 @@ object MoreScreen {
             "Phases, exercises, boot & weight-bearing - each set to your physio's guidance") {
             a.pushOverlay("Configure my plan") { planEditor(a) }
         })
-        // a single Reminders hub gathers medications, daily-care, exercise and
-        // check-in nudges and the reliability checker (previously four+ sibling rows)
-        col.addView(Ui.section(a, "Reminders"))
+        // one Reminders hub: medications, daily care, exercises, check-ins and the reliability checker
         val blocked = com.recoverwell.app.notify.ReminderHealth.deliveryBlocked(a)
         col.addView(Ui.listRow(a, "ic_bell", "Reminders",
             if (blocked) "Action needed - reminders may not arrive"
@@ -51,11 +51,55 @@ object MoreScreen {
             a.pushOverlay("Reminders") { remindersHub(a) }
         })
 
-        col.addView(Ui.section(a, "Data"))
+        col.addView(Ui.section(a, "App"))
         val lastBackup = a.store.setting("last_backup", "")
-        col.addView(Ui.listRow(a, "ic_export", "Full backup",
-            if (lastBackup.isBlank()) "Save everything · restorable file · none yet"
-            else "Save everything · restorable file · last $lastBackup") { a.exportBackup() })
+        col.addView(Ui.listRow(a, "ic_restore", "Backup, restore & export",
+            if (a.autoBackupEnabled()) "Automatic backup on" + (if (lastBackup.isBlank()) "" else " · last full backup $lastBackup")
+            else if (lastBackup.isBlank()) "No backup yet - your data lives only on this phone"
+            else "Last full backup $lastBackup") {
+            a.pushOverlay("Backup, restore & export") { dataTools(a) }
+        })
+        val theme = a.store.setting("appearance", "system")
+        col.addView(Ui.listRow(a, "ic_more", "Appearance", theme.replaceFirstChar { it.uppercase() } +
+            if (theme == "system") " - follows your phone" else " mode") {
+            val options = listOf("system", "light", "dark")
+            AlertDialog.Builder(a)
+                .setTitle("Appearance")
+                .setSingleChoiceItems(arrayOf("System (follows your phone)", "Light", "Dark"), options.indexOf(theme)) { d, which ->
+                    d.dismiss()
+                    a.store.saveSetting("appearance", options[which])
+                    a.recreate()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        })
+        val inApp = a.store.setting("video_inapp", "true") != "false"
+        col.addView(Ui.listRow(a, "ic_play", "Exercise videos",
+            (if (inApp) "Play in the app" else "Open in YouTube") +
+                if (com.recoverwell.app.ui.OwnClips.enabled(a)) " · your own clips on" else "") {
+            a.pushOverlay("Exercise videos") { videoSettings(a) }
+        })
+        col.addView(Ui.listRow(a, "ic_info", "AI assistant",
+            if (AiScreen.enabled(a)) "On - natural-language answers via Groq"
+            else "Off - turn on natural-language answers") { a.pushOverlay("AI features") { AiScreen.settings(a) } })
+        col.addView(Ui.listRow(a, "ic_info", "About & protocol sources",
+            "What this app is based on") { a.pushOverlay("About") { about(a) } })
+
+        col.addView(Ui.spacer(a, 24))
+        return Ui.scroll(a, col)
+    }
+
+    /** Backups, restore and every export, in one place (was five rows in Settings). */
+    private fun dataTools(a: MainActivity): View {
+        val col = Ui.column(a)
+        col.addView(Ui.backRow(a, "Backup, restore & export") { a.popOverlay() })
+        col.addView(Ui.caption(a, "All data lives only on this phone - no account" +
+            (if (AiScreen.enabled(a)) " (AI features are on: questions and a short recovery summary go to Groq)."
+            else ", no network.")))
+        val lastBackup = a.store.setting("last_backup", "")
+        col.addView(Ui.listRow(a, "ic_export", "Back up now",
+            if (lastBackup.isBlank()) "Save everything to a restorable file · none yet"
+            else "Save everything to a restorable file · last $lastBackup") { a.exportBackup() })
         val autoOn = a.autoBackupEnabled()
         col.addView(Ui.listRow(a, "ic_restore", "Automatic backup",
             if (autoOn) "On · saves once a day to ${a.store.setting("auto_backup_name", "your file")}"
@@ -65,7 +109,7 @@ object MoreScreen {
             a.pushOverlay("Automatic backup") { autoBackupEditor(a) }
         })
         col.addView(Ui.listRow(a, "ic_restore", "Restore from backup", "Replaces all current data") { a.importBackup() })
-        col.addView(Ui.listRow(a, "ic_export", "PDF report", "Share progress with your physio") { a.exportPdf() })
+        col.addView(Ui.listRow(a, "ic_export", "PDF for your physio", "Progress, logs and plan") { a.exportPdf() })
         col.addView(Ui.listRow(a, "ic_export", "Spreadsheets (CSV)", "Daily logs or medication & task history") {
             AlertDialog.Builder(a)
                 .setTitle("Export a spreadsheet")
@@ -75,39 +119,23 @@ object MoreScreen {
                 .setNegativeButton("Cancel", null)
                 .show()
         })
-        col.addView(Ui.caption(a, "All data lives only on this phone - no account" +
-            (if (AiScreen.enabled(a)) " (AI features are on: questions and a short recovery summary go to Groq)."
-            else ", no network.")))
+        col.addView(Ui.spacer(a, 24))
+        return Ui.scroll(a, col)
+    }
 
-        col.addView(Ui.section(a, "Safety & info"))
-        col.addView(Ui.listRow(a, "ic_alert", "Red flags",
-            "DVT, re-rupture, bleeding - know them cold",
-            iconTint = Ui.DANGER, iconBg = Ui.DANGER_BG) { a.pushOverlay("Red flags") { RedFlagsScreen.build(a) } })
-        col.addView(Ui.listRow(a, "ic_info", "About & protocol sources",
-            "What this app is based on") { a.pushOverlay("About") { about(a) } })
-
-        col.addView(Ui.section(a, "Appearance"))
-        val themeCard = Ui.card(a)
-        val current = a.store.setting("appearance", "system")
-        themeCard.addView(Forms.choiceRow(
-            a, listOf("system", "light", "dark"),
-            { it.replaceFirstChar { c -> c.uppercase() } }, current
-        ) { choice ->
-            a.store.saveSetting("appearance", choice)
-            a.recreate()
-        })
-        col.addView(themeCard)
-
-        col.addView(Ui.section(a, "Exercise videos"))
-        val videoCard = Ui.card(a)
+    /** How exercise videos play, and the user's own offline clips. */
+    private fun videoSettings(a: MainActivity): View {
+        val col = Ui.column(a)
+        col.addView(Ui.backRow(a, "Exercise videos") { a.popOverlay() })
+        val card = Ui.card(a)
         val inApp = a.store.setting("video_inapp", "true") != "false"
-        videoCard.addView(Forms.toggle(a, inApp, "Play in-app", "Open YouTube") { choice ->
+        card.addView(Forms.toggle(a, inApp, "Play in-app", "Open YouTube") { choice ->
             a.store.saveSetting("video_inapp", if (choice) "true" else "false")
         })
-        videoCard.addView(Ui.spacer(a, 4))
-        videoCard.addView(Ui.caption(a, "In-app playback loads YouTube inside the app (the only thing " +
+        card.addView(Ui.spacer(a, 4))
+        card.addView(Ui.caption(a, "In-app playback loads YouTube inside the app (the only thing " +
             "that uses the network). \"Open YouTube\" hands off to the YouTube app instead."))
-        col.addView(videoCard)
+        col.addView(card)
         // the user's own offline demo clips (e.g. produced from the video brief)
         val clipsOn = com.recoverwell.app.ui.OwnClips.enabled(a)
         col.addView(Ui.listRow(a, "ic_play", "Your own demo clips",
@@ -121,32 +149,6 @@ object MoreScreen {
                 "seated_heel_raise.mp4 - clips play offline, looped and muted."))
             col.addView(Ui.fullWidth(Ui.textButton(a, "Stop using my clips", Ui.TEXT_DIM) { a.forgetClipFolder() }, a, 2))
         }
-
-        col.addView(Ui.section(a, "AI features"))
-        col.addView(Ui.listRow(a, "ic_info", "AI assistant",
-            if (AiScreen.enabled(a)) "On - natural-language answers via Groq"
-            else "Off - turn on natural-language answers") { a.pushOverlay("AI features") { AiScreen.settings(a) } })
-
-        // Recovery tools also live one tap from Today (hero chips, "Ask", the
-        // jump grid); here they're the last section, so the settings people come
-        // to change - plan, reminders, backups - fill the first screen.
-        col.addView(Ui.section(a, "Recovery tools"))
-        col.addView(Ui.listRow(a, "ic_ask", "Recovery coach",
-            if (AiScreen.enabled(a)) "Ask anything - answered by AI from your recovery"
-            else "Can I drive yet? What's next? - answered offline") { a.openAsk() })
-        if (AiScreen.enabled(a)) {
-            col.addView(Ui.listRow(a, "ic_edit", "Recovery journal",
-                "Speak a daily check-in - AI reflects it back") { a.openJournal() })
-        }
-        col.addView(Ui.listRow(a, "ic_calendar", "Physio visits",
-            "Appointment pack, sign-offs and visit notes") { a.pushOverlay("Physio visits") { PhysioScreen.build(a) } })
-        col.addView(Ui.listRow(a, "ic_heart", "How you're doing",
-            "What's normal to feel, reassurance, milestones") { a.pushOverlay("How you're doing") { WellbeingScreen.build(a) } })
-        col.addView(Ui.listRow(a, "ic_info", "What to expect",
-            "Plain-language guidance for this stage") { a.pushOverlay("What to expect") { WhatToExpectScreen.build(a) } })
-        col.addView(Ui.listRow(a, "ic_exercises", "Stay fit",
-            "Keep-fit conditioning + a weekly goal") { a.pushOverlay("Stay fit") { StayFitScreen.build(a) } })
-
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
     }

@@ -4,6 +4,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import com.recoverwell.app.MainActivity
+import com.recoverwell.app.ui.Forms
 import com.recoverwell.app.ui.SceneView
 import com.recoverwell.app.ui.Ui
 import com.recoverwell.core.logic.Capability
@@ -13,13 +14,13 @@ import com.recoverwell.draw.BodyScene
 import java.time.LocalDate
 
 /**
- * Digital twin: visual body model, current capability panel, phase-based
- * do/don't lists and off-plan risk warnings.
+ * The Guide tab: your leg now (body model, boot, weight-bearing), what to expect
+ * and what's normal to feel, what you can do yet, what's coming up, and the two
+ * ways deeper - physio visits and the whole plan phase by phase. One home for
+ * "where am I and what's next" (it replaced What to expect, How you're doing,
+ * the phase guide and the phase reference).
  */
 object TwinScreen {
-
-    // remembers whether the static phase reference (boot setup + do/don't) is open
-    private var referenceExpanded = false
 
     fun build(a: MainActivity): View {
         val today = LocalDate.now()
@@ -91,6 +92,29 @@ object TwinScreen {
             }
         }
 
+        // ---- what to expect now: this week's picture and what's normal to feel, in one card
+        // (was two separate screens: What to expect and How you're doing) ----
+        com.recoverwell.core.logic.Wellbeing.expectationFor(profile, today)?.let { exp ->
+            col.addView(Ui.section(a, "What to expect now"))
+            val card = Ui.card(a)
+            card.addView(Ui.text(a, exp.title, 15.5f, Ui.TEXT, bold = true))
+            card.addView(Ui.spacer(a, 2))
+            card.addView(Ui.text(a, exp.summary, 14f, Ui.TEXT))
+            val normal = exp.likely.take(2) + (com.recoverwell.core.logic.Wellbeing.currentMindset(profile, today)
+                ?.normalToFeel?.take(1) ?: emptyList())
+            for (l in normal) {
+                card.addView(Ui.spacer(a, 6))
+                val r = Ui.row(a)
+                r.gravity = android.view.Gravity.TOP
+                r.addView(Ui.icon(a, "ic_heart", 16, Ui.PRIMARY))
+                r.addView(Ui.weight(Ui.text(a, l, 14f, Ui.TEXT).apply { setPadding(Ui.dp(a, 10), 0, 0, 0) }, 1f))
+                card.addView(r)
+            }
+            card.addView(Ui.spacer(a, 8))
+            card.addView(Ui.text(a, exp.reassure, 14f, Ui.DONE))
+            col.addView(card)
+        }
+
         // ---- movement checks: the live "what can I do right now" (always visible,
         // the highest-value, most-used part of this screen) ----
         col.addView(Ui.section(a, "Can I..."))
@@ -118,86 +142,37 @@ object TwinScreen {
         }
         col.addView(checksCard)
 
-        col.addView(Ui.fullWidth(Ui.tonalButton(a, "When to get help · warning signs") {
-            a.pushOverlay("Red flags") { RedFlagsScreen.build(a) }
-        }, a))
-
-        // ---- phase reference: boot setup + do/don't. Learned in the early weeks
-        // and rarely changes, so it's tucked behind a disclosure to keep this
-        // screen about what's live today (usability testing found the static
-        // content went stale while the capability view above stayed valuable). ----
-        col.addView(Ui.fullWidth(Ui.textButton(a,
-            if (referenceExpanded) "Hide phase reference" else "Show phase reference · boot setup, do & don't") {
-            referenceExpanded = !referenceExpanded
-            a.refresh()
-        }, a))
-
-        if (referenceExpanded) {
-            // your boot / cast: how it's set up and operated
-            protocol.supportDevice?.let { device ->
-                col.addView(Ui.section(a, "Your ${device.name.lowercase()}"))
-                val card = Ui.card(a)
-                val head = Ui.row(a)
-                head.gravity = android.view.Gravity.CENTER_VERTICAL
-                head.addView(Ui.iconBadge(a, "ic_boot", boxDp = 36))
-                val ht = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
-                ht.setPadding(Ui.dp(a, 12), 0, Ui.dp(a, 8), 0)
-                ht.addView(Ui.text(a, device.name, 15.5f, Ui.TEXT, bold = true))
-                ht.addView(Ui.caption(a, if (device.kind == com.recoverwell.core.protocol.DeviceKind.CAST)
-                    "Set in equinus by your clinic"
-                else "Now at ${device.format(profile.currentWedges)} · ${device.unitNamePlural}"))
-                head.addView(Ui.weight(ht, 1f))
-                head.addView(Ui.textButton(a, "Change") { a.pushOverlay("Injury & goal") { MoreScreen.profileEditor(a) } })
-                card.addView(head)
-                if (device.operation.isNotBlank()) {
-                    card.addView(Ui.spacer(a, 6))
-                    card.addView(Ui.text(a, device.operation, 14f, Ui.TEXT))
-                }
-                col.addView(card)
-                if (device.setupNotes.isNotEmpty()) {
-                    val notes = Ui.card(a)
-                    notes.addView(Ui.text(a, "Setting it up & wearing it", 13.5f, Ui.TEXT_DIM, bold = true))
-                    device.setupNotes.forEachIndexed { i, n ->
-                        notes.addView(Ui.spacer(a, if (i == 0) 6 else 8))
-                        val r = Ui.row(a)
-                        r.gravity = android.view.Gravity.TOP
-                        r.addView(Ui.icon(a, "ic_check", 16, Ui.PRIMARY))
-                        val t = Ui.text(a, n, 14f, Ui.TEXT)
-                        t.setPadding(Ui.dp(a, 10), 0, 0, 0)
-                        r.addView(Ui.weight(t, 1f))
-                        notes.addView(r)
-                    }
-                    col.addView(notes)
-                }
+        // ---- coming up: the next phase and the next milestone, in one card ----
+        val gate = com.recoverwell.core.logic.PhaseEngine.nextPhaseGate(profile, today)
+        val nextMilestone = com.recoverwell.core.logic.MilestoneTimeline.build(profile, today)
+            .firstOrNull { it.status != com.recoverwell.core.logic.MilestoneTimeline.Status.REACHED }
+        if (gate.nextPhase != null || nextMilestone != null) {
+            col.addView(Ui.section(a, "Coming up"))
+            val card = Ui.card(a)
+            gate.nextPhase?.let { next ->
+                card.addView(Ui.text(a, "Phase ${next.number} · ${next.title}", 15f, Ui.TEXT, bold = true))
+                card.addView(Ui.caption(a, (gate.startDate?.let { "Typically from ${Forms.friendlyDate(it)}" } ?: "Next") +
+                    " - your physio confirms when you're ready."))
             }
-
-            // do / don't for this phase
-            col.addView(Ui.section(a, "OK in this phase"))
-            val doCard = Ui.card(a)
-            snap.allowed.forEachIndexed { i, s ->
-                if (i > 0) doCard.addView(Ui.spacer(a, 6))
-                val r = Ui.row(a)
-                r.addView(Ui.icon(a, "ic_check", 17, Ui.DONE))
-                val t = Ui.text(a, s, 14f)
-                t.setPadding(Ui.dp(a, 10), 0, 0, 0)
-                r.addView(Ui.weight(t, 1f))
-                doCard.addView(r)
+            nextMilestone?.let { m ->
+                if (gate.nextPhase != null) card.addView(Ui.spacer(a, 8))
+                card.addView(Ui.text(a, "Week ${m.milestone.week} · ${m.milestone.title}", 14.5f, Ui.TEXT, bold = true))
+                card.addView(Ui.caption(a, m.milestone.detail))
             }
-            col.addView(doCard)
-
-            col.addView(Ui.section(a, "Not yet"))
-            val dontCard = Ui.card(a)
-            snap.notAllowed.forEachIndexed { i, s ->
-                if (i > 0) dontCard.addView(Ui.spacer(a, 6))
-                val r = Ui.row(a)
-                r.addView(Ui.icon(a, "ic_close", 17, Ui.DANGER))
-                val t = Ui.text(a, s, 14f)
-                t.setPadding(Ui.dp(a, 10), 0, 0, 0)
-                r.addView(Ui.weight(t, 1f))
-                dontCard.addView(r)
-            }
-            col.addView(dontCard)
+            col.addView(card)
         }
+
+        // ---- the two ways deeper: your physio, and the whole plan phase by phase ----
+        val nextVisit = profile.appointments.filter { !it.completed && !it.date.isBefore(today) }.minByOrNull { it.date }
+        col.addView(Ui.listRow(a, "ic_calendar", "Physio visits",
+            nextVisit?.let { "Next: ${Forms.friendlyDate(it.date)} · questions, notes, sign-offs" }
+                ?: "Add your next appointment · questions, notes") {
+            a.pushOverlay("Physio visits") { PhysioScreen.build(a) }
+        })
+        col.addView(Ui.listRow(a, "ic_info", "Your plan, phase by phase",
+            "Goals, what's OK and not yet, your boot, what's normal") {
+            a.pushOverlay("Your plan") { PlanGuideScreen.build(a) }
+        })
 
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)

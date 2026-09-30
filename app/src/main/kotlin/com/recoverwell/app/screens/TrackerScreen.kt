@@ -16,6 +16,9 @@ import com.recoverwell.core.protocol.ProtocolRegistry
 import com.recoverwell.draw.ChartScene
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import com.recoverwell.core.logic.PhaseEngine
+import com.recoverwell.core.logic.ScheduleEngine
+import com.recoverwell.core.model.EventStatus
 
 /** Progress is review-only: trends, pace, insights, milestones (+ backfill). */
 object TrackerScreen {
@@ -31,11 +34,6 @@ object TrackerScreen {
         // at the bottom (logging today happens on Today) so a review-only screen
         // leads with the weekly digest rather than an editing control. If today
         // isn't logged yet, one row offers it - trends are only as good as the logs.
-        if (a.store.dailyLog(today).pain == null) {
-            col.addView(Ui.listRow(a, "ic_pulse", "Log today's check-in", "10 seconds - keeps these trends accurate") {
-                a.pushOverlay("Daily check-in") { TodayScreen.checkInOverlay(a, today) }
-            })
-        }
         // "send my progress to my physio" starts where the progress is
         col.addView(Ui.listRow(a, "ic_export", "Share with your physio", "A PDF of your progress, logs and plan") {
             a.exportPdf()
@@ -54,6 +52,200 @@ object TrackerScreen {
 
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
+    }
+
+    /**
+     * "Your pace", in one card: the recovery-days timeline toward the estimated
+     * return date, ahead / on track / behind, and the headline numbers (streaks,
+     * sport readiness), each tile opening its history. Merges what were three
+     * places: Today's stats card, Progress's pace card and its return-to-sport row.
+     */
+    private fun paceCard(a: MainActivity, profile: com.recoverwell.core.model.Profile, today: LocalDate): View {
+        val events0 = a.store.allEvents()
+        val medStreak = ScheduleEngine.medicationStreak(a.store.medications(), events0, today, afterDate = profile.injuryDate)
+        val exStreak = ScheduleEngine.exerciseStreak(profile, a.store.exerciseOverrides(), events0, today,
+            a.store.exerciseSessions())
+        val card = Ui.card(a)
+        val pace = com.recoverwell.core.logic.Pace.project(profile, today)
+        card.addView(Ui.text(a, if (pace.earlyDays) "Tracking your progress"
+            else if (pace.deltaWeeks >= 1) "~${pace.deltaWeeks} week${if (pace.deltaWeeks == 1) "" else "s"} ahead"
+            else if (pace.deltaWeeks <= -1) "~${-pace.deltaWeeks} week${if (pace.deltaWeeks == -1) "" else "s"} behind"
+            else "On track", 16f, Ui.TEXT, bold = true))
+        card.addView(Ui.spacer(a, 2))
+        card.addView(Ui.text(a, pace.summary, 14f, Ui.TEXT))
+        card.addView(Ui.spacer(a, 12))
+
+        // recovery-days timeline toward the estimated return date
+        val cu = java.time.temporal.ChronoUnit.DAYS
+        val target = profile.effectiveReturnDate()
+        val totalDays = cu.between(profile.injuryDate, target).coerceAtLeast(1)
+        val dayN = cu.between(profile.injuryDate, today).coerceIn(0, totalDays)
+        val pct = ((dayN.toDouble() / totalDays) * 100).toInt()
+        val dayRow = Ui.row(a)
+        dayRow.addView(Ui.text(a, "Day $dayN", 24f, Ui.TEXT, bold = true))
+        dayRow.addView(Ui.text(a, "  of $totalDays", 15f, Ui.TEXT_DIM))
+        dayRow.addView(Ui.weight(View(a), 1f))
+        dayRow.addView(Ui.pillBadge(a, "$pct%", Ui.ON_PRIMARY_CONTAINER, Ui.PRIMARY_CONTAINER))
+        card.addView(dayRow)
+        card.addView(Ui.spacer(a, 8))
+        card.addView(progressBar(a, dayN.toFloat() / totalDays))
+        card.addView(Ui.spacer(a, 6))
+        val sportName = com.recoverwell.core.logic.ReturnToSport
+            .resolveSport(profile, ProtocolRegistry.forProfile(profile))?.name ?: "sport"
+        val targetLabel = target.format(DateTimeFormatter.ofPattern("MMM yyyy"))
+        val daysLeft = totalDays - dayN
+        card.addView(Ui.caption(a, if (daysLeft <= 0)
+            "Past your estimated return date - your physio guides the real timeline."
+        else {
+            val weeksLeft = (daysLeft + 6) / 7
+            "~$weeksLeft week${if (weeksLeft == 1L) "" else "s"} to your estimated return to " +
+                "$sportName · around $targetLabel"
+        }))
+
+        // headline numbers: each tile pairs a streak with a percentage and is
+        // tappable through to the editable history for that metric. The
+        // medication tile only appears when meds are actually being tracked
+        // (otherwise the streak would read a meaningless "0").
+        val rts = com.recoverwell.core.logic.ReturnToSport.progress(
+            profile, a.store.selfTestResults(), a.store.rtsSignoffs(), today)
+        val logs = a.store.allLogs()
+        val events = a.store.allEvents()
+        val overrides = a.store.exerciseOverrides()
+        val meds = a.store.medications()
+        val hasMeds = meds.any { it.active }
+        val ciStreak = checkInStreak(logs, today, profile.injuryDate)
+        val pain7 = recentPainAvg(logs, today)
+        val weeksIn = PhaseEngine.weeksSinceInjury(profile, today)
+
+        val tiles = ArrayList<View>()
+        tiles.add(metricTile(a, "$exStreak-day", "Exercise streak",
+            "${ScheduleEngine.exerciseAdherence(profile, overrides, events, today,
+                a.store.exerciseSessions())}% done · 7d") {
+            a.pushOverlay("Exercise history") { HistoryScreen.exercises(a) }
+        })
+        if (hasMeds) tiles.add(metricTile(a, "$medStreak-day", "Med streak",
+            "${medAdherence(meds, events, today)}% taken · 7d") {
+            a.pushOverlay("Medication history") { HistoryScreen.medication(a) }
+        })
+        tiles.add(metricTile(a, "$ciStreak-day", "Check-in streak",
+            if (pain7 != null) "Pain $pain7/10 avg · 7d" else "Start logging your pain") {
+            a.pushOverlay("Check-in history") { HistoryScreen.checkins(a) }
+        })
+        // return to sport is always a tile: readiness once it's open, when it opens before that
+        tiles.add(metricTile(a, if (rts.available) "${rts.readinessPct}%" else "Phase ${rts.startPhase}",
+            if (rts.available) "Sport-ready" else rts.returnPhrase,
+            if (rts.available) rts.currentRung?.let { "Stage: ${it.title}" } ?: "Building strength"
+            else "Self-tests open then") {
+            a.pushOverlay(rts.returnPhrase) { ReturnToSportScreen.build(a) }
+        })
+        // recovery progress (and the editable injury / target dates behind it)
+        if (tiles.size < 4) tiles.add(metricTile(a, "$pct%", "Recovery", "Week $weeksIn") {
+            a.pushOverlay("Injury & goal") { MoreScreen.profileEditor(a) }
+        })
+        card.addView(Ui.spacer(a, 14))
+        card.addView(statGrid(a, tiles.take(4)))
+        return card
+    }
+
+    /** A tappable stat tile: a headline value, a label, and a secondary line
+     *  (typically a streak paired with a percentage), routing to its history. */
+    private fun metricTile(a: MainActivity, value: String, label: String, sub: String, onTap: () -> Unit): View {
+        val tile = Ui.column(a, 0).apply {
+            background = Ui.ripple(a, Ui.rounded(Ui.SURFACE_HIGH, Ui.RADIUS_SMALL))
+            setPadding(Ui.dp(a, 12), Ui.dp(a, 10), Ui.dp(a, 12), Ui.dp(a, 10))
+            isClickable = true
+            isFocusable = true
+            contentDescription = "$label: $value, $sub"
+            setOnClickListener { onTap() }
+        }
+        tile.addView(Ui.text(a, value, 18f, Ui.TEXT, bold = true))
+        tile.addView(Ui.caption(a, label))
+        tile.addView(Ui.text(a, sub, 11.5f, Ui.PRIMARY, bold = true).apply { maxLines = 1 })
+        return tile
+    }
+
+    /** % of scheduled medication doses logged as taken over the last [days] days. */
+    private fun medAdherence(
+        meds: List<com.recoverwell.core.model.Medication>,
+        events: List<com.recoverwell.core.model.EventLog>, today: LocalDate, days: Int = 7
+    ): Int {
+        val taken = events.filter {
+            it.type == com.recoverwell.core.model.EventType.MEDICATION && it.status == EventStatus.TAKEN
+        }
+        var expected = 0
+        var got = 0
+        for (i in 0 until days) {
+            val d = today.minusDays(i.toLong())
+            for (m in meds.filter { it.activeOn(d) }) for (t in m.times) {
+                expected++
+                val slot = ScheduleEngine.slotKey(t)
+                if (taken.any { it.date == d && it.refId == m.id && it.slotKey == slot }) got++
+            }
+        }
+        return if (expected == 0) 0 else got * 100 / expected
+    }
+
+    /** Consecutive days with a logged check-in (pain recorded), ending today/
+     *  yesterday and only counting days strictly after [afterDate] (the injury). */
+    private fun checkInStreak(
+        logs: List<com.recoverwell.core.model.DailyLog>, today: LocalDate, afterDate: LocalDate
+    ): Int {
+        val logged = logs.filter { it.pain != null }.map { it.date }.toHashSet()
+        var day = if (today in logged) today else today.minusDays(1)
+        var n = 0
+        while (day in logged && day.isAfter(afterDate)) { n++; day = day.minusDays(1) }
+        return n
+    }
+
+    /** Mean pain over the last 7 days of check-ins, rounded; null if none logged. */
+    private fun recentPainAvg(logs: List<com.recoverwell.core.model.DailyLog>, today: LocalDate): Int? {
+        val recent = logs.filter {
+            it.pain != null && !it.date.isBefore(today.minusDays(6)) && !it.date.isAfter(today)
+        }.mapNotNull { it.pain }
+        if (recent.isEmpty()) return null
+        return Math.round(recent.average()).toInt()
+    }
+
+    /** Thin rounded progress bar (fraction of [frac] filled with the primary tint). */
+    private fun progressBar(a: MainActivity, frac: Float): View {
+        val f = frac.coerceIn(0f, 1f)
+        val track = LinearLayout(a).apply {
+            orientation = LinearLayout.HORIZONTAL
+            background = Ui.rounded(Ui.SURFACE_HIGH, Ui.RADIUS_SMALL)
+            clipToOutline = true
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(a, 10))
+        }
+        if (f > 0f) track.addView(View(a).apply { setBackgroundColor(Ui.PRIMARY) },
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, f))
+        if (f < 1f) track.addView(View(a),
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f - f))
+        return track
+    }
+
+    /** Lay a list of equal-width tiles out two per row. */
+    private fun statGrid(a: MainActivity, tiles: List<View>): View {
+        val colv = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
+        val gap = Ui.dp(a, 5)
+        val v = Ui.dp(a, 5)
+        var i = 0
+        while (i < tiles.size) {
+            val rowv = Ui.row(a)
+            tiles[i].layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                .apply { setMargins(0, v, gap, v) }
+            rowv.addView(tiles[i])
+            if (i + 1 < tiles.size) {
+                tiles[i + 1].layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                    .apply { setMargins(gap, v, 0, v) }
+                rowv.addView(tiles[i + 1])
+            } else {
+                rowv.addView(View(a), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                    .apply { setMargins(gap, 0, 0, 0) })
+            }
+            colv.addView(rowv)
+            i += 2
+        }
+        return colv
     }
 
     /** Overlay: the shared check-in for a chosen past day. */
@@ -161,38 +353,9 @@ object TrackerScreen {
         col.addView(Ui.caption(a, "Solid line: daily entries · dashed: 7-entry average"))
 
         // ---- your pace (personalised vs the typical timeline) ----
-        val pace = com.recoverwell.core.logic.Pace.project(a.store.profile(), today)
         col.addView(Ui.section(a, "Your pace"))
-        val paceCard = Ui.card(a)
-        val paceHead = if (pace.earlyDays) "Tracking your progress"
-            else if (pace.deltaWeeks >= 1) "~${pace.deltaWeeks} week${if (pace.deltaWeeks == 1) "" else "s"} ahead"
-            else if (pace.deltaWeeks <= -1) "~${-pace.deltaWeeks} week${if (pace.deltaWeeks == -1) "" else "s"} behind"
-            else "On track"
-        paceCard.addView(Ui.text(a, paceHead, 16f, Ui.TEXT, bold = true))
-        paceCard.addView(Ui.spacer(a, 2))
-        paceCard.addView(Ui.text(a, pace.summary, 14f, Ui.TEXT))
-        if (pace.projectedMilestones.isNotEmpty()) {
-            paceCard.addView(Ui.spacer(a, 6))
-            for ((m, date) in pace.projectedMilestones) {
-                paceCard.addView(Ui.caption(a, "~${date.format(fmt)} · ${m.title}"))
-            }
-        }
-        col.addView(paceCard)
+        col.addView(paceCard(a, a.store.profile(), today))
 
-        // ---- return to padel (criteria-based program) ----
-        run {
-            val rts = com.recoverwell.core.logic.ReturnToSport.progress(
-                a.store.profile(), a.store.selfTestResults(), a.store.rtsSignoffs(), today)
-            val cleared = rts.rungs.count { it.cleared }
-            col.addView(Ui.section(a, "Return to sport"))
-            col.addView(Ui.listRow(a, "ic_flag", rts.returnPhrase,
-                if (rts.available) "$cleared of ${rts.rungs.size} stages cleared · ${rts.readinessPct}% ready"
-                else "Objective self-tests unlock around phase ${rts.startPhase}") {
-                a.pushOverlay(rts.returnPhrase) { ReturnToSportScreen.build(a) }
-            })
-        }
-
-        // ---- insights ----
         val insights = com.recoverwell.core.logic.Insights.generate(
             a.store.profile(), logs, a.store.allEvents(), a.store.medications(), a.store.tasks(), today)
         if (insights.isNotEmpty()) {

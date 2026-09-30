@@ -28,7 +28,8 @@ class MainActivity : Activity() {
         TODAY("Today", "ic_today"),
         EXERCISES("Exercises", "ic_exercises"),
         TRACKER("Progress", "ic_progress"),
-        TWIN("My leg", "ic_leg"),
+        // where am I and what's next: your leg, what to expect, what you can do, your plan
+        TWIN("Guide", "ic_leg"),
         // named for what people come here to change: backups, reminders,
         // injury & sport - "More" said nothing about any of them
         MORE("Settings", "ic_more")
@@ -36,6 +37,9 @@ class MainActivity : Activity() {
 
     lateinit var store: Store
     private lateinit var content: FrameLayout
+    /** The current screen's view (tab or overlay), without the app bar and tab bar - read by the
+     *  decision-load probe in tests. */
+    internal val screenView: View get() = content
     private lateinit var tabBar: LinearLayout
     private lateinit var appBar: LinearLayout
     private lateinit var tools: LinearLayout

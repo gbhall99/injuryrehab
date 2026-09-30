@@ -18,49 +18,36 @@ object RedFlagsScreen {
         val protocol = ProtocolRegistry.forProfile(a.store.profile())
         col.addView(Ui.body(a, protocol.redFlagIntro))
 
-        // which sign -> which call, first: someone with a hot, swollen calf shouldn't have
-        // to read past the emergency section to find their answer. The full signs follow.
-        val calls = protocol.redFlags.filter { rf ->
-            rf.urgency.lowercase().let { it.contains("999") || it.contains("111") || it.contains("clinic") }
-        }
-        if (calls.isNotEmpty()) {
-            col.addView(Ui.section(a, "Which one is it?"))
-            val quick = Ui.card(a)
-            calls.forEachIndexed { i, rf ->
-                if (i > 0) quick.addView(Ui.spacer(a, 12))
-                quick.addView(Ui.text(a, rf.title, 15f, Ui.TEXT, bold = true))
-                rf.symptoms.firstOrNull()?.let { quick.addView(Ui.caption(a, it)) }
-                addCallButtons(a, quick, rf.urgency)
-            }
-            col.addView(quick)
-            col.addView(Ui.section(a, "All the signs"))
-        } else col.addView(Ui.spacer(a, 8))
-
+        // one card per warning, most urgent first: its signs, then the right call right
+        // under them. Safety content is never folded away - every sign stays in view
+        // (it used to be listed twice: a quick "which one is it?" list, then all the signs).
         for (rf in protocol.redFlags) {
             val urgent = rf.id == "pe"
+            val fg = if (urgent) Ui.ON_DANGER_BG else Ui.TEXT
             val card = Ui.card(a, if (urgent) Ui.DANGER_BG else Ui.CARD)
             val head = Ui.row(a)
             head.addView(Ui.iconBadge(a, if (rf.id == "rerupture" || rf.id == "boot") "ic_shield" else "ic_alert",
-                Ui.DANGER, if (urgent) 0x14B3261E else Ui.DANGER_BG, boxDp = 36))
-            val ht = Ui.text(a, rf.title, 16f, if (urgent) Ui.ON_DANGER_BG else Ui.TEXT, bold = true)
-            ht.setPadding(Ui.dp(a, 12), 0, 0, 0)
+                Ui.DANGER, if (urgent) 0x14B3261E else Ui.DANGER_BG, boxDp = 32))
+            val ht = Ui.text(a, rf.title, 15.5f, fg, bold = true)
+            ht.setPadding(Ui.dp(a, 10), 0, 0, 0)
             head.addView(Ui.weight(ht, 1f))
             card.addView(head)
-            card.addView(Ui.spacer(a, 8))
-            card.addView(Ui.pillBadge(a, rf.urgency, Ui.ON_DANGER, Ui.DANGER))
-            card.addView(Ui.spacer(a, 8))
+            card.addView(Ui.spacer(a, 6))
             for (s in rf.symptoms) {
                 val r = Ui.row(a)
-                val bullet = Ui.text(a, "·", 18f, if (urgent) Ui.ON_DANGER_BG else Ui.TEXT_DIM, bold = true)
+                r.gravity = android.view.Gravity.TOP
+                val bullet = Ui.text(a, "·", 16f, if (urgent) Ui.ON_DANGER_BG else Ui.TEXT_DIM, bold = true)
                 bullet.setPadding(Ui.dp(a, 4), 0, Ui.dp(a, 8), 0)
                 r.addView(bullet)
-                r.addView(Ui.weight(Ui.text(a, s, 14.5f, if (urgent) Ui.ON_DANGER_BG else Ui.TEXT), 1f))
+                r.addView(Ui.weight(Ui.text(a, s, 14f, fg), 1f))
                 card.addView(r)
             }
             card.addView(Ui.spacer(a, 8))
-            card.addView(Ui.text(a, rf.action, 14f, if (urgent) Ui.ON_DANGER_BG else Ui.TEXT, bold = true))
+            card.addView(Ui.text(a, rf.urgency, 14f, if (urgent) Ui.ON_DANGER_BG else Ui.DANGER, bold = true))
             // one tap from reading the sign to dialling the right service
             addCallButtons(a, card, rf.urgency)
+            card.addView(Ui.spacer(a, 6))
+            card.addView(Ui.text(a, rf.action, 13.5f, if (urgent) Ui.ON_DANGER_BG else Ui.TEXT_DIM))
             col.addView(card)
         }
 

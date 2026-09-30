@@ -52,49 +52,48 @@ object ReturnToSportScreen {
         }
         prog.sport?.demands?.let { col.addView(Ui.caption(a, it)) }
 
-        // ---- readiness hero -------------------------------------------------
-        val hero = Ui.card(a, Ui.HERO_BG)
-        hero.setPadding(Ui.dp(a, 20), Ui.dp(a, 18), Ui.dp(a, 20), Ui.dp(a, 18))
-        val onHero = Ui.ON_HERO
-        val onHeroDim = com.recoverwell.draw.Palette.withAlpha(onHero, 0xCC)
-        val heroRow = Ui.row(a)
-        val texts = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
-        texts.addView(Ui.text(a, if (prog.available) "Earning your way back" else "On the horizon", 13f, onHeroDim, bold = true))
-        texts.addView(Ui.text(a, "${prog.readinessPct}% ready", 30f, onHero, bold = true))
-        texts.addView(Ui.text(a, "$clearedCount of $total stages cleared", 13.5f, com.recoverwell.draw.Palette.withAlpha(onHero, 0xE6)))
-        prog.currentRung?.let {
-            texts.addView(Ui.spacer(a, 4))
-            texts.addView(Ui.text(a, "Now: ${it.title}", 13.5f, onHero, bold = true))
-        }
-        heroRow.addView(Ui.weight(texts, 1f))
-        val ringBox = FrameLayout(a)
-        var sweep = 0f
-        val ring = SceneView(a) { s ->
-            RingScene.render(s, sweep, Ui.dpF(a, 9f),
-                trackColor = com.recoverwell.draw.Palette.withAlpha(onHero, 0x59), color = onHero)
-        }
-        android.animation.ValueAnimator.ofFloat(0f, prog.readinessPct / 100f).apply {
-            duration = 700
-            interpolator = android.view.animation.DecelerateInterpolator()
-            addUpdateListener { sweep = it.animatedValue as Float; ring.invalidate() }
-            start()
-        }
-        ringBox.addView(ring, FrameLayout.LayoutParams(Ui.dp(a, 84), Ui.dp(a, 84)))
-        val pct = Ui.text(a, "${prog.readinessPct}%", 17f, onHero, bold = true)
-        val pctLp = FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        pctLp.gravity = Gravity.CENTER
-        ringBox.addView(pct, pctLp)
-        heroRow.addView(ringBox)
-        hero.addView(heroRow)
-        col.addView(hero)
-
-        // ---- availability / safety framing ---------------------------------
-        if (!prog.available) {
+        // ---- readiness hero (once the stages are open; before that a 0% ring says nothing) ----
+        if (prog.available) {
+            val hero = Ui.card(a, Ui.HERO_BG)
+            hero.setPadding(Ui.dp(a, 20), Ui.dp(a, 18), Ui.dp(a, 20), Ui.dp(a, 18))
+            val onHero = Ui.ON_HERO
+            val onHeroDim = com.recoverwell.draw.Palette.withAlpha(onHero, 0xCC)
+            val heroRow = Ui.row(a)
+            val texts = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
+            texts.addView(Ui.text(a, "Earning your way back", 13f, onHeroDim, bold = true))
+            texts.addView(Ui.text(a, "${prog.readinessPct}% ready", 30f, onHero, bold = true))
+            texts.addView(Ui.text(a, "$clearedCount of $total stages cleared", 13.5f, com.recoverwell.draw.Palette.withAlpha(onHero, 0xE6)))
+            prog.currentRung?.let {
+                texts.addView(Ui.spacer(a, 4))
+                texts.addView(Ui.text(a, "Now: ${it.title}", 13.5f, onHero, bold = true))
+            }
+            heroRow.addView(Ui.weight(texts, 1f))
+            val ringBox = FrameLayout(a)
+            var sweep = 0f
+            val ring = SceneView(a) { s ->
+                RingScene.render(s, sweep, Ui.dpF(a, 9f),
+                    trackColor = com.recoverwell.draw.Palette.withAlpha(onHero, 0x59), color = onHero)
+            }
+            android.animation.ValueAnimator.ofFloat(0f, prog.readinessPct / 100f).apply {
+                duration = 700
+                interpolator = android.view.animation.DecelerateInterpolator()
+                addUpdateListener { sweep = it.animatedValue as Float; ring.invalidate() }
+                start()
+            }
+            ringBox.addView(ring, FrameLayout.LayoutParams(Ui.dp(a, 84), Ui.dp(a, 84)))
+            val pct = Ui.text(a, "${prog.readinessPct}%", 17f, onHero, bold = true)
+            val pctLp = FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            pctLp.gravity = Gravity.CENTER
+            ringBox.addView(pct, pctLp)
+            heroRow.addView(ringBox)
+            hero.addView(heroRow)
+            col.addView(hero)
+        } else {
             val info = Ui.card(a, Ui.INFO_BG)
-            info.addView(Ui.text(a, "Unlocks in the strengthening phase", 15.5f, Ui.ON_INFO_BG, bold = true))
+            info.addView(Ui.text(a, "Opens in phase ${prog.startPhase} · strengthening", 15.5f, Ui.ON_INFO_BG, bold = true))
             info.addView(Ui.spacer(a, 2))
-            info.addView(Ui.text(a, "These stages open around phase ${prog.startPhase}, once you are out of the " +
-                "boot and rebuilding strength. You can read ahead now to see exactly what you'll be working toward.",
+            info.addView(Ui.text(a, "Once you're out of the boot and rebuilding strength. Here's what you'll work " +
+                "through - each stage has simple self-tests, and your physio signs off the bigger steps.",
                 14f, Ui.ON_INFO_BG))
             col.addView(info)
         }
@@ -105,12 +104,6 @@ object ReturnToSportScreen {
         for (status in prog.rungs.sortedBy { it.rung.order }) {
             col.addView(rungCard(a, status))
         }
-
-        // ---- red flags reminder --------------------------------------------
-        col.addView(Ui.spacer(a, 6))
-        col.addView(Ui.listRow(a, "ic_alert", "Red flags",
-            "New snap, calf pain, swelling - check before pushing on",
-            iconTint = Ui.DANGER, iconBg = Ui.DANGER_BG) { a.pushOverlay("Red flags") { RedFlagsScreen.build(a) } })
 
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
@@ -162,9 +155,9 @@ object ReturnToSportScreen {
                 val reason = "Opens once you clear the stage above" +
                     (if (rung.phase > 1) " and reach phase ${rung.phase}" else "") + "."
                 card.addView(Ui.caption(a, reason))
-                // show the targets so the user can see what's coming
-                card.addView(Ui.spacer(a, 6))
-                for (t in status.tests) card.addView(targetLine(a, t, faded = true))
+                // the targets in one line, so the user can see what's coming
+                if (status.tests.isNotEmpty()) card.addView(Ui.caption(a, "Targets: " +
+                    status.tests.joinToString(" · ") { "${it.test.name} ${it.test.targetLabel()}" }))
             }
             ReturnToSport.RungState.CURRENT -> {
                 if (rung.guidance.isNotEmpty()) {

@@ -438,7 +438,9 @@ class ThinkBackupTest : ThinkingJourney() {
     @Test fun run() {
         start()
         step("Find backup", listOf("backup", "back up", "save", "data", "copy", "settings"), tab("Settings"))
-        step("Back up", listOf("backup", "back up"), press = false, match = text("Full backup"))
+        step("Open backup", listOf("backup", "back up", "save", "data", "copy"),
+            { v -> v.contentDescription?.toString() == "Backup, restore & export" })
+        step("Back up", listOf("backup", "back up"), press = false, match = text("Back up now"))
         finish()
     }
 }
