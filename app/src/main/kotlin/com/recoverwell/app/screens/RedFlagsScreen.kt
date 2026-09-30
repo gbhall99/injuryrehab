@@ -16,11 +16,11 @@ object RedFlagsScreen {
         val col = Ui.column(a)
         col.addView(Ui.backRow(a, "Red flags") { a.popOverlay() })
         val protocol = ProtocolRegistry.forProfile(a.store.profile())
-        col.addView(Ui.body(a, protocol.redFlagIntro))
 
-        // one card per warning, most urgent first: its signs, then the right call right
-        // under them. Safety content is never folded away - every sign stays in view
-        // (it used to be listed twice: a quick "which one is it?" list, then all the signs).
+        // one card per warning, most urgent first, in the NHS pattern: what to do (and the
+        // right call, one tap) first, then the signs it's for, then why. Safety content is
+        // never folded away - every sign stays in view (it used to be listed twice: a quick
+        // "which one is it?" list, then all the signs again).
         for (rf in protocol.redFlags) {
             val urgent = rf.id == "pe"
             val fg = if (urgent) Ui.ON_DANGER_BG else Ui.TEXT
@@ -33,24 +33,28 @@ object RedFlagsScreen {
             head.addView(Ui.weight(ht, 1f))
             card.addView(head)
             card.addView(Ui.spacer(a, 6))
+            card.addView(Ui.text(a, rf.urgency, 14f, if (urgent) Ui.ON_DANGER_BG else Ui.DANGER, bold = true))
+            addCallButtons(a, card, rf.urgency)
+            card.addView(Ui.spacer(a, 8))
+            card.addView(Ui.text(a, "If you have:", 13f, if (urgent) Ui.ON_DANGER_BG else Ui.TEXT_DIM, bold = true))
             for (s in rf.symptoms) {
                 val r = Ui.row(a)
                 r.gravity = android.view.Gravity.TOP
-                val bullet = Ui.text(a, "·", 16f, if (urgent) Ui.ON_DANGER_BG else Ui.TEXT_DIM, bold = true)
+                val bullet = Ui.text(a, "·", 14f, if (urgent) Ui.ON_DANGER_BG else Ui.TEXT_DIM, bold = true)
                 bullet.setPadding(Ui.dp(a, 4), 0, Ui.dp(a, 8), 0)
                 r.addView(bullet)
                 r.addView(Ui.weight(Ui.text(a, s, 14f, fg), 1f))
                 card.addView(r)
             }
-            card.addView(Ui.spacer(a, 8))
-            card.addView(Ui.text(a, rf.urgency, 14f, if (urgent) Ui.ON_DANGER_BG else Ui.DANGER, bold = true))
-            // one tap from reading the sign to dialling the right service
-            addCallButtons(a, card, rf.urgency)
             card.addView(Ui.spacer(a, 6))
             card.addView(Ui.text(a, rf.action, 13.5f, if (urgent) Ui.ON_DANGER_BG else Ui.TEXT_DIM))
             col.addView(card)
         }
 
+        // why these matter closes the page: someone who is worried lands straight on the
+        // warnings and their call buttons (the calf/DVT call is on the first screen)
+        col.addView(Ui.spacer(a, 8))
+        col.addView(Ui.body(a, protocol.redFlagIntro))
         col.addView(Ui.spacer(a, 8))
         col.addView(Ui.caption(a, RehabFramework.DISCLAIMER))
         col.addView(Ui.spacer(a, 24))

@@ -28,8 +28,10 @@ class MainActivity : Activity() {
         TODAY("Today", "ic_today"),
         EXERCISES("Exercises", "ic_exercises"),
         TRACKER("Progress", "ic_progress"),
-        // where am I and what's next: your leg, what to expect, what you can do, your plan
-        TWIN("Guide", "ic_leg"),
+        // your leg now, what to expect, what you can do yet, your plan. Kept as "My leg":
+        // in the usability study it was the most findable place for "what can I do?"
+        // (docs/USER_TEST_RESULTS.md, T6 5/5)
+        TWIN("My leg", "ic_leg"),
         // named for what people come here to change: backups, reminders,
         // injury & sport - "More" said nothing about any of them
         MORE("Settings", "ic_more")

@@ -391,6 +391,7 @@ class ThinkAppointmentTest : ThinkingJourney() {
         start()
         step("Find physio visits", listOf("physio", "appointment", "visit", "clinic"), desc("Physio visits"))
         step("Add it", listOf("add", "new", "appointment"), text("Add appointment"))
+        step("Save it", listOf("save", "done", "add", "appointment"), text("Save appointment"))
         finish()
     }
 }

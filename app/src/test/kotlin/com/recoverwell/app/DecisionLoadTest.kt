@@ -7,6 +7,7 @@ import android.widget.TextView
 import com.recoverwell.app.ui.Ui
 import com.recoverwell.core.model.DailyLog
 import com.recoverwell.core.protocol.ProtocolRegistry
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -34,6 +35,38 @@ object Load {
             val first = Thinking.all(v).filterIsInstance<TextView>().firstOrNull { it.text.isNotBlank() }?.text
             "${v.height}:${first.toString().replace(Regex("\\s+"), " ").take(28)}"
         }
+    }
+
+    // Budgets per screen (see docs/SIMPLIFICATION_DECISION_LOAD_AUDIT.md):
+    //  - controls: 15 (Hick's law: choice time grows with log2(n+1); 15 is 4 bits)
+    //  - sections: 4 (working memory holds about four chunks - Cowan)
+    //  - scroll: 2 screens where you decide or do something (most attention lands in the first
+    //    two screenfuls); 3 for pages opened on purpose to read
+    const val CONTROLS = 15
+    const val SECTIONS = 4
+    const val SCROLL = 2.0
+    const val READING_SCROLL = 3.0
+    /** Pages opened to read (the old and new names, so a baseline run scores the same way). */
+    val READING = setOf("Your plan", "Phase guide", "What to expect", "How you're doing",
+        "Return to sport", "Red flags", "About")
+    /**
+     * The one deliberate exception: Red flags lists every sign of five emergencies and folds
+     * none of them away (safety over brevity). It was 5.7 screens with everything listed twice.
+     */
+    const val RED_FLAGS_SCROLL = 4.2
+
+    fun scrollBudget(name: String) = when {
+        name == "Red flags" -> RED_FLAGS_SCROLL
+        name in READING -> READING_SCROLL
+        else -> SCROLL
+    }
+
+    /** 0-10: each budget met scores 1, an overrun scores budget/actual; the mean of the three. */
+    fun score(sc: Screen): Double {
+        val b = if (sc.name in READING) READING_SCROLL else SCROLL
+        return 10 * listOf(minOf(1.0, CONTROLS.toDouble() / sc.controls.coerceAtLeast(1)),
+            minOf(1.0, SECTIONS.toDouble() / sc.sections.coerceAtLeast(1)),
+            minOf(1.0, b / sc.screens)).average()
     }
 
     fun measure(a: MainActivity, name: String): Screen {
@@ -91,6 +124,11 @@ class DecisionLoadTest : JourneyBase() {
         overlay("Check-in form") { a.pushOverlay("Daily check-in") { com.recoverwell.app.screens.TodayScreen.checkInOverlay(a, today) } }
         overlay("Your plan") { a.pushOverlay("Your plan") { com.recoverwell.app.screens.PlanGuideScreen.build(a) } }
         overlay("Physio visits") { a.pushOverlay("Physio visits") { com.recoverwell.app.screens.PhysioScreen.build(a) } }
+        overlay("New appointment") {
+            a.pushOverlay("Physio visits") { com.recoverwell.app.screens.PhysioScreen.build(a) }
+            tap("Add appointment")
+        }
+        overlay("Check-in history") { a.pushOverlay("Check-in history") { com.recoverwell.app.screens.HistoryScreen.checkins(a) } }
         overlay("Stay fit") { a.pushOverlay("Stay fit") { com.recoverwell.app.screens.StayFitScreen.build(a) } }
         overlay("Return to sport") { a.pushOverlay("Return to sport") { com.recoverwell.app.screens.ReturnToSportScreen.build(a) } }
         overlay("Red flags") { a.pushOverlay("Red flags") { com.recoverwell.app.screens.RedFlagsScreen.build(a) } }
@@ -102,6 +140,8 @@ class DecisionLoadTest : JourneyBase() {
         a.show(MainActivity.Tab.MORE)
         overlay("Configure my plan") { tap("Configure my plan") }
         a.show(MainActivity.Tab.MORE)
+        overlay("Your boot") { tap("Configure my plan"); tap("Your vacoped boot") }
+        a.show(MainActivity.Tab.MORE)
         overlay("Backup, restore & export") { tap("Backup, restore & export") }
         a.show(MainActivity.Tab.MORE)
         overlay("Exercise videos") { tap("Exercise videos") }
@@ -111,5 +151,23 @@ class DecisionLoadTest : JourneyBase() {
         val dir = File("build/decision-load").apply { mkdirs() }
         File(dir, "screens.tsv").writeText(out.joinToString("\n") { it.tsv() } + "\n")
         File(dir, "blocks.tsv").writeText(out.joinToString("\n") { it.name + "\t" + it.blocks.joinToString(" | ") } + "\n")
+        val appScore = out.map { Load.score(it) }.average()
+        File(dir, "summary.txt").writeText("screens ${out.size}, controls ${out.sumOf { it.controls }}, " +
+            "sections ${out.sumOf { it.sections }}, screens of scroll ${"%.1f".format(out.sumOf { it.screens })}, " +
+            "words ${out.sumOf { it.words }}, decision-load score ${"%.1f".format(appScore)}/10\n")
+
+        if (System.getenv("DECISION_BASELINE") != null) return
+        for (sc in out) {
+            assertTrue("${sc.name}: ${sc.controls} controls (budget ${Load.CONTROLS})", sc.controls <= Load.CONTROLS)
+            assertTrue("${sc.name}: ${sc.sections} sections (budget ${Load.SECTIONS})", sc.sections <= Load.SECTIONS)
+            assertTrue("${sc.name}: %.2f screens of scroll (budget ${Load.scrollBudget(sc.name)})".format(sc.screens),
+                sc.screens <= Load.scrollBudget(sc.name))
+        }
+        // the whole app, so the simplification can't quietly creep back. The 22 screens crawled
+        // on 3.10 had 215 controls, 83 sections and 60.4 screens of scroll; the three screens
+        // added since (new appointment, check-in history, your boot) are in these totals too.
+        assertTrue("controls ${out.sumOf { it.controls }}", out.sumOf { it.controls } <= 180)
+        assertTrue("sections ${out.sumOf { it.sections }}", out.sumOf { it.sections } <= 52)
+        assertTrue("scroll ${out.sumOf { it.screens }}", out.sumOf { it.screens } <= 46.0)
     }
 }

@@ -14,7 +14,7 @@ import com.recoverwell.draw.BodyScene
 import java.time.LocalDate
 
 /**
- * The Guide tab: your leg now (body model, boot, weight-bearing), what to expect
+ * The My leg tab: your leg now (body model, boot, weight-bearing), what to expect
  * and what's coming up, what you can do yet, and the whole plan phase by phase.
  * One home for "where am I and what's next" (it replaced What to expect, How
  * you're doing, the phase guide and the phase reference).

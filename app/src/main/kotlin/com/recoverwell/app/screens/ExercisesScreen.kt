@@ -40,20 +40,30 @@ object ExercisesScreen {
         val col = Ui.column(a)
         // the thing people come here to do: start today's next session in one tap
         col.addView(todaySessionCard(a, profile, today))
-        col.addView(Ui.spacer(a, 6))
-        col.addView(Ui.caption(a, "Phases unlock by date and physio confirmation. " +
-            "Locked phases are view-only."))
-        col.addView(Ui.spacer(a, 10))
+        // which phase's exercises: one selector to read ahead (or back) - was five chips
         val protocol = ProtocolRegistry.forProfile(profile)
-        col.addView(Forms.choiceRow(a, protocol.phases.map { it.number },
-            { n -> if (n == current) "P$n · Now" else "P$n" }, shown) { n ->
-            viewedPhase = n
-            a.refresh()
-        })
-
         val phase = protocol.phase(shown)
         val locked = shown > current
-        col.addView(Ui.spacer(a, 12))
+        val pick = Ui.row(a)
+        pick.addView(Ui.weight(Ui.text(a, "Phase $shown of ${protocol.phases.size}" +
+            when { shown == current -> " · now"; locked -> " · view only"; else -> " · done" },
+            13f, Ui.TEXT_DIM, bold = true), 1f))
+        pick.addView(Ui.textButton(a, "Other phases ▾") {
+            android.app.AlertDialog.Builder(a)
+                .setTitle("Show exercises for")
+                .setSingleChoiceItems(protocol.phases.map {
+                    "Phase ${it.number} · ${it.title}" + if (it.number == current) " (now)" else ""
+                }.toTypedArray(), protocol.phases.indexOfFirst { it.number == shown }) { d, which ->
+                    viewedPhase = protocol.phases[which].number
+                    d.dismiss()
+                    a.refresh()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }.apply { contentDescription = "Showing phase $shown. Show another phase's exercises" })
+        col.addView(pick)
+        col.addView(Ui.caption(a, "Phases unlock by date and physio confirmation."))
+        col.addView(Ui.spacer(a, 8))
         col.addView(Ui.headline(a, phase.title))
         col.addView(Ui.caption(a, phase.subtitle))
         if (locked) {

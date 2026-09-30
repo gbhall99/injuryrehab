@@ -31,7 +31,7 @@ object MoreScreen {
         // Two groups, a row each: what's in your plan, and how the app behaves. Every
         // row opens exactly one place, and nothing here repeats a button that lives
         // elsewhere (red flags are in the app bar, the coach is "Ask", physio visits
-        // and what to expect are in Guide, stay fit is in Exercises).
+        // and what to expect are in My leg, stay fit is in Exercises).
         col.addView(Ui.section(a, "Your plan"))
         col.addView(Ui.listRow(a, "ic_heart", "Injury & goal",
             "Injury date, side, sport and clinic number") { a.pushOverlay("Injury & goal") { profileEditor(a) } })
@@ -387,7 +387,7 @@ object MoreScreen {
                 })
                 bootCard.addView(Ui.caption(a, "Only set this once your physio has agreed you can stop " +
                     "using the ${device.name.lowercase()}. From this date the daily boot check and any " +
-                    "remaining boot-change reminders stop, and the Guide shows you out of it."))
+                    "remaining boot-change reminders stop, and My leg shows you out of it."))
                 bootCard.addView(Ui.spacer(a, 6))
             }
             if (weaned == null && device.operation.isNotBlank()) {
@@ -783,7 +783,7 @@ object MoreScreen {
             "remove times, or turn a check off. The default cadences are a sensible starting point, " +
             "not a fixed rule; match whatever your physio or consultant advised."))
         col.addView(Ui.caption(a, "Boot-change reminders come from your boot plan automatically " +
-            "(edit it under Injury & goal)."))
+            "(edit it under Configure my plan › Your boot)."))
         col.addView(Ui.spacer(a, 4))
 
         for (task in a.store.tasks()) {

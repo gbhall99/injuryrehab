@@ -274,7 +274,7 @@ object Ask {
             return Answer("Your ${dev.name.lowercase()}",
                 "You recorded being out of the ${dev.name.lowercase()} since " +
                     "${profile.bootWeanedDate?.let { Dates.friendly(it, today) }}, so there's " +
-                    "nothing left to adjust. If your physio puts you back in it, update that under Injury & goal.")
+                    "nothing left to adjust. If your physio puts you back in it, update that under Settings › Configure my plan › Your boot.")
         }
         val expected = profile.wedgePlan.expectedWedges(profile.injuryDate, today, profile.wedgeDateOverrides)
         val next = profile.wedgePlan.removalSchedule(profile.injuryDate, profile.wedgeDateOverrides)

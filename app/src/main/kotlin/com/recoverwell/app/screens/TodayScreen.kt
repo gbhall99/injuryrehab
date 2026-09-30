@@ -121,7 +121,7 @@ object TodayScreen {
         // ---- prioritized attention surface ("calm Today") -------------------
         // Everything that wants attention is ranked. Safety items always show as
         // full cards; the single most important of the rest becomes the focus
-        // card; everything else collapses into a tidy "More for you" list so the
+        // card; everything else waits behind one "N more suggestions" line so the
         // daily checklist below is never buried.
         val recentLogs = a.store.allLogs().filter { !it.date.isBefore(today.minusDays(7)) }
         val gate = PhaseEngine.nextPhaseGate(profile, today)
@@ -224,7 +224,7 @@ object TodayScreen {
                     a.store.saveSetting(BOOT_PROMPT_SNOOZE, today.plusDays(7).toString()); a.refresh()
                 }) {
                 Forms.confirm(a, "Out of the ${device.name.lowercase()}?",
-                    "Only if your physio has agreed you can stop using it. You can change this under Injury & goal.") {
+                    "Only if your physio has agreed you can stop using it. You can change this under Settings › Configure my plan › Your boot.") {
                     a.store.saveProfile(a.store.profile().copy(bootWeanedDate = today))
                     Reminders.reschedule(a)
                     a.refresh()
@@ -450,7 +450,7 @@ object TodayScreen {
         // full cards; once the user has a few check-ins, the single most important
         // other prompt becomes the focus card and the rest wait behind one line -
         // never dropped, never a list competing with today's tasks. (The next
-        // phase, stats and "jump to" tiles moved to Guide and Progress.) ----
+        // phase, stats and "jump to" tiles moved to My leg and Progress.) ----
         val pinned = rest.filter { it.pinned }
         val unpinned = rest.filterNot { it.pinned }
         val cards = if (pinned.isNotEmpty()) pinned else if (settled) unpinned.take(1) else emptyList()
@@ -798,7 +798,7 @@ object TodayScreen {
                 "${spec.title}\n\nFocus now:\n• " + spec.goals.take(3).joinToString("\n• ") +
                     "\n\nNewly OK:\n• " + spec.allowed.take(3).joinToString("\n• ") +
                     "\n\nYour exercise sessions now follow phase $number (${spec.exercises.size} exercises). " +
-                    "Guide › Your plan has the full do's and don'ts.")
+                    "My leg › Your plan has the full do's and don'ts.")
         }
     }
 }

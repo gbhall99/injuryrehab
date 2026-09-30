@@ -62,7 +62,7 @@ object PlanGuideScreen {
                     for (l in lines) {
                         val r = Ui.row(a)
                         r.gravity = Gravity.TOP
-                        r.addView(Ui.text(a, "·", 16f, color, bold = true).apply { setPadding(Ui.dp(a, 2), 0, Ui.dp(a, 8), 0) })
+                        r.addView(Ui.text(a, "·", 14f, color, bold = true).apply { setPadding(Ui.dp(a, 2), 0, Ui.dp(a, 8), 0) })
                         r.addView(Ui.weight(Ui.text(a, l, 14f, fg), 1f))
                         card.addView(r)
                     }
@@ -76,7 +76,7 @@ object PlanGuideScreen {
                 bullets("Not yet", ph.notAllowed, Ui.DANGER)
                 bullets("Take care", ph.precautions, Ui.WARN)
                 // what's typical, week by week, when reading ahead (for the phase you're in,
-                // the Guide's "What to expect now" already says it)
+                // My leg's "What to expect now" already says it)
                 val end = ph.endWeek ?: Int.MAX_VALUE
                 if (ph.number != current) bullets("Along the way", protocol.expectations
                     .filter { it.weekFrom >= ph.startWeek && it.weekFrom < end }
