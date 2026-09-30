@@ -77,7 +77,7 @@ object PhysioScreen {
         apptCard.addView(Ui.spacer(a, 8))
         val newWith = Forms.editText(a, "", "Who it's with · optional, e.g. Mr Patel")
         apptCard.addView(newWith)
-        apptCard.addView(Ui.fullWidth(Ui.textButton(a, "Add appointment") {
+        apptCard.addView(Ui.fullWidth(Ui.button(a, "Add appointment") {
             val label = newLabel.text.toString().ifBlank { "Physio review" }
             a.store.saveProfile(a.store.profile().copy(
                 appointments = a.store.profile().appointments +

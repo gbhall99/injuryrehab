@@ -36,6 +36,10 @@ object TrackerScreen {
                 a.pushOverlay("Daily check-in") { TodayScreen.checkInOverlay(a, today) }
             })
         }
+        // "send my progress to my physio" starts where the progress is
+        col.addView(Ui.listRow(a, "ic_export", "Share with your physio", "A PDF of your progress, logs and plan") {
+            a.exportPdf()
+        })
         buildReview(a, today, col)
 
         col.addView(Ui.listRow(a, "ic_edit", "Add a check-in for a day you missed",
@@ -56,12 +60,13 @@ object TrackerScreen {
     private fun pastDayOverlay(a: MainActivity, date: LocalDate): View {
         val col = Ui.column(a)
         col.addView(Ui.backRow(a, "Log for $date") { a.popOverlay() })
-        col.addView(TodayScreen.checkInCard(a, date) {
+        var save: View? = null
+        col.addView(TodayScreen.checkInCard(a, date, pinSave = { save = it }) {
             Toast.makeText(a, "Log saved", Toast.LENGTH_SHORT).show()
             a.popOverlay()
         })
         col.addView(Ui.spacer(a, 24))
-        return Ui.scroll(a, col)
+        return Ui.withActionBar(a, Ui.scroll(a, col), save!!)
     }
 
     /** The review surfaces: trends, pace, return-to-sport, insights, milestones. */

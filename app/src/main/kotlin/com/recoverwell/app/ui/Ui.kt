@@ -99,6 +99,23 @@ object Ui {
         return view
     }
 
+    /**
+     * Scrolling [content] with its main action(s) pinned underneath: a long form or
+     * player never hides the button people came to press (and it sits where the
+     * thumb is).
+     */
+    fun withActionBar(context: Context, content: View, vararg actions: View): LinearLayout =
+        LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(content, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+            addView(LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(context, 16), dp(context, 2), dp(context, 16), dp(context, 10))
+                setBackgroundColor(BG)
+                for (v in actions) addView(v)
+            })
+        }
+
     fun fullWidth(view: View, context: Context, marginTopDp: Int = 10): View {
         val lp = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
@@ -145,7 +162,51 @@ object Ui {
         text(context, value, 21f, TEXT, bold = true).apply { asHeading(this) }
 
     /** Flag a view as a screen-reader heading so TalkBack users can jump by heading. */
+    /** View tags the customer-thinking probe reads (headings are where eyes skim first;
+     *  a lone primary button is where they land). Nothing else uses view tags. */
+    const val TAG_HEADING = "heading"
+    const val TAG_PRIMARY = "primary"
+
+    /** Lays children left to right, wrapping to a new line when the next doesn't fit
+     *  (chips that must never be clipped on a narrow phone). */
+    class FlowRow(context: Context, private val gap: Int) : ViewGroup(context) {
+        private fun place(maxW: Int, lay: Boolean): Int {
+            var x = 0; var y = 0; var lineH = 0
+            for (i in 0 until childCount) {
+                val c = getChildAt(i)
+                if (c.visibility == View.GONE) continue
+                if (x > 0 && x + c.measuredWidth > maxW) { x = 0; y += lineH + gap; lineH = 0 }
+                if (lay) c.layout(paddingLeft + x, paddingTop + y, paddingLeft + x + c.measuredWidth,
+                    paddingTop + y + c.measuredHeight)
+                x += c.measuredWidth + gap
+                lineH = maxOf(lineH, c.measuredHeight)
+            }
+            return y + lineH
+        }
+
+        override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+            // unbounded width (e.g. inside a horizontal scroller): one line, never squashed
+            val unbounded = MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.UNSPECIFIED
+            val maxW = if (unbounded) Int.MAX_VALUE / 2
+                else (MeasureSpec.getSize(widthMeasureSpec) - paddingLeft - paddingRight).coerceAtLeast(0)
+            var lineW = 0
+            for (i in 0 until childCount) {
+                val c = getChildAt(i)
+                c.measure(MeasureSpec.makeMeasureSpec(maxW, if (unbounded) MeasureSpec.UNSPECIFIED else MeasureSpec.AT_MOST),
+                    MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
+                if (c.visibility != View.GONE) lineW += c.measuredWidth + gap
+            }
+            val width = if (unbounded) lineW + paddingLeft + paddingRight else MeasureSpec.getSize(widthMeasureSpec)
+            setMeasuredDimension(width, place(maxW, lay = false) + paddingTop + paddingBottom)
+        }
+
+        override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+            place(r - l - paddingLeft - paddingRight, lay = true)
+        }
+    }
+
     fun asHeading(view: View) {
+        view.tag = TAG_HEADING
         if (android.os.Build.VERSION.SDK_INT >= 28) view.isAccessibilityHeading = true
     }
 
@@ -160,7 +221,7 @@ object Ui {
         text(context, value, 13f, TEXT_DIM, bold = true).apply {
             letterSpacing = 0.08f
             isAllCaps = true
-            setPadding(dp(context, 4), dp(context, 22), 0, dp(context, 8))
+            setPadding(dp(context, 4), dp(context, 16), 0, dp(context, 8))
             // keep the spoken label normal-case (not letter-by-letter) and jumpable
             contentDescription = value
             asHeading(this)
@@ -280,6 +341,7 @@ object Ui {
     fun button(context: Context, label: String, onClick: () -> Unit): TextView =
         baseButton(context, label, Palette.ON_PRIMARY,
             ripple(context, rounded(PRIMARY, 25f), 0x33FFFFFF)).apply {
+            tag = TAG_PRIMARY
             setOnClickListener { onClick() }
         }
 

@@ -264,7 +264,7 @@ Every video carries a persistent **"your plan comes first"** safety strip. Capti
 are on by default, and being offline shows a plain message instead of a browser error.
 The bundled animation (`ExerciseDemoView`, from the `draw/` module) is always
 the offline floor. **Your own clips** replace the animations: pick a folder under
-More › Your own demo clips, holding files named by demo id (e.g. `seated_heel_raise.mp4`).
+Settings › Your own demo clips, holding files named by demo id (e.g. `seated_heel_raise.mp4`).
 The production brief for those clips is `docs/exercise-demo-video-prompts.md`, and a
 test keeps it in step with the app.
 

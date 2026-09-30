@@ -139,7 +139,6 @@ object SessionPlayer {
             stage.addView(Ui.fullWidth(Ui.button(a, "$unit ${st.step + 1} done") { stepDone(a, ex, steps) }, a))
         }
         if (st.step > 0) stage.addView(Ui.caption(a, "Rest briefly, then go again."))
-        col.addView(stage)
         col.addView(Ui.fullWidth(Ui.textButton(a, "Skip this exercise", Ui.TEXT_DIM) {
             st.skipped.add(ex.id)
             st.index++
@@ -148,7 +147,8 @@ object SessionPlayer {
         }, a, 2))
         col.addView(Ui.caption(a, ex.precaution))
         col.addView(Ui.spacer(a, 24))
-        return Ui.scroll(a, col)
+        // the one control that matters stays pinned under the thumb, whatever the cues' length
+        return Ui.withActionBar(a, Ui.scroll(a, col), stage)
     }
 
     private fun stepDone(a: MainActivity, ex: ExerciseSpec, steps: Int) {

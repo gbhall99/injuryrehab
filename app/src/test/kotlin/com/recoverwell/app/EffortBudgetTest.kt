@@ -144,8 +144,9 @@ class BootAdjustEffortTest : EffortBase() {
         val a = Robolectric.setupActivity(MainActivity::class.java)
         ready(a, 4, 2)
         a.store.saveProfile(a.store.profile().copy(currentWedges = 20))
-        a.show(MainActivity.Tab.TWIN)
-        tapDesc(a.window.decorView, "Adjust VACOped boot setting")
+        // straight from Today's hero ("Boot 20°"), no tab switch: 3 taps from home (was 4 via My leg)
+        a.show(MainActivity.Tab.TODAY)
+        tapDesc(a.window.decorView, "Change boot angle")
         val dialog = ShadowAlertDialog.getLatestAlertDialog()
         tapDesc(dialog.window.decorView, "Decrease")
         dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick(); taps++

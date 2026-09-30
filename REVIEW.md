@@ -370,3 +370,38 @@ Clinical calls:
 Verification: 193 tests green (179 before; +14). Signed APK builds and verifies.
 Not device- or patient-validated here.
 
+---
+
+# Customer thinking audit (v3.10)
+
+Full report: [`docs/CUSTOMER_THINKING_AUDIT.md`](docs/CUSTOMER_THINKING_AUDIT.md).
+
+This round introduces a new metric, the **Customer Thinking Score**: the seconds a customer spends working out which control to press. Each step's time is:
+
+- **Choose:** Hick–Hyman, 0.15 s × log₂(controls + 1).
+- **Find:** 0.2 s per place looked.
+- **Words:** +1.35 s (a KLM mental operator) if the control isn't in the customer's words.
+- **Scroll:** +1.35 s if the control is off-screen.
+
+A step is "at a glance" at ≤ 1.5 s. The measurement is taken on the real Activity at 360 × 740 dp with realistic text metrics. Before (untouched `main` in a worktree) and after use the same 20 journeys, words and states.
+
+| Measure | Before | After |
+|---|:-:|:-:|
+| Average journey score | 7.5 | 10.0 |
+| Journeys 10/10 | 5/20 | 20/20 |
+| Steps at a glance | 19/45 | 43/43 |
+| Total thinking time | 86.3 s | 39.3 s (−54%) |
+
+Main fixes:
+- **Today:** hero chips (What to expect, Boot angle, Physio), with the check-in above daily care until it's logged, and daily care ordered by frequency.
+- **Tabs:** "More" renamed to "Settings", and the plan, reminders and backups placed first.
+- **Coach:** now a labelled "Ask" button.
+- **Forms and the session player:** the main action is pinned below them.
+- **Red flags:** a "Which one is it?" triage block.
+- **Progress:** "Share with your physio".
+- **Wording:** "Change boot angle" and "Change sets, reps or video".
+
+Caught during this round: Robolectric measures no text, so the first "after" run was optimistic. The probe now sizes text realistically, and both before and after were re-measured with it.
+
+Verification: 213 tests green (193 before, plus 20 journey tests that fail the build if any step goes over 1.5 s). The signed APK builds and verifies. Not device- or patient-validated here.
+

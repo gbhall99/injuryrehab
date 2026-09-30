@@ -17,7 +17,7 @@ import java.time.LocalTime
  * First-run flow. Captures the user's own details (injury date, side, goal,
  * device) rather than assuming them; medications are added by explicit opt-in.
  * Defaults are neutral (today's date, blank goal) so the flow works for any
- * user. Every field is also editable later under More.
+ * user. Every field is also editable later under Settings.
  */
 object Onboarding {
 
@@ -87,7 +87,7 @@ object Onboarding {
         banner.addView(Ui.headline(a, "Check your details"))
         banner.addView(Ui.caption(
             a, "Tell us about your injury and what you're working back to. Pick your " +
-                "side and injury date - everything else can be adjusted later in More."))
+                "side and injury date - everything else can be adjusted later in Settings."))
         col.addView(banner)
         // the editor is a ScrollView: give it the remaining height (weight) so it
         // scrolls within itself, instead of overflowing and overlapping the banner
@@ -187,7 +187,7 @@ object Onboarding {
         rebuild()
         editor.addView(phases)
         if (device != null) editor.addView(deviceCard)
-        editor.addView(Ui.fullWidth(Ui.button(a, "Confirm & continue") {
+        val confirm = Ui.fullWidth(Ui.button(a, "Confirm & continue") {
             val p = a.store.profile()
             a.store.saveProfile(p.copy(
                 physioConfirmedPhase = chosen,
@@ -200,9 +200,10 @@ object Onboarding {
             Reminders.reschedule(a)
             a.popOverlay()
             a.pushOverlay { stepMeds(a) }
-        }, a))
+        }, a, 8)
         editor.addView(Ui.spacer(a, 24))
-        col.addView(Ui.scroll(a, editor),
+        // every setup step keeps its button in view, however long the step
+        col.addView(Ui.withActionBar(a, Ui.scroll(a, editor), confirm),
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         return col
     }
@@ -264,7 +265,7 @@ object Onboarding {
             val careCard = Ui.card(a)
             careCard.addView(Ui.text(a, "Daily care reminders", 15.5f, Ui.TEXT, bold = true))
             careCard.addView(Ui.caption(a, "Turn off any that don't apply - you can change these any time " +
-                "in More › Reminders."))
+                "in Settings › Reminders."))
             for (task in careTasks) {
                 careCard.addView(Forms.label(a, task.title))
                 careCard.addView(Forms.toggle(a, task.active) { on ->
@@ -274,8 +275,8 @@ object Onboarding {
             }
             banner.addView(careCard)
         }
-        col.addView(banner)
-        col.addView(MoreScreen.medsEditor(a) {
+        // the intro scrolls with the list, so "Confirm & continue" is never pushed off-screen
+        col.addView(MoreScreen.medsEditor(a, header = banner) {
             a.popOverlay()
             a.pushOverlay { stepRoutine(a) }
         }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
@@ -287,7 +288,7 @@ object Onboarding {
      * habit anchor of recovery, so it is offered on by default; the exercise
      * nudge and the number of daily sessions (1-3) are set here too. Medication
      * reminders stay on their own clinically-timed schedule - never folded into
-     * this single moment - and everything here is editable later under More.
+     * this single moment - and everything here is editable later under Settings.
      */
     private fun stepRoutine(a: MainActivity): View {
         val col = Ui.column(a, 0)
@@ -299,7 +300,7 @@ object Onboarding {
         banner.addView(Ui.caption(
             a, "One daily check-in anchors your recovery - it keeps your trends accurate and " +
                 "is the home base for the day. Pick times that fit your life; you can change " +
-                "all of this later in More."))
+                "all of this later in Settings."))
 
         val editor = Ui.column(a)
 
@@ -362,7 +363,7 @@ object Onboarding {
             "folded into the daily check-in, so a dose is never missed.", 13.5f, Ui.ON_INFO_BG))
         editor.addView(note)
 
-        editor.addView(Ui.fullWidth(Ui.button(a, "Finish setup") {
+        val finish = Ui.fullWidth(Ui.button(a, "Finish setup") {
             a.store.saveSetting("checkin_reminder",
                 if (checkInOn) "%02d:%02d".format(checkInTime.hour, checkInTime.minute) else "off")
             a.store.saveSetting("exercise_reminder",
@@ -371,11 +372,11 @@ object Onboarding {
             a.store.saveProfile(a.store.profile().copy(onboardingComplete = true))
             Reminders.reschedule(a)
             a.show(MainActivity.Tab.TODAY)
-        }, a))
+        }, a, 8)
         editor.addView(Ui.spacer(a, 24))
 
         col.addView(banner)
-        col.addView(Ui.scroll(a, editor),
+        col.addView(Ui.withActionBar(a, Ui.scroll(a, editor), finish),
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         return col
     }

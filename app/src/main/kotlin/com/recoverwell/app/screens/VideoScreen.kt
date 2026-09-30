@@ -240,7 +240,7 @@ object VideoScreen {
                 card.addView(Ui.text(a, "YouTube results - tap one to play", 14.5f, Ui.TEXT, bold = true))
                 card.addView(Ui.caption(a, "Searching “${ExerciseVideo.query(spec,
                     ProtocolRegistry.forProfile(a.store.profile()).videoContext)}”. Found a good one? " +
-                    "Pin it under Adjust dose or video."))
+                    "Pin it under Change sets, reps or video."))
             }
         }
         return card
@@ -248,7 +248,7 @@ object VideoScreen {
 
     private fun pinnedBanner(a: MainActivity, card: LinearLayout) {
         card.addView(Ui.text(a, "Your chosen video", 14.5f, Ui.TEXT, bold = true))
-        card.addView(Ui.caption(a, "It plays every time for this exercise. Change it under Adjust dose or video."))
+        card.addView(Ui.caption(a, "It plays every time for this exercise. Change it under Change sets, reps or video."))
     }
 
     /** False only when the phone clearly has no network; anything uncertain lets the page try. */

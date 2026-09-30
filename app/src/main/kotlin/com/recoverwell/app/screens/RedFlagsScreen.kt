@@ -17,7 +17,24 @@ object RedFlagsScreen {
         col.addView(Ui.backRow(a, "Red flags") { a.popOverlay() })
         val protocol = ProtocolRegistry.forProfile(a.store.profile())
         col.addView(Ui.body(a, protocol.redFlagIntro))
-        col.addView(Ui.spacer(a, 8))
+
+        // which sign -> which call, first: someone with a hot, swollen calf shouldn't have
+        // to read past the emergency section to find their answer. The full signs follow.
+        val calls = protocol.redFlags.filter { rf ->
+            rf.urgency.lowercase().let { it.contains("999") || it.contains("111") || it.contains("clinic") }
+        }
+        if (calls.isNotEmpty()) {
+            col.addView(Ui.section(a, "Which one is it?"))
+            val quick = Ui.card(a)
+            calls.forEachIndexed { i, rf ->
+                if (i > 0) quick.addView(Ui.spacer(a, 12))
+                quick.addView(Ui.text(a, rf.title, 15f, Ui.TEXT, bold = true))
+                rf.symptoms.firstOrNull()?.let { quick.addView(Ui.caption(a, it)) }
+                addCallButtons(a, quick, rf.urgency)
+            }
+            col.addView(quick)
+            col.addView(Ui.section(a, "All the signs"))
+        } else col.addView(Ui.spacer(a, 8))
 
         for (rf in protocol.redFlags) {
             val urgent = rf.id == "pe"

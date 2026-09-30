@@ -60,7 +60,7 @@ class ScreensSmokeTest : SmokeBase() {
         activity.store.saveMedications(com.recoverwell.core.protocol.ProtocolRegistry.default.prefillMedications)
         activity.show(MainActivity.Tab.TODAY)
         var texts = allText(activity.window.decorView).joinToString("\n")
-        assertTrue(texts.has("done today"))
+        assertTrue(texts.has("What to expect"))
         assertTrue(texts.has("Anticoagulant 2.5 mg"))
         assertTrue(texts.has("phase"))
 

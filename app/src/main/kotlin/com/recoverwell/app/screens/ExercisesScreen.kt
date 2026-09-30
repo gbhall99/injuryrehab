@@ -199,7 +199,7 @@ object ExercisesScreen {
         tile(if (effective.intervalDays > 1) "Alt" else "${perDay}×",
             if (effective.intervalDays > 1) "days" else "per day")
         col.addView(stats)
-        col.addView(Ui.fullWidth(Ui.textButton(a, "Adjust dose or video") {
+        col.addView(Ui.fullWidth(Ui.textButton(a, "Change sets, reps or video") {
             a.pushOverlay("Adjust ${spec.name}") { editOverride(a, spec) }
         }, a, 4))
 
@@ -360,7 +360,7 @@ object ExercisesScreen {
         var enabled = existing?.enabled ?: true
 
         val col = Ui.column(a)
-        col.addView(Ui.backRow(a, "Adjust") { a.popOverlay() })
+        col.addView(Ui.backRow(a, "Change") { a.popOverlay() })
         col.addView(Ui.title(a, spec.name))
         col.addView(Ui.spacer(a, 4))
         col.addView(Ui.caption(
@@ -376,7 +376,7 @@ object ExercisesScreen {
             hold, 0, 3600, step = holdStep) { hold = it })
         card.addView(Forms.stepper(a, "Times a day", perDay, 1, ScheduleEngine.MAX_EXERCISE_SESSIONS) { perDay = it })
         card.addView(Ui.caption(a, "Capped by your number of daily sessions " +
-            "(${a.store.exerciseSessions()} - change under More › Reminders › Exercise reminders)."))
+            "(${a.store.exerciseSessions()} - change under Settings › Reminders › Exercise reminders)."))
         col.addView(card)
 
         col.addView(Ui.section(a, "Include in daily plan"))
@@ -408,17 +408,17 @@ object ExercisesScreen {
         }
 
         col.addView(Ui.spacer(a, 12))
-        col.addView(Ui.fullWidth(Ui.button(a, "Save changes") {
+        val save = Ui.fullWidth(Ui.button(a, "Save changes") {
             a.store.saveExerciseOverride(ExerciseOverride(spec.id, sets, reps, hold,
                 perDay.takeIf { it != spec.sessionsPerDay }, enabled, existing?.videoId))
             a.popOverlay()
-        }, a))
+        }, a, 8)
         col.addView(Ui.fullWidth(Ui.textButton(a, "Reset to protocol default") {
             // keep any pinned demonstration video; only the prescription resets
             a.store.saveExerciseOverride(ExerciseOverride(spec.id, null, null, null, null, true, existing?.videoId))
             a.popOverlay()
         }, a, 4))
         col.addView(Ui.spacer(a, 24))
-        return Ui.scroll(a, col)
+        return Ui.withActionBar(a, Ui.scroll(a, col), save)
     }
 }

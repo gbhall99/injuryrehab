@@ -58,7 +58,7 @@ class OnboardingFlowTest {
         // daily rhythm -> Today
         assertTrue(clickByText(decor, "Finish setup"))
         texts = allText(decor).joinToString("\n").lowercase()
-        assertTrue("today shows", texts.contains("done today"))
+        assertTrue("today shows", texts.contains("what to expect"))
         assertTrue(activity.store.profile().onboardingComplete)
         // the check-in anchor is on by default after guided setup
         assertEquals("20:00", activity.store.setting("checkin_reminder", "off"))

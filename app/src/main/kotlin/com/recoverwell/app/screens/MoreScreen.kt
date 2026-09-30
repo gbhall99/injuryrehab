@@ -28,35 +28,17 @@ object MoreScreen {
     fun build(a: MainActivity): View {
         val col = Ui.column(a)
 
-        // Features first (the things people come here to *use*), kept distinct
-        // from the settings below so More stops reading as one long settings list.
-        col.addView(Ui.section(a, "Recovery tools"))
-        col.addView(Ui.listRow(a, "ic_ask", "Recovery coach",
-            if (AiScreen.enabled(a)) "Ask anything - answered by AI from your recovery"
-            else "Can I drive yet? What's next? - answered offline") { a.openAsk() })
-        if (AiScreen.enabled(a)) {
-            col.addView(Ui.listRow(a, "ic_edit", "Recovery journal",
-                "Speak a daily check-in - AI reflects it back") { a.openJournal() })
-        }
-        col.addView(Ui.listRow(a, "ic_calendar", "Physio visits",
-            "Appointment pack, sign-offs and visit notes") { a.pushOverlay("Physio visits") { PhysioScreen.build(a) } })
-        col.addView(Ui.listRow(a, "ic_heart", "How you're doing",
-            "What's normal to feel, reassurance, milestones") { a.pushOverlay("How you're doing") { WellbeingScreen.build(a) } })
-        col.addView(Ui.listRow(a, "ic_info", "What to expect",
-            "Plain-language guidance for this stage") { a.pushOverlay("What to expect") { WhatToExpectScreen.build(a) } })
-        col.addView(Ui.listRow(a, "ic_exercises", "Stay fit",
-            "Keep-fit conditioning + a weekly goal") { a.pushOverlay("Stay fit") { StayFitScreen.build(a) } })
-
+        // Settings, in the order people come for them: their plan and medicines,
+        // reminders, then backups & reports - all on the first screen.
         col.addView(Ui.section(a, "Your plan"))
-        col.addView(Ui.listRow(a, "ic_progress", "Configure my plan",
-            "Phases, exercises, boot & weight-bearing - each set to your physio's guidance") {
-            a.pushOverlay("Configure my plan") { planEditor(a) }
-        })
         col.addView(Ui.listRow(a, "ic_heart", "Injury & goal",
             "Injury date, side, sport, boot and clinic number") { a.pushOverlay("Injury & goal") { profileEditor(a) } })
         col.addView(Ui.listRow(a, "ic_pill", "Medications",
             "Doses, times and reminders") { a.pushOverlay("Medications") { medsEditor(a) } })
-
+        col.addView(Ui.listRow(a, "ic_progress", "Configure my plan",
+            "Phases, exercises, boot & weight-bearing - each set to your physio's guidance") {
+            a.pushOverlay("Configure my plan") { planEditor(a) }
+        })
         // a single Reminders hub gathers medications, daily-care, exercise and
         // check-in nudges and the reliability checker (previously four+ sibling rows)
         col.addView(Ui.section(a, "Reminders"))
@@ -69,10 +51,40 @@ object MoreScreen {
             a.pushOverlay("Reminders") { remindersHub(a) }
         })
 
-        col.addView(Ui.section(a, "AI features"))
-        col.addView(Ui.listRow(a, "ic_info", "AI assistant",
-            if (AiScreen.enabled(a)) "On - natural-language answers via Groq"
-            else "Off - turn on natural-language answers") { a.pushOverlay("AI features") { AiScreen.settings(a) } })
+        col.addView(Ui.section(a, "Data"))
+        val lastBackup = a.store.setting("last_backup", "")
+        col.addView(Ui.listRow(a, "ic_export", "Full backup",
+            if (lastBackup.isBlank()) "Save everything · restorable file · none yet"
+            else "Save everything · restorable file · last $lastBackup") { a.exportBackup() })
+        val autoOn = a.autoBackupEnabled()
+        col.addView(Ui.listRow(a, "ic_restore", "Automatic backup",
+            if (autoOn) "On · saves once a day to ${a.store.setting("auto_backup_name", "your file")}"
+            else "Off · save a fresh copy daily, no action needed",
+            iconTint = if (autoOn) Ui.PRIMARY else Ui.TEXT_DIM,
+            iconBg = if (autoOn) Ui.PRIMARY_CONTAINER else Ui.SURFACE_HIGH) {
+            a.pushOverlay("Automatic backup") { autoBackupEditor(a) }
+        })
+        col.addView(Ui.listRow(a, "ic_restore", "Restore from backup", "Replaces all current data") { a.importBackup() })
+        col.addView(Ui.listRow(a, "ic_export", "PDF report", "Share progress with your physio") { a.exportPdf() })
+        col.addView(Ui.listRow(a, "ic_export", "Spreadsheets (CSV)", "Daily logs or medication & task history") {
+            AlertDialog.Builder(a)
+                .setTitle("Export a spreadsheet")
+                .setItems(arrayOf("Daily logs", "Medication & task history")) { _, which ->
+                    if (which == 0) a.exportLogsCsv() else a.exportEventsCsv()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        })
+        col.addView(Ui.caption(a, "All data lives only on this phone - no account" +
+            (if (AiScreen.enabled(a)) " (AI features are on: questions and a short recovery summary go to Groq)."
+            else ", no network.")))
+
+        col.addView(Ui.section(a, "Safety & info"))
+        col.addView(Ui.listRow(a, "ic_alert", "Red flags",
+            "DVT, re-rupture, bleeding - know them cold",
+            iconTint = Ui.DANGER, iconBg = Ui.DANGER_BG) { a.pushOverlay("Red flags") { RedFlagsScreen.build(a) } })
+        col.addView(Ui.listRow(a, "ic_info", "About & protocol sources",
+            "What this app is based on") { a.pushOverlay("About") { about(a) } })
 
         col.addView(Ui.section(a, "Appearance"))
         val themeCard = Ui.card(a)
@@ -110,41 +122,30 @@ object MoreScreen {
             col.addView(Ui.fullWidth(Ui.textButton(a, "Stop using my clips", Ui.TEXT_DIM) { a.forgetClipFolder() }, a, 2))
         }
 
-        col.addView(Ui.section(a, "Safety & info"))
-        col.addView(Ui.listRow(a, "ic_alert", "Red flags",
-            "DVT, re-rupture, bleeding - know them cold",
-            iconTint = Ui.DANGER, iconBg = Ui.DANGER_BG) { a.pushOverlay("Red flags") { RedFlagsScreen.build(a) } })
-        col.addView(Ui.listRow(a, "ic_info", "About & protocol sources",
-            "What this app is based on") { a.pushOverlay("About") { about(a) } })
+        col.addView(Ui.section(a, "AI features"))
+        col.addView(Ui.listRow(a, "ic_info", "AI assistant",
+            if (AiScreen.enabled(a)) "On - natural-language answers via Groq"
+            else "Off - turn on natural-language answers") { a.pushOverlay("AI features") { AiScreen.settings(a) } })
 
-        col.addView(Ui.section(a, "Data"))
-        val lastBackup = a.store.setting("last_backup", "")
-        col.addView(Ui.caption(a, "All data lives only on this phone - no account" +
-            (if (AiScreen.enabled(a)) " (AI features are on: questions and a short recovery summary go to Groq). "
-            else ", no network. ") +
-            if (lastBackup.isBlank()) "No backup yet - turn on automatic backup or export one below."
-            else "Last full backup: $lastBackup."))
-        col.addView(Ui.spacer(a, 6))
-        val autoOn = a.autoBackupEnabled()
-        col.addView(Ui.listRow(a, "ic_restore", "Automatic backup",
-            if (autoOn) "On · saves once a day to ${a.store.setting("auto_backup_name", "your file")}"
-            else "Off · save a fresh copy daily, no action needed",
-            iconTint = if (autoOn) Ui.PRIMARY else Ui.TEXT_DIM,
-            iconBg = if (autoOn) Ui.PRIMARY_CONTAINER else Ui.SURFACE_HIGH) {
-            a.pushOverlay("Automatic backup") { autoBackupEditor(a) }
-        })
-        col.addView(Ui.listRow(a, "ic_export", "Full backup", "Save everything · restorable file") { a.exportBackup() })
-        col.addView(Ui.listRow(a, "ic_restore", "Restore from backup", "Replaces all current data") { a.importBackup() })
-        col.addView(Ui.listRow(a, "ic_export", "PDF report", "Share progress with your physio") { a.exportPdf() })
-        col.addView(Ui.listRow(a, "ic_export", "Spreadsheets (CSV)", "Daily logs or medication & task history") {
-            AlertDialog.Builder(a)
-                .setTitle("Export a spreadsheet")
-                .setItems(arrayOf("Daily logs", "Medication & task history")) { _, which ->
-                    if (which == 0) a.exportLogsCsv() else a.exportEventsCsv()
-                }
-                .setNegativeButton("Cancel", null)
-                .show()
-        })
+        // Recovery tools also live one tap from Today (hero chips, "Ask", the
+        // jump grid); here they're the last section, so the settings people come
+        // to change - plan, reminders, backups - fill the first screen.
+        col.addView(Ui.section(a, "Recovery tools"))
+        col.addView(Ui.listRow(a, "ic_ask", "Recovery coach",
+            if (AiScreen.enabled(a)) "Ask anything - answered by AI from your recovery"
+            else "Can I drive yet? What's next? - answered offline") { a.openAsk() })
+        if (AiScreen.enabled(a)) {
+            col.addView(Ui.listRow(a, "ic_edit", "Recovery journal",
+                "Speak a daily check-in - AI reflects it back") { a.openJournal() })
+        }
+        col.addView(Ui.listRow(a, "ic_calendar", "Physio visits",
+            "Appointment pack, sign-offs and visit notes") { a.pushOverlay("Physio visits") { PhysioScreen.build(a) } })
+        col.addView(Ui.listRow(a, "ic_heart", "How you're doing",
+            "What's normal to feel, reassurance, milestones") { a.pushOverlay("How you're doing") { WellbeingScreen.build(a) } })
+        col.addView(Ui.listRow(a, "ic_info", "What to expect",
+            "Plain-language guidance for this stage") { a.pushOverlay("What to expect") { WhatToExpectScreen.build(a) } })
+        col.addView(Ui.listRow(a, "ic_exercises", "Stay fit",
+            "Keep-fit conditioning + a weekly goal") { a.pushOverlay("Stay fit") { StayFitScreen.build(a) } })
 
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
@@ -227,16 +228,16 @@ object MoreScreen {
                     currentWedges = proto.supportDevice?.plan?.initialWedges ?: 0
                 )
             })
-        } else {
-            card.addView(Forms.label(a, "Your plan"))
-        }
-        ProtocolRegistry.byId(p.protocolId).let { proto ->
-            card.addView(Ui.caption(a, "${proto.injuryName} · ${proto.variantName}"))
         }
 
+        col.addView(card)
+
+        // sport and goal get their own heading, so they're found at a glance
+        // instead of as the fourth field of one long card
+        val goalCard = Ui.card(a)
         val sports = ProtocolRegistry.byId(p.protocolId).supportedSportIds.mapNotNull { SportRegistry.byId(it) }
         if (sports.isNotEmpty()) {
-            card.addView(Forms.label(a, "Sport to return to · shapes your return-to-sport plan"))
+            goalCard.addView(Forms.label(a, "Sport to return to · shapes your return-to-sport plan"))
             val defaultId = ProtocolRegistry.byId(p.protocolId).defaultSportId ?: ""
             var sportBtn: android.widget.TextView? = null
             fun currentSportName() = sports.firstOrNull { it.id == p.sportId.ifBlank { defaultId } }?.name ?: "Choose sport"
@@ -253,22 +254,25 @@ object MoreScreen {
                     .setNegativeButton("Cancel", null)
                     .show()
             }
-            card.addView(Ui.fullWidth(sportBtn, a, 4))
+            goalCard.addView(Ui.fullWidth(sportBtn, a, 4))
         }
 
         // Estimated return-to-sport date: drives the overall recovery-days
         // timeline on Today ("day X of N"). Defaults to ~12 months post-injury;
         // always an estimate the physio's real timeline overrides.
         if (!onboarding) {
-            card.addView(Forms.label(a, "Estimated return to sport · drives your recovery timeline"))
-            card.addView(Forms.dateRow(a, "Target date",
+            goalCard.addView(Forms.label(a, "Estimated return to sport · drives your recovery timeline"))
+            goalCard.addView(Forms.dateRow(a, "Target date",
                 p.targetReturnDate ?: p.injuryDate.plusDays(Profile.DEFAULT_RETURN_DAYS)) {
                 p = p.copy(targetReturnDate = it)
             })
-            card.addView(Ui.caption(a, "Just an estimate you can change anytime - many people return to " +
+            goalCard.addView(Ui.caption(a, "Just an estimate you can change anytime - many people return to " +
                 "sport around 9-12 months. Your physio guides the real timeline."))
         }
-        col.addView(card)
+        if (goalCard.childCount > 0) {
+            col.addView(Ui.section(a, "Sport & goal"))
+            col.addView(goalCard)
+        }
 
         col.addView(Ui.section(a, "Boot / cast"))
         val bootCard = Ui.card(a)
@@ -302,15 +306,19 @@ object MoreScreen {
         // Appointments are managed in one place only - Physio visits - so they're
         // not duplicated here (and the onboarding path that mis-saved them is gone).
 
-        col.addView(Ui.spacer(a, 10))
-        col.addView(Ui.fullWidth(Ui.button(a, if (onDone == null) "Save" else "Confirm & continue") {
+        // what the plan is built for is read-only here, so it sits at the end rather than
+        // between the fields people come to change
+        if (ProtocolRegistry.all.size == 1) ProtocolRegistry.byId(p.protocolId).let { proto ->
+            col.addView(Ui.caption(a, "Your plan: ${proto.injuryName} · ${proto.variantName}"))
+        }
+        col.addView(Ui.spacer(a, 12))
+        // the action stays pinned below the form: a long form never hides its button
+        return Ui.withActionBar(a, Ui.scroll(a, col), Ui.fullWidth(Ui.button(a, if (onDone == null) "Save" else "Confirm & continue") {
             a.store.saveProfile(p.copy(name = nameEdit.text.toString().trim(),
                 clinicPhone = phoneEdit.text.toString().trim()))
             Reminders.reschedule(a)
             if (onDone != null) onDone() else a.popOverlay()
-        }, a))
-        col.addView(Ui.spacer(a, 24))
-        return Ui.scroll(a, col)
+        }, a, 8))
     }
 
     /** (Re)builds the device-dependent boot controls below the device picker. */
@@ -580,9 +588,11 @@ object MoreScreen {
 
     // ------------------------------------------------------------------
 
-    fun medsEditor(a: MainActivity, onDone: (() -> Unit)? = null): View {
+    /** [header] scrolls with the list (setup's step intro), so the pinned button always shows. */
+    fun medsEditor(a: MainActivity, header: View? = null, onDone: (() -> Unit)? = null): View {
         val col = Ui.column(a)
         if (onDone == null) col.addView(Ui.backRow(a, "Medications") { a.popOverlay() })
+        header?.let { col.addView(it) }
         col.addView(Ui.caption(a, "Each time gets its own reminder with taken/missed logging. " +
             "Change doses only with your prescriber."))
         col.addView(Ui.spacer(a, 4))
@@ -633,10 +643,10 @@ object MoreScreen {
                 medEditor(a, Medication(UUID.randomUUID().toString(), "", "", listOf(LocalTime.of(9, 0)), "", true))
             }
         }, a))
-        if (onDone != null) {
-            col.addView(Ui.fullWidth(Ui.button(a, "Confirm & continue") { onDone() }, a))
-        }
         col.addView(Ui.spacer(a, 24))
+        if (onDone != null) {
+            return Ui.withActionBar(a, Ui.scroll(a, col), Ui.fullWidth(Ui.button(a, "Confirm & continue") { onDone() }, a, 8))
+        }
         return Ui.scroll(a, col)
     }
 

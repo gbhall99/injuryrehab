@@ -61,10 +61,9 @@ object TwinScreen {
         facts.addView(Ui.text(a, snap.bootStatus, 13.5f, Ui.TEXT))
         // the clinic changed the angle? adjust it right where it's shown
         val phaseNow = com.recoverwell.core.logic.PhaseEngine.currentPhase(profile, today)
-        if (device != null && device.kind != com.recoverwell.core.protocol.DeviceKind.CAST &&
-            phaseNow.deviceUsage != null && profile.usesDeviceOn(today)) {
-            facts.addView(Ui.textButton(a, "Adjust setting") { adjustDevice(a, device) }.apply {
-                contentDescription = "Adjust ${device.name} setting"
+        if (device != null && adjustableDevice(a) === device) {
+            facts.addView(Ui.textButton(a, changeLabel(device)) { adjustDevice(a, device) }.apply {
+                contentDescription = "${changeLabel(device)} (${device.name})"
             })
         }
         facts.addView(Ui.spacer(a, 4))
@@ -204,8 +203,24 @@ object TwinScreen {
         return Ui.scroll(a, col)
     }
 
+    /** The boot the user can re-set right now (in a boot phase, still wearing it, not a cast), or null. */
+    fun adjustableDevice(a: MainActivity): com.recoverwell.core.protocol.SupportDevice? {
+        val profile = a.store.profile()
+        val today = java.time.LocalDate.now()
+        val device = com.recoverwell.core.protocol.ProtocolRegistry.deviceFor(profile) ?: return null
+        val phaseNow = com.recoverwell.core.logic.PhaseEngine.currentPhase(profile, today)
+        return device.takeIf {
+            it.kind != com.recoverwell.core.protocol.DeviceKind.CAST && phaseNow.deviceUsage != null &&
+                profile.usesDeviceOn(today)
+        }
+    }
+
+    /** Says what changes, in the words people use: "Change boot angle" / "Change boot wedges". */
+    fun changeLabel(device: com.recoverwell.core.protocol.SupportDevice): String =
+        if (device.unitSymbol == "°") "Change boot angle" else "Change boot ${device.unitNamePlural}"
+
     /** One small dialog: step the boot's current setting, save, and every screen follows. */
-    private fun adjustDevice(a: MainActivity, device: com.recoverwell.core.protocol.SupportDevice) {
+    fun adjustDevice(a: MainActivity, device: com.recoverwell.core.protocol.SupportDevice) {
         var value = a.store.profile().currentWedges
         val pad = Ui.dp(a, 18)
         val holder = LinearLayout(a).apply {
