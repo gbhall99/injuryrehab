@@ -405,3 +405,44 @@ Caught during this round: Robolectric measures no text, so the first "after" run
 
 Verification: 213 tests green (193 before, plus 20 journey tests that fail the build if any step goes over 1.5 s). The signed APK builds and verifies. Not device- or patient-validated here.
 
+---
+
+# Simplicity and decision-load audit (v3.11)
+
+Full report: [`docs/SIMPLIFICATION_DECISION_LOAD_AUDIT.md`](docs/SIMPLIFICATION_DECISION_LOAD_AUDIT.md).
+
+The Customer Thinking Score times finding *one* control per journey, so it never counted the buttons, menus, sections and scrolling a screen shows beyond that. A second metric fixes this. **Decision Load** is everything each screen puts in front of you, measured on an ordinary day. Per-screen budgets:
+
+- **Controls:** ≤ 15 (Hick–Hyman).
+- **Sections:** ≤ 4 (Cowan's four chunks).
+- **Scrolling:** ≤ 2 screens where you decide or do something, ≤ 3 on pages opened to read.
+- **Redundancy:** duplicate entry points are counted and kept to a minimum.
+
+Red flags is the one documented exception (4.2 screens), because no warning sign is ever folded away.
+
+| Measure | v3.10 | v3.11 |
+|---|:-:|:-:|
+| Screens within budget | 7 / 22 | 21 / 22 |
+| Controls / sections / screens of scroll | 215 / 83 / 60.4 | 147 / 44 / 38.9 |
+| Duplicate entry points | 21 | 5 |
+| Journeys at a glance (CTS) | 20 / 20 | 20 / 20 (40.6 s total; 39.3 s before, +2 steps) |
+
+Main changes:
+- **One home per thing:** What to expect, How you're doing, the phase guide and the phase reference became My leg's *What to expect now* plus **Your plan**.
+- **Boot settings:** in 5 places before, now in **Settings › Configure my plan › Your boot**.
+- **Red flags:** reached from 1 app-bar pill (was 6 entry points), and no longer listed twice. Each warning leads with its call button.
+- **Moved to one place:** Stay fit is on Exercises. Stats are on Progress only.
+- **Fewer choices at once:**
+  - Coach: 6 starter questions + "more" (was 25).
+  - Settings: 9 rows in 2 sections (was 23 controls in 8).
+  - Configure my plan: 9 controls (was 25), with switches and short lists instead of chip rows.
+  - Physio visits: 8 controls (was 15). Adding an appointment is a short form, and there's one "Update my plan" door.
+  - Selectors instead of chip rows: Trends, and Exercises' phases.
+- **Less scrolling:**
+  - Today: one "next session" row.
+  - My leg: compact "Can I…?", with the why one tap away.
+  - Progress: *This week*, *Trends*, *Your road back*.
+- The tab keeps the name **My leg**: the usability study found it the most findable place for "what can I do?".
+
+Verification: 214 tests pass (213 before, plus `DecisionLoadTest`, which fails the build if a screen goes over budget or the app totals creep back up). The signed APK (3.11, code 31) builds and verifies. Not device- or patient-validated here: the numbers come from a model with estimated text layout.
+

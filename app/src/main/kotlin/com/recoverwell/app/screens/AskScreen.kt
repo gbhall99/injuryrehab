@@ -45,6 +45,7 @@ object AskScreen {
     fun reset() {
         turns.clear(); loading = false; error = null
         lastAnswer = null; lastQuestion = ""; scrollToEnd = false; safety = null
+        showAllQuestions = false
     }
 
     fun build(a: MainActivity): View {
@@ -224,22 +225,46 @@ object AskScreen {
         return Ui.scroll(a, col)
     }
 
+    /** Whether the full grouped question list is open (the short list shows by default). */
+    private var showAllQuestions = false
+
     /**
-     * Renders the grouped topic starters: a few labelled topics each with their
-     * own questions, so the coach offers structured entry points rather than one
-     * long open-ended thread. [onPick] sends (AI) or answers (offline) the tap.
+     * Starter questions: the six most useful for this phase (one from each topic in
+     * turn), and "More questions" for the full grouped list - so the coach opens
+     * with a handful of choices, not two dozen. [onPick] sends (AI) or answers (offline).
      */
     private fun addTopicPicker(
         a: MainActivity, col: LinearLayout,
         profile: com.recoverwell.core.model.Profile, onPick: (String) -> Unit
     ) {
-        col.addView(Ui.caption(a, "Pick a question to start - or type your own."))
-        for (topic in Ask.topics(profile, LocalDate.now())) {
-            col.addView(Ui.section(a, topic.title))
-            for (q in topic.questions) {
-                col.addView(Ui.listRow(a, topic.icon, q, null, chevron = true) { onPick(q) })
+        val topics = Ask.topics(profile, LocalDate.now())
+        if (showAllQuestions) {
+            for (topic in topics) {
+                col.addView(Ui.section(a, topic.title))
+                for (q in topic.questions) col.addView(Ui.listRow(a, topic.icon, q, null, chevron = true) { onPick(q) })
             }
+            col.addView(Ui.fullWidth(Ui.textButton(a, "Fewer questions") { showAllQuestions = false; a.refresh() }, a, 4))
+            return
         }
+        col.addView(Ui.section(a, "Common questions"))
+        for ((icon, q) in starters(topics)) col.addView(Ui.listRow(a, icon, q, null, chevron = true) { onPick(q) })
+        val more = topics.sumOf { it.questions.size } - STARTERS
+        if (more > 0) col.addView(Ui.fullWidth(Ui.textButton(a, "$more more questions") {
+            showAllQuestions = true; a.refresh()
+        }, a, 4))
+    }
+
+    private const val STARTERS = 6
+
+    /** Round-robin across topics (first of each, then second of each...), so the short list spans them all. */
+    internal fun starters(topics: List<Ask.Topic>): List<Pair<String, String>> {
+        val out = ArrayList<Pair<String, String>>()
+        var i = 0
+        while (out.size < STARTERS && topics.any { it.questions.size > i }) {
+            for (t in topics) if (out.size < STARTERS && t.questions.size > i) out.add(t.icon to t.questions[i])
+            i++
+        }
+        return out
     }
 
     private fun answerCard(a: MainActivity, ans: Ask.Answer,
@@ -260,23 +285,18 @@ object AskScreen {
             Ask.Action.OPEN_RED_FLAGS -> card.addView(Ui.fullWidth(Ui.dangerButton(a, "Open red flags") {
                 a.pushOverlay("Red flags") { RedFlagsScreen.build(a) }
             }, a))
-            Ask.Action.OPEN_PHASE_GUIDE -> link("Open phase guide") {
-                val n = com.recoverwell.core.logic.PhaseEngine.currentPhase(profile, today).number
-                a.pushOverlay("Phase $n") { TodayScreen.phaseDetail(a, n) }
+            Ask.Action.OPEN_PHASE_GUIDE -> link("Open your plan") {
+                a.pushOverlay("Your plan") { PlanGuideScreen.build(a) }
             }
             Ask.Action.OPEN_MEDICATIONS -> link("Open medications") {
                 a.pushOverlay("Medications") { MoreScreen.medsEditor(a) }
             }
-            Ask.Action.OPEN_WELLBEING -> link("How you're doing") {
-                a.pushOverlay("How you're doing") { WellbeingScreen.build(a) }
-            }
+            Ask.Action.OPEN_WELLBEING -> link("What's normal now") { a.show(MainActivity.Tab.TWIN) }
             Ask.Action.OPEN_STAY_FIT -> link("Stay fit ideas") {
                 a.pushOverlay("Stay fit") { StayFitScreen.build(a) }
             }
             Ask.Action.OPEN_EXERCISES -> link("Open exercises") { a.show(MainActivity.Tab.EXERCISES) }
-            Ask.Action.OPEN_WHAT_TO_EXPECT -> link("What to expect") {
-                a.pushOverlay("What to expect") { WhatToExpectScreen.build(a) }
-            }
+            Ask.Action.OPEN_WHAT_TO_EXPECT -> link("What to expect") { a.show(MainActivity.Tab.TWIN) }
             Ask.Action.NONE -> {}
         }
         return card

@@ -19,9 +19,9 @@ import java.time.LocalDate
 import java.util.UUID
 
 /**
- * The physio loop: an auto-generated "bring this to your appointment" pack, plus
- * a post-visit capture that writes straight back into the plan (phase
- * confirmations, return-to-sport sign-offs, boot/date edits) and a durable note.
+ * The physio loop in three steps: the next visit (add or change it in a short
+ * form), what to raise and ask (one list, one pack to share), and after the
+ * visit - confirm a progression, update the plan (one door), keep a note.
  */
 object PhysioScreen {
 
@@ -30,174 +30,100 @@ object PhysioScreen {
         val profile = a.store.profile()
         val col = Ui.column(a)
         col.addView(Ui.backRow(a, "Physio visits") { a.popOverlay() })
-        col.addView(Ui.caption(a, "Your bridge to your physio: walk in with the right questions, " +
-            "walk out and capture what they said so your plan stays in sync."))
 
-        // ---- appointments ---------------------------------------------------
-        col.addView(Ui.section(a, "Appointments"))
+        // ---- next visit: what's booked, and one way to add one ----------------
+        col.addView(Ui.section(a, "Next visit"))
         val outlook = Appointments.outlook(profile.appointments, today)
         val apptCard = Ui.card(a)
         val upcoming = profile.appointments.filter { !it.completed && !it.date.isBefore(today) }.sortedBy { it.date }
-        if (upcoming.isEmpty() && outlook.needsRebooking) {
-            apptCard.addView(Ui.text(a, "Time to book your next visit", 15.5f, Ui.TEXT, bold = true))
-            apptCard.addView(Ui.caption(a, "Your last appointment is done and nothing's in the diary - " +
-                "add the next one below so you don't lose momentum."))
-        } else if (upcoming.isEmpty()) {
-            apptCard.addView(Ui.text(a, "No upcoming appointment scheduled", 14.5f, Ui.TEXT))
+        if (upcoming.isEmpty() && outlook.overdue.isEmpty()) {
+            apptCard.addView(Ui.text(a, if (outlook.needsRebooking) "Time to book your next visit"
+                else "No visit booked yet", 15.5f, Ui.TEXT, bold = true))
+            apptCard.addView(Ui.caption(a, "Once it's added, Today shows the date - and in the week before, " +
+                "a nudge to get your questions ready."))
         }
-        upcoming.forEachIndexed { i, appt ->
-            if (i > 0) apptCard.addView(Ui.divider(a))
+        upcoming.firstOrNull()?.let { appt ->
             val days = java.time.temporal.ChronoUnit.DAYS.between(today, appt.date)
-            val prefix = if (i == 0) "Next: " else ""
-            apptCard.addView(Ui.text(a, "$prefix${appt.label}", 15.5f, Ui.TEXT, bold = true))
+            apptCard.addView(Ui.text(a, appt.label, 15.5f, Ui.TEXT, bold = true))
             apptCard.addView(Ui.caption(a, "${Forms.friendlyDate(appt.date)} · " +
                 (if (days == 0L) "today" else "in $days day${if (days == 1L) "" else "s"}") +
                 (if (appt.withWhom.isNotBlank()) " · with ${appt.withWhom}" else "")))
-            apptCard.addView(Ui.fullWidth(Ui.tonalButton(a, "Mark done & capture") {
-                completeAppointment(a, appt); a.pushOverlay("Visit note") { captureNote(a) }
-            }, a))
-            apptCard.addView(apptActions(a, appt))
+            apptCard.addView(Ui.buttonPair(a,
+                Ui.tonalButton(a, "Mark done & capture") {
+                    completeAppointment(a, appt); a.pushOverlay("Visit note") { captureNote(a) }
+                },
+                Ui.textButton(a, "Edit") { a.pushOverlay("Edit appointment") { appointmentEditor(a, appt) } }))
+        }
+        // later visits: one line each, tap to change
+        for (appt in upcoming.drop(1)) {
+            apptCard.addView(Ui.divider(a))
+            apptCard.addView(Ui.text(a, "Then: ${appt.label} · ${Forms.friendlyDate(appt.date)}", 14f, Ui.TEXT).apply {
+                background = Ui.ripple(a, Ui.rounded(0, 10f))
+                isClickable = true
+                isFocusable = true
+                contentDescription = "Edit ${appt.label} on ${Forms.friendlyDate(appt.date)}"
+                setOnClickListener { a.pushOverlay("Edit appointment") { appointmentEditor(a, appt) } }
+            })
         }
         for (o in outlook.overdue) {
-            apptCard.addView(Ui.divider(a))
+            if (apptCard.childCount > 0) apptCard.addView(Ui.divider(a))
             apptCard.addView(Ui.text(a, "Was: ${o.label} · ${Forms.friendlyDate(o.date)}" +
                 (if (o.withWhom.isNotBlank()) " · with ${o.withWhom}" else ""), 14f, Ui.WARN, bold = true))
-            apptCard.addView(Ui.fullWidth(Ui.tonalButton(a, "How did it go? Capture it") {
-                completeAppointment(a, o); a.pushOverlay("Visit note") { captureNote(a) }
-            }, a))
-            apptCard.addView(apptActions(a, o))
+            apptCard.addView(Ui.buttonPair(a,
+                Ui.tonalButton(a, "How did it go?") {
+                    completeAppointment(a, o); a.pushOverlay("Visit note") { captureNote(a) }
+                },
+                Ui.textButton(a, "Edit") { a.pushOverlay("Edit appointment") { appointmentEditor(a, o) } }))
         }
-        // quick add
-        var newDate = today.plusWeeks(2)
-        apptCard.addView(Ui.divider(a))
-        apptCard.addView(Forms.dateRow(a, "New appointment", newDate) { newDate = it })
-        apptCard.addView(Ui.spacer(a, 8))
-        val newLabel = Forms.editText(a, "", "Title, e.g. Physio review")
-        apptCard.addView(newLabel)
-        apptCard.addView(Ui.spacer(a, 8))
-        val newWith = Forms.editText(a, "", "Who it's with · optional, e.g. Mr Patel")
-        apptCard.addView(newWith)
-        apptCard.addView(Ui.fullWidth(Ui.button(a, "Add appointment") {
-            val label = newLabel.text.toString().ifBlank { "Physio review" }
-            a.store.saveProfile(a.store.profile().copy(
-                appointments = a.store.profile().appointments +
-                    Appointment(newDate, label, false, UUID.randomUUID().toString(),
-                        newWith.text.toString().trim())))
-            a.refresh()
-        }, a, 4))
+        // adding is a short form of its own (was four always-open fields here)
+        val add = { a.pushOverlay("New appointment") { appointmentEditor(a, null) } }
+        apptCard.addView(Ui.fullWidth(
+            if (upcoming.isEmpty()) Ui.button(a, "Add appointment") { add() }
+            else Ui.textButton(a, "Add appointment") { add() }, a, 6))
         col.addView(apptCard)
 
-        // ---- unified schedule: appointments + boot changes + phase changes --
-        run {
-            data class Ev(val date: LocalDate, val label: String, val icon: String)
-            val evs = ArrayList<Ev>()
-            profile.appointments.filter { !it.completed && !it.date.isBefore(today) }
-                .forEach { evs.add(Ev(it.date, it.label +
-                    (if (it.withWhom.isNotBlank()) " · with ${it.withWhom}" else ""), "ic_calendar")) }
-            val reg = ProtocolRegistry.forProfile(profile)
-            reg.supportDevice?.let { device ->
-                profile.wedgePlan.removalSchedule(profile.injuryDate, profile.wedgeDateOverrides)
-                    .filter { !it.first.isBefore(today) && profile.usesDeviceOn(it.first) }
-                    .forEach { (d, after) ->
-                        evs.add(Ev(d, "Boot change: ${device.reductionVerb} to ${device.format(after)}", "ic_boot"))
-                    }
-            }
-            for (ph in reg.phases) {
-                val start = PhaseEngine.phaseStartDate(profile, ph)
-                if (!start.isBefore(today)) evs.add(Ev(start, "Phase ${ph.number}: ${ph.title}", "ic_flag"))
-            }
-            val upcomingEvents = evs.sortedBy { it.date }.take(6)
-            if (upcomingEvents.isNotEmpty()) {
-                col.addView(Ui.section(a, "Coming up"))
-                val fmt = java.time.format.DateTimeFormatter.ofPattern("EEE d MMM")
-                for (e in upcomingEvents) {
-                    val days = java.time.temporal.ChronoUnit.DAYS.between(today, e.date)
-                    val whenStr = if (days == 0L) "Today"
-                        else "${e.date.format(fmt)} · in $days day${if (days == 1L) "" else "s"}"
-                    col.addView(Ui.listRow(a, e.icon, e.label, whenStr, chevron = false))
-                }
-            }
-        }
-
-        // ---- bring-to-appointment pack -------------------------------------
+        // ---- for your visit: what to raise, what to ask, one pack to share ----
         val pack = PhysioPrep.build(
             profile, a.store.allLogs(), a.store.allEvents(), a.store.medications(), a.store.tasks(),
             a.store.selfTestResults(), a.store.rtsSignoffs(), today
         )
-        col.addView(Ui.section(a, "Bring to your appointment"))
+        col.addView(Ui.section(a, "For your visit"))
         val packCard = Ui.card(a)
-        packCard.addView(Ui.text(a, "Worth raising", 13.5f, Ui.TEXT_DIM, bold = true))
-        for (p in pack.discussionPoints) {
-            packCard.addView(bullet(a, p))
+        if (pack.discussionPoints.isNotEmpty()) {
+            packCard.addView(Ui.text(a, "Worth raising", 13.5f, Ui.TEXT_DIM, bold = true))
+            for (p in pack.discussionPoints) packCard.addView(bullet(a, p))
         }
-        // user's own questions
+        // the stage's evergreen questions and the user's own, as one list (the pack carries both)
         val questions = a.store.physioQuestions()
-        if (questions.isNotEmpty()) {
-            packCard.addView(Ui.spacer(a, 6))
-            packCard.addView(Ui.text(a, "Your questions", 13.5f, Ui.TEXT_DIM, bold = true))
+        if (pack.stageQuestions.isNotEmpty() || questions.isNotEmpty()) {
+            if (packCard.childCount > 0) packCard.addView(Ui.spacer(a, 6))
+            packCard.addView(Ui.text(a, "Questions to ask", 13.5f, Ui.TEXT_DIM, bold = true))
+            for (q in pack.stageQuestions.filterNot { it in questions }) packCard.addView(bullet(a, q))
             questions.forEachIndexed { i, q ->
                 val row = Ui.row(a)
                 row.gravity = Gravity.CENTER_VERTICAL
-                row.addView(Ui.icon(a, "ic_pulse", 16, Ui.PRIMARY))
-                val tv = Ui.text(a, q, 14f, Ui.TEXT)
-                tv.setPadding(Ui.dp(a, 8), Ui.dp(a, 3), Ui.dp(a, 8), Ui.dp(a, 3))
-                row.addView(Ui.weight(tv, 1f))
-                row.addView(Ui.iconButton(a, "ic_close", Ui.TEXT_DIM, desc = "Remove question") {
+                row.addView(Ui.weight(bullet(a, q), 1f))
+                row.addView(Ui.iconButton(a, "ic_close", Ui.TEXT_DIM, desc = "Remove question: $q") {
                     a.store.savePhysioQuestions(a.store.physioQuestions().filterIndexed { j, _ -> j != i })
                     a.refresh()
                 })
                 packCard.addView(row)
             }
         }
-        val addQ = Forms.editText(a, "", "Add your own question")
-        packCard.addView(Ui.spacer(a, 6))
-        packCard.addView(addQ)
-        packCard.addView(Ui.fullWidth(Ui.textButton(a, "Add question") {
-            val q = addQ.text.toString().trim()
-            if (q.isNotBlank()) {
-                a.store.savePhysioQuestions(a.store.physioQuestions() + q)
-                a.refresh()
-            }
-        }, a, 4))
+        packCard.addView(Ui.fullWidth(Ui.textButton(a, "Add a question") { addQuestion(a) }, a, 2))
         col.addView(packCard)
-
-        // evergreen questions a specialist physio would expect at this stage
-        if (pack.stageQuestions.isNotEmpty()) {
-            val stageCard = Ui.card(a)
-            stageCard.addView(Ui.text(a, "Worth asking at this stage", 13.5f, Ui.TEXT_DIM, bold = true))
-            for (q in pack.stageQuestions) stageCard.addView(bullet(a, q))
-            stageCard.addView(Ui.fullWidth(Ui.textButton(a, "Add these to my questions") {
-                val mine = a.store.physioQuestions()
-                a.store.savePhysioQuestions(mine + pack.stageQuestions.filterNot { it in mine })
-                a.refresh()
-            }, a, 2))
-            col.addView(stageCard)
-        }
-
         val copyBtn = Ui.tonalButton(a, "Copy pack") {
             copyToClipboard(a, packText(pack, questions))
             Toast.makeText(a, "Copied - paste into notes or a message", Toast.LENGTH_SHORT).show()
         }
-        val pdfBtn = Ui.tonalButton(a, "Export PDF") { a.exportPdf() }
+        val pdfBtn = Ui.tonalButton(a, "Share PDF") { a.exportPdf() }
         col.addView(Ui.buttonPair(a, copyBtn, pdfBtn))
 
-        // ---- current numbers ------------------------------------------------
-        col.addView(Ui.section(a, "Your current numbers"))
-        val numCard = Ui.card(a)
-        pack.summaryLines.forEachIndexed { i, s ->
-            if (i > 0) numCard.addView(Ui.spacer(a, 5))
-            numCard.addView(Ui.text(a, s, 14f, Ui.TEXT))
-        }
-        col.addView(numCard)
-
-        // ---- after-visit capture -------------------------------------------
+        // ---- after your visit: what the physio decided goes straight into the plan ----
         col.addView(Ui.section(a, "After your visit"))
-        col.addView(Ui.caption(a, "Record what your physio decided - it updates your plan directly."))
-        col.addView(Ui.spacer(a, 4))
-
         val gate = PhaseEngine.nextPhaseGate(profile, today)
         if (gate.nextPhase != null) {
-            col.addView(Ui.listRow(a, "ic_calendar", "Confirm phase ${gate.nextPhase!!.number} progression",
+            col.addView(Ui.listRow(a, "ic_flag", "Confirm phase ${gate.nextPhase!!.number} progression",
                 "${gate.nextPhase!!.title}") {
                 TodayScreen.confirmGate(a, gate.nextPhase!!.number, today)
             })
@@ -217,14 +143,11 @@ object PhysioScreen {
                 }
             })
         }
-        col.addView(Ui.listRow(a, "ic_calendar", "Adjust phases & exercises",
-            "If your physio re-timed a phase or changed your exercises") {
+        // one door for every plan change (boot angle and dates, phases, exercises, weight-bearing)
+        col.addView(Ui.listRow(a, "ic_calendar", "Update my plan",
+            "Boot, dates, phases or exercises your physio changed") {
             a.pushOverlay("Configure my plan") { MoreScreen.planEditor(a) }
         })
-        col.addView(Ui.listRow(a, "ic_boot", "Adjust boot / injury plan",
-            "Boot angle, schedule, weight-bearing") { a.pushOverlay("Injury & goal") { MoreScreen.profileEditor(a) } })
-        col.addView(Ui.listRow(a, "ic_calendar", "Boot change dates",
-            "Pin each wedge change to the date your physio set") { a.pushOverlay("Boot change dates") { MoreScreen.bootDatesEditor(a) } })
         col.addView(Ui.listRow(a, "ic_edit", "Add a visit note",
             "What your physio said - kept in your backup") { a.pushOverlay("Visit note") { captureNote(a) } })
 
@@ -249,6 +172,25 @@ object PhysioScreen {
 
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
+    }
+
+    /** One small dialog to add a question for the physio. */
+    private fun addQuestion(a: MainActivity) {
+        val input = Forms.editText(a, "", "e.g. When can I stop sleeping in the boot?")
+        val pad = Ui.dp(a, 18)
+        val holder = android.widget.FrameLayout(a).apply { setPadding(pad, Ui.dp(a, 6), pad, 0); addView(input) }
+        android.app.AlertDialog.Builder(a)
+            .setTitle("Add a question")
+            .setView(holder)
+            .setPositiveButton("Add") { _, _ ->
+                val q = input.text.toString().trim()
+                if (q.isNotBlank()) {
+                    a.store.savePhysioQuestions(a.store.physioQuestions() + q)
+                    a.refresh()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun bullet(a: MainActivity, text: String): View {
@@ -280,40 +222,39 @@ object PhysioScreen {
             appointments = a.store.profile().appointments.map { if (it.matches(original)) updated else it }))
     }
 
-    /** Edit + Remove actions shown under each appointment, side by side. */
-    private fun apptActions(a: MainActivity, appt: Appointment): View {
-        val edit = Ui.textButton(a, "Edit details") { a.pushOverlay("Edit appointment") { appointmentEditor(a, appt) } }
-        val remove = Ui.textButton(a, "Remove", Ui.WARN) {
-            Forms.confirm(a, "Remove appointment?", "\"${appt.label}\" on ${Forms.friendlyDate(appt.date)} will be deleted.") {
-                deleteAppointment(a, appt); a.refresh()
-            }
-        }
-        return Ui.buttonPair(a, edit, remove, marginTopDp = 4)
-    }
-
-    /** Overlay to change an existing appointment's date, title and who it's with. */
-    private fun appointmentEditor(a: MainActivity, appt: Appointment): View {
+    /** One form for a new appointment ([appt] null) or changing one, with Remove for existing ones. */
+    private fun appointmentEditor(a: MainActivity, appt: Appointment?): View {
+        val title = if (appt == null) "New appointment" else "Edit appointment"
         val col = Ui.column(a)
-        col.addView(Ui.backRow(a, "Edit appointment") { a.popOverlay() })
-        col.addView(Ui.caption(a, "Update the date, what it's for, and who it's with."))
-        col.addView(Ui.spacer(a, 4))
+        col.addView(Ui.backRow(a, title) { a.popOverlay() })
         val card = Ui.card(a)
-        var date = appt.date
+        var date = appt?.date ?: LocalDate.now().plusWeeks(2)
         card.addView(Forms.dateRow(a, "Date", date) { date = it })
-        card.addView(Forms.label(a, "Title"))
-        val labelEdit = Forms.editText(a, appt.label, "e.g. Physio review")
+        card.addView(Forms.label(a, "What it's for"))
+        val labelEdit = Forms.editText(a, appt?.label ?: "", "e.g. Physio review")
         card.addView(labelEdit)
         card.addView(Forms.label(a, "Who it's with · optional"))
-        val withEdit = Forms.editText(a, appt.withWhom, "e.g. Mr Patel (consultant)")
+        val withEdit = Forms.editText(a, appt?.withWhom ?: "", "e.g. Mr Patel (consultant)")
         card.addView(withEdit)
         col.addView(card)
-        col.addView(Ui.fullWidth(Ui.button(a, "Save changes") {
-            updateAppointment(a, appt, appt.copy(
-                date = date,
-                label = labelEdit.text.toString().ifBlank { appt.label },
-                withWhom = withEdit.text.toString().trim()))
+        col.addView(Ui.fullWidth(Ui.button(a, if (appt == null) "Save appointment" else "Save changes") {
+            val label = labelEdit.text.toString().trim()
+            val who = withEdit.text.toString().trim()
+            if (appt == null) {
+                a.store.saveProfile(a.store.profile().copy(appointments = a.store.profile().appointments +
+                    Appointment(date, label.ifBlank { "Physio review" }, false, UUID.randomUUID().toString(), who)))
+            } else {
+                updateAppointment(a, appt, appt.copy(date = date, label = label.ifBlank { appt.label }, withWhom = who))
+            }
             a.popOverlay()
         }, a))
+        if (appt != null) {
+            col.addView(Ui.fullWidth(Ui.textButton(a, "Remove appointment", Ui.WARN) {
+                Forms.confirm(a, "Remove appointment?", "\"${appt.label}\" on ${Forms.friendlyDate(appt.date)} will be deleted.") {
+                    deleteAppointment(a, appt); a.popOverlay()
+                }
+            }, a, 4))
+        }
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
     }

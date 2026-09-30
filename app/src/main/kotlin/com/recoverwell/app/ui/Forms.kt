@@ -159,6 +159,53 @@ object Forms {
     ): LinearLayout =
         choiceRow(ctx, listOf(true, false), { if (it) onLabel else offLabel }, current, onSelect)
 
+    /**
+     * One on/off control - a single tap target that reads as a switch to TalkBack -
+     * for "is this included/on?" settings (a pair of On/Off chips was two choices
+     * for one yes/no decision). [desc] names the setting for screen readers.
+     */
+    fun switch(ctx: Activity, current: Boolean, desc: String, onChange: (Boolean) -> Unit): TextView {
+        var on = current
+        val v = Ui.text(ctx, "", 14f, Ui.TEXT, bold = true)
+        v.gravity = Gravity.CENTER
+        v.minHeight = Ui.dp(ctx, Ui.MIN_TOUCH_DP)
+        v.minWidth = Ui.dp(ctx, 64)
+        v.setPadding(Ui.dp(ctx, 14), Ui.dp(ctx, 10), Ui.dp(ctx, 14), Ui.dp(ctx, 10))
+        v.isClickable = true
+        v.isFocusable = true
+        v.contentDescription = desc
+        fun paint() {
+            v.text = if (on) "On" else "Off"
+            v.setTextColor(if (on) Ui.ON_PRIMARY_CONTAINER else Ui.TEXT_DIM)
+            v.background = Ui.ripple(ctx, Ui.rounded(if (on) Ui.PRIMARY_CONTAINER else Ui.SURFACE_HIGH, 16f))
+        }
+        paint()
+        v.accessibilityDelegate = object : android.view.View.AccessibilityDelegate() {
+            override fun onInitializeAccessibilityNodeInfo(host: android.view.View,
+                                                           info: android.view.accessibility.AccessibilityNodeInfo) {
+                super.onInitializeAccessibilityNodeInfo(host, info)
+                info.className = "android.widget.Switch"
+                info.isCheckable = true
+                info.isChecked = on
+            }
+        }
+        v.setOnClickListener { on = !on; paint(); onChange(on) }
+        return v
+    }
+
+    /** A setting's name (and optional note) with its [switch] at the end of the line. */
+    fun switchRow(ctx: Activity, label: String, current: Boolean, note: String? = null,
+                  labelColor: Int = Ui.TEXT, onChange: (Boolean) -> Unit): LinearLayout {
+        val row = Ui.row(ctx)
+        row.setPadding(0, Ui.dp(ctx, 4), 0, Ui.dp(ctx, 4))
+        val texts = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+        texts.addView(Ui.text(ctx, label, 14.5f, labelColor))
+        note?.let { texts.addView(Ui.caption(ctx, it)) }
+        row.addView(Ui.weight(texts, 1f))
+        row.addView(switch(ctx, current, label, onChange))
+        return row
+    }
+
     /** Single-select row of segmented chips. */
     fun <T> choiceRow(
         ctx: Activity,

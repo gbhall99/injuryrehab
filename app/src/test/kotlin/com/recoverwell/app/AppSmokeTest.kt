@@ -77,10 +77,11 @@ class ScreensSmokeTest : SmokeBase() {
         activity.show(MainActivity.Tab.TWIN)
         texts = allText(activity.window.decorView).joinToString("\n")
         assertTrue(texts.has("Achilles"))
-        // the live capability view is always visible; the static do/don't ("Not yet")
-        // now lives behind the "phase reference" disclosure
+        // the live capability view is always visible; the static do/don't, boot setup and
+        // "what's normal" live one tap away in Your plan (phase by phase)
         assertTrue(texts.has("Can I"))
-        assertTrue(texts.has("phase reference"))
+        assertTrue(texts.has("What to expect now"))
+        assertTrue(texts.has("Your plan"))
 
         activity.show(MainActivity.Tab.MORE)
         texts = allText(activity.window.decorView).joinToString("\n")

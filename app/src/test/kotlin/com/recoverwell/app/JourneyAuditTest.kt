@@ -120,6 +120,10 @@ class CoachSafetyTest : JourneyBase() {
         val a = Robolectric.setupActivity(MainActivity::class.java)
         onboarded(a, 1, 1)
         a.openAsk()
+        // a short list first (six, one from each topic in turn), the rest one tap away
+        assertTrue(screen(a).has("Can I drive yet?"))
+        assertFalse(screen(a).has("Can I take the boot off to sleep?"))
+        assertTrue(clickByText(a.window.decorView, "more questions"))
         assertTrue(screen(a).has("Can I take the boot off to sleep?"))
         assertTrue(clickByText(a.window.decorView, "Can I take the boot off to sleep?"))
         assertTrue(screen(a).has("unguarded movement"))

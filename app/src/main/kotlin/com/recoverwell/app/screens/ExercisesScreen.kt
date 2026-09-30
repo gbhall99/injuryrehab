@@ -40,20 +40,30 @@ object ExercisesScreen {
         val col = Ui.column(a)
         // the thing people come here to do: start today's next session in one tap
         col.addView(todaySessionCard(a, profile, today))
-        col.addView(Ui.spacer(a, 6))
-        col.addView(Ui.caption(a, "Phases unlock by date and physio confirmation. " +
-            "Locked phases are view-only."))
-        col.addView(Ui.spacer(a, 10))
+        // which phase's exercises: one selector to read ahead (or back) - was five chips
         val protocol = ProtocolRegistry.forProfile(profile)
-        col.addView(Forms.choiceRow(a, protocol.phases.map { it.number },
-            { n -> if (n == current) "P$n · Now" else "P$n" }, shown) { n ->
-            viewedPhase = n
-            a.refresh()
-        })
-
         val phase = protocol.phase(shown)
         val locked = shown > current
-        col.addView(Ui.spacer(a, 12))
+        val pick = Ui.row(a)
+        pick.addView(Ui.weight(Ui.text(a, "Phase $shown of ${protocol.phases.size}" +
+            when { shown == current -> " · now"; locked -> " · view only"; else -> " · done" },
+            13f, Ui.TEXT_DIM, bold = true), 1f))
+        pick.addView(Ui.textButton(a, "Other phases ▾") {
+            android.app.AlertDialog.Builder(a)
+                .setTitle("Show exercises for")
+                .setSingleChoiceItems(protocol.phases.map {
+                    "Phase ${it.number} · ${it.title}" + if (it.number == current) " (now)" else ""
+                }.toTypedArray(), protocol.phases.indexOfFirst { it.number == shown }) { d, which ->
+                    viewedPhase = protocol.phases[which].number
+                    d.dismiss()
+                    a.refresh()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }.apply { contentDescription = "Showing phase $shown. Show another phase's exercises" })
+        col.addView(pick)
+        col.addView(Ui.caption(a, "Phases unlock by date and physio confirmation."))
+        col.addView(Ui.spacer(a, 8))
         col.addView(Ui.headline(a, phase.title))
         col.addView(Ui.caption(a, phase.subtitle))
         if (locked) {
@@ -90,6 +100,12 @@ object ExercisesScreen {
             ) { a.pushOverlay(spec.name) { exerciseDetail(a, spec) } }
             col.addView(row)
         }
+
+        // the rest of the body lives with the exercises (it used to sit under Settings)
+        col.addView(Ui.spacer(a, 8))
+        val done = com.recoverwell.core.logic.Fitness.sessionsThisWeek(a.store.allEvents(), today)
+        col.addView(Ui.listRow(a, "ic_heart", "Stay fit",
+            "Keep the rest of you strong · $done this week") { a.pushOverlay("Stay fit") { StayFitScreen.build(a) } })
 
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
@@ -143,7 +159,7 @@ object ExercisesScreen {
         demoCard.clipToOutline = true
         // the user's own offline clip, when they've added one, replaces the animation
         val ownClip = OwnClips.clipFor(a, spec) != null
-        demoCard.addView(OwnClips.demoView(a, spec), ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(a, 230))
+        demoCard.addView(OwnClips.demoView(a, spec), ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(a, 184))
         // "Quick reference" tag, top-left
         val tag = Ui.text(a, if (ownClip) "Your clip" else "Quick reference", 11.5f, Ui.TEXT_DIM, bold = true)
         tag.background = Ui.rounded(com.recoverwell.draw.Palette.withAlpha(Ui.CARD, 0xE6), 10f)
@@ -152,31 +168,33 @@ object ExercisesScreen {
             ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         tagLp.setMargins(Ui.dp(a, 10), Ui.dp(a, 10), 0, 0)
         demoCard.addView(tag, tagLp)
+
         col.addView(demoCard, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
-        // primary CTA: watch a real demonstration on YouTube
-        val watchRow = Ui.row(a)
-        watchRow.background = Ui.ripple(a, Ui.rounded(Ui.PRIMARY, 25f), 0x33FFFFFF)
-        watchRow.minimumHeight = Ui.dp(a, 50)
-        watchRow.setPadding(Ui.dp(a, 18), Ui.dp(a, 8), Ui.dp(a, 18), Ui.dp(a, 8))
-        watchRow.isClickable = true
-        watchRow.contentDescription = "Watch a video demonstration"
-        watchRow.setOnClickListener { VideoScreen.watch(a, spec) }
-        watchRow.addView(Ui.icon(a, "ic_play", 20, com.recoverwell.draw.Palette.ON_PRIMARY))
-        val wlabel = Ui.text(a, "Watch video demonstration", 15.5f, com.recoverwell.draw.Palette.ON_PRIMARY, bold = true)
-        wlabel.setPadding(Ui.dp(a, 10), 0, 0, 0)
-        watchRow.addView(Ui.weight(wlabel, 1f))
-        watchRow.addView(Ui.text(a, if (playInApp) "In-app" else "YouTube",
-            12f, com.recoverwell.draw.Palette.withAlpha(com.recoverwell.draw.Palette.ON_PRIMARY, 0xCC)))
-        // no safe YouTube search exists for some exercises: say why instead of offering one
-        if (VideoScreen.hasVideo(a, spec)) col.addView(Ui.fullWidth(watchRow, a, 10))
-        else col.addView(VideoScreen.noVideoCard(a, spec))
+        // primary CTA: watch a real demonstration, right under the demo (not over it -
+        // an overlay would hide the foot the animation is showing)
+        if (VideoScreen.hasVideo(a, spec)) {
+            val watch = Ui.row(a)
+            watch.background = Ui.ripple(a, Ui.rounded(Ui.PRIMARY, 25f), 0x33FFFFFF)
+            watch.minimumHeight = Ui.dp(a, Ui.MIN_TOUCH_DP)
+            watch.setPadding(Ui.dp(a, 18), Ui.dp(a, 6), Ui.dp(a, 18), Ui.dp(a, 6))
+            watch.isClickable = true
+            watch.isFocusable = true
+            watch.contentDescription = "Watch a video demonstration" + if (playInApp) "" else ", opens YouTube"
+            watch.setOnClickListener { VideoScreen.watch(a, spec) }
+            watch.addView(Ui.icon(a, "ic_play", 20, com.recoverwell.draw.Palette.ON_PRIMARY))
+            watch.addView(Ui.weight(Ui.text(a, "Watch video demonstration", 15.5f,
+                com.recoverwell.draw.Palette.ON_PRIMARY, bold = true).apply { setPadding(Ui.dp(a, 10), 0, 0, 0) }, 1f))
+            col.addView(Ui.fullWidth(watch, a, 8))
+        } else {
+            // no safe YouTube search exists for some exercises: say why instead of offering one
+            col.addView(VideoScreen.noVideoCard(a, spec))
+        }
 
-
-        // prescription as stat tiles
-        col.addView(Ui.section(a, "Prescription"))
+        // prescription as stat tiles (they label themselves - no heading needed)
         val stats = Ui.row(a)
+        stats.setPadding(0, Ui.dp(a, 8), 0, 0)
         fun tile(v: String, l: String) {
             val t = Ui.statTile(a, v, l)
             val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
@@ -219,33 +237,23 @@ object ExercisesScreen {
         }
         col.addView(cueCard)
 
+        // why, the precaution and the pain rule: one card (was three)
         col.addView(Ui.section(a, "Why this matters"))
         val whyCard = Ui.card(a)
         whyCard.addView(Ui.text(a, spec.whyItMatters, 14.5f))
-        col.addView(whyCard)
-
-        val precCard = Ui.card(a, Ui.WARN_BG)
-        val pr = Ui.row(a)
-        pr.addView(Ui.icon(a, "ic_alert", 18, Ui.WARN))
-        val pt = Ui.text(a, spec.precaution, 14f, Ui.WARN, bold = true)
-        pt.setPadding(Ui.dp(a, 10), 0, 0, 0)
-        pr.addView(Ui.weight(pt, 1f))
-        precCard.addView(pr)
-        col.addView(precCard)
-
+        fun note(icon: String, text: String, color: Int, bold: Boolean) {
+            whyCard.addView(Ui.spacer(a, 10))
+            val r = Ui.row(a)
+            r.gravity = android.view.Gravity.TOP
+            r.addView(Ui.icon(a, icon, 18, color))
+            r.addView(Ui.weight(Ui.text(a, text, 14f, color, bold = bold).apply { setPadding(Ui.dp(a, 10), 0, 0, 0) }, 1f))
+            whyCard.addView(r)
+        }
+        note("ic_alert", spec.precaution, Ui.WARN, true)
         // the pain-monitoring rule: how much discomfort is acceptable, and when to back off
         val painRule = ProtocolRegistry.forProfile(a.store.profile()).exercisePainRule
-        if (painRule.isNotBlank()) {
-            val ruleCard = Ui.card(a, Ui.INFO_BG)
-            val rr = Ui.row(a)
-            rr.gravity = android.view.Gravity.TOP
-            rr.addView(Ui.icon(a, "ic_pulse", 18, Ui.ON_INFO_BG))
-            val rt = Ui.text(a, painRule, 14f, Ui.ON_INFO_BG)
-            rt.setPadding(Ui.dp(a, 10), 0, 0, 0)
-            rr.addView(Ui.weight(rt, 1f))
-            ruleCard.addView(rr)
-            col.addView(ruleCard)
-        }
+        if (painRule.isNotBlank()) note("ic_pulse", painRule, Ui.TEXT, false)
+        col.addView(whyCard)
 
         if (spec.phase == currentPhase) {
             col.addView(Ui.fullWidth(Ui.button(a, "Start guided session") {
@@ -280,31 +288,35 @@ object ExercisesScreen {
                     }, a
                 ))
             } else {
-                col.addView(Ui.section(a, "Today's sessions"))
-                // only the sessions this exercise is actually in today (dose + alternate days)
+                // only the sessions this exercise is actually in today (dose + alternate days),
+                // marked one at a time from a single button (was one button per session)
                 val sessionsToday = ScheduleEngine.sessionPlan(a.store.profile(), overrides, today,
                     a.store.exerciseSessions()).filter { (_, exs) -> exs.any { it.id == spec.id } }.map { it.first }
+                fun isDone(session: Int) = events.lastOrNull {
+                    it.refId == spec.id && it.slotKey == ScheduleEngine.sessionSlot(session)
+                }?.status == EventStatus.DONE
+                val doneCount = sessionsToday.count { isDone(it) }
+                val next = sessionsToday.firstOrNull { !isDone(it) }
                 if (sessionsToday.isEmpty()) {
                     col.addView(Ui.caption(a, if (effective.intervalDays > 1)
                         "Not scheduled today - this one is done on alternate days to give the tendon a recovery day."
                     else "Not in today's plan."))
-                }
-                for (session in sessionsToday) {
-                    val slot = ScheduleEngine.sessionSlot(session)
-                    val done = events.lastOrNull {
-                        it.refId == spec.id && it.slotKey == slot
-                    }?.status == EventStatus.DONE
-                    col.addView(Ui.fullWidth(
-                        if (done) Ui.tonalButton(a, "Session $session done · undo") {
-                            Forms.confirm(a, "Undo", "Mark session $session as not done?") {
-                                Reminders.recordEvent(a, ScheduleEngine.ItemKind.EXERCISE, spec.id, slot, EventStatus.SKIPPED)
-                                a.refresh()
-                            }
-                        } else Ui.button(a, "Mark session $session done") {
-                            Reminders.recordEvent(a, ScheduleEngine.ItemKind.EXERCISE, spec.id, slot, EventStatus.DONE)
-                            a.popOverlay()
-                        }, a
-                    ))
+                } else if (next != null) {
+                    col.addView(Ui.fullWidth(Ui.tonalButton(a,
+                        "Mark session $next done · $doneCount of ${sessionsToday.size} today") {
+                        Reminders.recordEvent(a, ScheduleEngine.ItemKind.EXERCISE, spec.id,
+                            ScheduleEngine.sessionSlot(next), EventStatus.DONE)
+                        a.popOverlay()
+                    }, a))
+                } else {
+                    val last = sessionsToday.last()
+                    col.addView(Ui.fullWidth(Ui.tonalButton(a, "All ${sessionsToday.size} done today · undo last") {
+                        Forms.confirm(a, "Undo", "Mark session $last as not done?") {
+                            Reminders.recordEvent(a, ScheduleEngine.ItemKind.EXERCISE, spec.id,
+                                ScheduleEngine.sessionSlot(last), EventStatus.SKIPPED)
+                            a.refresh()
+                        }
+                    }, a))
                 }
             }
         } else if (spec.phase > currentPhase) {

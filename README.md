@@ -90,8 +90,8 @@ progressive wedge reduction — built around a real recovery that started on
   offline *Recovery coach* answers — not just the program screen.
 - **Physio loop** — an auto-generated "bring to your appointment" pack
   (pending phase gates, return-to-sport sign-offs due, caution-tone insights,
-  pace vs the typical timeline, plus your own questions) with a current-numbers
-  summary you can copy or export as PDF; and a post-visit capture that writes
+  pace vs the typical timeline, plus your own questions and current numbers)
+  you can copy or share as PDF; and a post-visit capture that writes
   straight back into the plan (phase confirmations, return-to-sport sign-offs,
   boot/date edits) and a durable, backed-up visit note. Home-screen prompts
   appear before an appointment and after, to prep and to capture.
@@ -105,24 +105,31 @@ progressive wedge reduction — built around a real recovery that started on
   system-font scaling. Guarded by tests.
 - **Calm, low-friction daily experience** — the home screen is a *prioritized*
   surface: safety items always show, the single most important prompt becomes
-  the focus, and the rest collapse into a tidy "More for you" so the checklist
-  is never buried; finished groups fold to one line as the day goes. A dose is
+  the focus, and the rest wait behind one "N more suggestions" line so the
+  checklist is never buried; finished groups fold to one line as the day goes. A dose is
   one tap, and a **one-tap check-in** (0-10 pain) sits right on Today (carrying
   forward boot/weight-bearing; mood and swelling are optional and never
   invented), with an optional **daily check-in reminder** that logs pain in one
   tap straight from the notification.
-- **"What to expect this week"** — week-banded, plain-language guidance for the
+- **"What to expect now"** — week-banded, plain-language guidance for the
   stage you're actually in (what's common now, what's coming, what's
-  reassuring), surfaced at the right moment to answer the anxious questions
-  proactively. Sport-aware via the same `{sport}` resolution.
+  reassuring), at the top of the My leg tab next to "Can I…?", with the whole
+  plan phase by phase one tap away (*Your plan*). Sport-aware via the same
+  `{sport}` resolution.
+- **Simple by design, and kept that way** — every screen has a decision-load
+  budget: at most 15 controls, 4 sections and 2 screens of scrolling (3 for
+  pages you open to read), and no destination is scattered over several menus.
+  `DecisionLoadTest` crawls 25 screens on an ordinary day and fails the build if
+  one goes over (see `docs/SIMPLIFICATION_DECISION_LOAD_AUDIT.md`).
 - **Home-screen widget** — week/phase, today's progress, your check-in status,
   the next reminder, and a one-tap way back in.
 - **Your boot or cast, modelled accurately** — the support device is a
   selectable, data-driven registry (`DeviceRegistry`). The default is the **OPED
   VACOped** boot, whose ROM dial sets the ankle angle in degrees (no heel
   wedges): start locked in equinus, step the dial down to neutral, then a
-  controlled range — with device-specific setup/operation notes on the My-leg
-  screen. Switch to an **Aircast walker** (heel wedges, removed one at a time)
+  controlled range — with device-specific setup/operation notes in My leg ›
+  Your plan, and every boot setting in one place (Settings › Configure my plan
+  › Your boot). Switch to an **Aircast walker** (heel wedges, removed one at a time)
   or a **rigid cast journey** (no home adjustment; clinic re-sets the angle) and
   the schedule, the digital twin and the editable plan all follow the device.
   `Profile.deviceId` rides in the backup; adding a boot/cast is a data entry.
@@ -264,7 +271,7 @@ Every video carries a persistent **"your plan comes first"** safety strip. Capti
 are on by default, and being offline shows a plain message instead of a browser error.
 The bundled animation (`ExerciseDemoView`, from the `draw/` module) is always
 the offline floor. **Your own clips** replace the animations: pick a folder under
-Settings › Your own demo clips, holding files named by demo id (e.g. `seated_heel_raise.mp4`).
+Settings › Exercise videos › Your own demo clips, holding files named by demo id (e.g. `seated_heel_raise.mp4`).
 The production brief for those clips is `docs/exercise-demo-video-prompts.md`, and a
 test keeps it in step with the app.
 

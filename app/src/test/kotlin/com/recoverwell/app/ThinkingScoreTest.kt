@@ -391,6 +391,7 @@ class ThinkAppointmentTest : ThinkingJourney() {
         start()
         step("Find physio visits", listOf("physio", "appointment", "visit", "clinic"), desc("Physio visits"))
         step("Add it", listOf("add", "new", "appointment"), text("Add appointment"))
+        step("Save it", listOf("save", "done", "add", "appointment"), text("Save appointment"))
         finish()
     }
 }
@@ -438,7 +439,9 @@ class ThinkBackupTest : ThinkingJourney() {
     @Test fun run() {
         start()
         step("Find backup", listOf("backup", "back up", "save", "data", "copy", "settings"), tab("Settings"))
-        step("Back up", listOf("backup", "back up"), press = false, match = text("Full backup"))
+        step("Open backup", listOf("backup", "back up", "save", "data", "copy"),
+            { v -> v.contentDescription?.toString() == "Backup, restore & export" })
+        step("Back up", listOf("backup", "back up"), press = false, match = text("Back up now"))
         finish()
     }
 }
