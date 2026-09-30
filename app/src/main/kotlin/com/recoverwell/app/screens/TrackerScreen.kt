@@ -20,7 +20,7 @@ import com.recoverwell.core.logic.PhaseEngine
 import com.recoverwell.core.logic.ScheduleEngine
 import com.recoverwell.core.model.EventStatus
 
-/** Progress is review-only: trends, pace, insights, milestones (+ backfill). */
+/** Progress is review-only, in three parts: this week, trends, and your road back. */
 object TrackerScreen {
 
     private var chartMetric = "Pain"
@@ -29,42 +29,24 @@ object TrackerScreen {
     fun build(a: MainActivity): View {
         val today = LocalDate.now()
         val col = Ui.column(a)
-
-        // Progress reviews the trend first; the option to add/edit a past day sits
-        // at the bottom (logging today happens on Today) so a review-only screen
-        // leads with the weekly digest rather than an editing control. If today
-        // isn't logged yet, one row offers it - trends are only as good as the logs.
         // "send my progress to my physio" starts where the progress is
         col.addView(Ui.listRow(a, "ic_export", "Share with your physio", "A PDF of your progress, logs and plan") {
             a.exportPdf()
         })
+        // review only: logging happens on Today, and a missed day is added from the
+        // check-ins tile's history (it was also a row here)
         buildReview(a, today, col)
-
-        col.addView(Ui.listRow(a, "ic_edit", "Add a check-in for a day you missed",
-            "Or edit an earlier day") {
-            android.app.DatePickerDialog(a, { _, y, m, d ->
-                val date = LocalDate.of(y, m + 1, d).coerceAtMost(today)
-                a.pushOverlay("Log for $date") { pastDayOverlay(a, date) }
-            }, today.year, today.monthValue - 1, today.dayOfMonth).apply {
-                datePicker.maxDate = System.currentTimeMillis()
-            }.show()
-        })
-
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
     }
 
     /**
-     * "Your pace", in one card: the recovery-days timeline toward the estimated
-     * return date, ahead / on track / behind, and the headline numbers (streaks,
-     * sport readiness), each tile opening its history. Merges what were three
-     * places: Today's stats card, Progress's pace card and its return-to-sport row.
+     * "Your road back", in one card: ahead / on track / behind, the recovery-days
+     * timeline toward the estimated return date, [middle] (the milestones), and
+     * where return to sport stands.
      */
-    private fun paceCard(a: MainActivity, profile: com.recoverwell.core.model.Profile, today: LocalDate): View {
-        val events0 = a.store.allEvents()
-        val medStreak = ScheduleEngine.medicationStreak(a.store.medications(), events0, today, afterDate = profile.injuryDate)
-        val exStreak = ScheduleEngine.exerciseStreak(profile, a.store.exerciseOverrides(), events0, today,
-            a.store.exerciseSessions())
+    private fun paceCard(a: MainActivity, profile: com.recoverwell.core.model.Profile, today: LocalDate,
+                         middle: (LinearLayout) -> Unit): View {
         val card = Ui.card(a)
         val pace = com.recoverwell.core.logic.Pace.project(profile, today)
         card.addView(Ui.text(a, if (pace.earlyDays) "Tracking your progress"
@@ -73,7 +55,7 @@ object TrackerScreen {
             else "On track", 16f, Ui.TEXT, bold = true))
         card.addView(Ui.spacer(a, 2))
         card.addView(Ui.text(a, pace.summary, 14f, Ui.TEXT))
-        card.addView(Ui.spacer(a, 12))
+        card.addView(Ui.spacer(a, 6))
 
         // recovery-days timeline toward the estimated return date
         val cu = java.time.temporal.ChronoUnit.DAYS
@@ -82,7 +64,7 @@ object TrackerScreen {
         val dayN = cu.between(profile.injuryDate, today).coerceIn(0, totalDays)
         val pct = ((dayN.toDouble() / totalDays) * 100).toInt()
         val dayRow = Ui.row(a)
-        dayRow.addView(Ui.text(a, "Day $dayN", 24f, Ui.TEXT, bold = true))
+        dayRow.addView(Ui.text(a, "Day $dayN", 20f, Ui.TEXT, bold = true))
         dayRow.addView(Ui.text(a, "  of $totalDays", 15f, Ui.TEXT_DIM))
         dayRow.addView(Ui.weight(View(a), 1f))
         dayRow.addView(Ui.pillBadge(a, "$pct%", Ui.ON_PRIMARY_CONTAINER, Ui.PRIMARY_CONTAINER))
@@ -102,49 +84,46 @@ object TrackerScreen {
                 "$sportName · around $targetLabel"
         }))
 
-        // headline numbers: each tile pairs a streak with a percentage and is
-        // tappable through to the editable history for that metric. The
-        // medication tile only appears when meds are actually being tracked
-        // (otherwise the streak would read a meaningless "0").
+        card.addView(Ui.divider(a))
+        middle(card)
+        // return to sport closes the card - where the road ends: readiness once it's
+        // open, when it opens before that
+        card.addView(Ui.divider(a))
         val rts = com.recoverwell.core.logic.ReturnToSport.progress(
             profile, a.store.selfTestResults(), a.store.rtsSignoffs(), today)
-        val logs = a.store.allLogs()
+        card.addView(Ui.listRow(a, "ic_flag", rts.returnPhrase,
+            if (rts.available) "${rts.readinessPct}% ready" + (rts.currentRung?.let { " · now: ${it.title}" } ?: "")
+            else "Self-tests open in phase ${rts.startPhase} · see what's ahead") {
+            a.pushOverlay(rts.returnPhrase) { ReturnToSportScreen.build(a) }
+        }.apply { background = null; setPadding(0, paddingTop, 0, paddingBottom) })
+        return card
+    }
+
+    /** This week's headline numbers, each tile opening its (editable) history. */
+    private fun weekTiles(a: MainActivity, profile: com.recoverwell.core.model.Profile, today: LocalDate): List<View> {
         val events = a.store.allEvents()
-        val overrides = a.store.exerciseOverrides()
+        val logs = a.store.allLogs()
         val meds = a.store.medications()
-        val hasMeds = meds.any { it.active }
+        val overrides = a.store.exerciseOverrides()
+        val exStreak = ScheduleEngine.exerciseStreak(profile, overrides, events, today, a.store.exerciseSessions())
+        val medStreak = ScheduleEngine.medicationStreak(meds, events, today, afterDate = profile.injuryDate)
         val ciStreak = checkInStreak(logs, today, profile.injuryDate)
         val pain7 = recentPainAvg(logs, today)
-        val weeksIn = PhaseEngine.weeksSinceInjury(profile, today)
-
         val tiles = ArrayList<View>()
-        tiles.add(metricTile(a, "$exStreak-day", "Exercise streak",
-            "${ScheduleEngine.exerciseAdherence(profile, overrides, events, today,
-                a.store.exerciseSessions())}% done · 7d") {
+        tiles.add(metricTile(a, "${ScheduleEngine.exerciseAdherence(profile, overrides, events, today,
+                a.store.exerciseSessions())}%", "Exercises done", "$exStreak-day streak") {
             a.pushOverlay("Exercise history") { HistoryScreen.exercises(a) }
         })
-        if (hasMeds) tiles.add(metricTile(a, "$medStreak-day", "Med streak",
-            "${medAdherence(meds, events, today)}% taken · 7d") {
+        // the medication tile only when meds are tracked (a streak of "0" would mean nothing)
+        if (meds.any { it.active }) tiles.add(metricTile(a, "${medAdherence(meds, events, today)}%", "Doses taken",
+            "$medStreak-day streak") {
             a.pushOverlay("Medication history") { HistoryScreen.medication(a) }
         })
-        tiles.add(metricTile(a, "$ciStreak-day", "Check-in streak",
-            if (pain7 != null) "Pain $pain7/10 avg · 7d" else "Start logging your pain") {
+        tiles.add(metricTile(a, pain7?.let { "$it/10" } ?: "-", "Pain, average",
+            if (ciStreak > 0) "$ciStreak-day check-in streak" else "Log it on Today") {
             a.pushOverlay("Check-in history") { HistoryScreen.checkins(a) }
         })
-        // return to sport is always a tile: readiness once it's open, when it opens before that
-        tiles.add(metricTile(a, if (rts.available) "${rts.readinessPct}%" else "Phase ${rts.startPhase}",
-            if (rts.available) "Sport-ready" else rts.returnPhrase,
-            if (rts.available) rts.currentRung?.let { "Stage: ${it.title}" } ?: "Building strength"
-            else "Self-tests open then") {
-            a.pushOverlay(rts.returnPhrase) { ReturnToSportScreen.build(a) }
-        })
-        // recovery progress (and the editable injury / target dates behind it)
-        if (tiles.size < 4) tiles.add(metricTile(a, "$pct%", "Recovery", "Week $weeksIn") {
-            a.pushOverlay("Injury & goal") { MoreScreen.profileEditor(a) }
-        })
-        card.addView(Ui.spacer(a, 14))
-        card.addView(statGrid(a, tiles.take(4)))
-        return card
+        return tiles
     }
 
     /** A tappable stat tile: a headline value, a label, and a secondary line
@@ -223,8 +202,17 @@ object TrackerScreen {
         return track
     }
 
-    /** Lay a list of equal-width tiles out two per row. */
+    /** Lay a list of equal-width tiles out in one row (three or fewer) or two per row. */
     private fun statGrid(a: MainActivity, tiles: List<View>): View {
+        if (tiles.size <= 3) {
+            val rowv = Ui.row(a)
+            tiles.forEachIndexed { i, t ->
+                t.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                    .apply { setMargins(if (i == 0) 0 else Ui.dp(a, 4), 0, if (i == tiles.size - 1) 0 else Ui.dp(a, 4), 0) }
+                rowv.addView(t)
+            }
+            return rowv
+        }
         val colv = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
         val gap = Ui.dp(a, 5)
         val v = Ui.dp(a, 5)
@@ -248,76 +236,69 @@ object TrackerScreen {
         return colv
     }
 
-    /** Overlay: the shared check-in for a chosen past day. */
-    private fun pastDayOverlay(a: MainActivity, date: LocalDate): View {
-        val col = Ui.column(a)
-        col.addView(Ui.backRow(a, "Log for $date") { a.popOverlay() })
-        var save: View? = null
-        col.addView(TodayScreen.checkInCard(a, date, pinSave = { save = it }) {
-            Toast.makeText(a, "Log saved", Toast.LENGTH_SHORT).show()
-            a.popOverlay()
-        })
-        col.addView(Ui.spacer(a, 24))
-        return Ui.withActionBar(a, Ui.scroll(a, col), save!!)
-    }
-
     /** The review surfaces: trends, pace, return-to-sport, insights, milestones. */
     private fun buildReview(a: MainActivity, today: LocalDate, col: LinearLayout) {
-        // ---- this week (weekly digest) ----
+        // ---- this week: the numbers, then what they mean (insights folded in - they
+        // were a section of their own) ----
         val logs = a.store.allLogs()
         run {
+            val profile = a.store.profile()
             val digest = com.recoverwell.core.logic.WeeklyDigest.generate(
-                a.store.profile(), logs, a.store.allEvents(),
-                a.store.medications(), a.store.tasks(), today
-            )
+                profile, logs, a.store.allEvents(), a.store.medications(), a.store.tasks(), today)
             col.addView(Ui.section(a, "This week"))
             val card = Ui.card(a)
-            fun line(icon: String, text: String, tint: Int = Ui.PRIMARY) {
+            card.addView(statGrid(a, weekTiles(a, profile, today)))
+            card.addView(Ui.spacer(a, 6))
+            fun line(icon: String, text: String, tint: Int = Ui.PRIMARY, bold: Boolean = false) {
                 val r = Ui.row(a)
                 r.gravity = android.view.Gravity.TOP
                 r.addView(Ui.icon(a, icon, 18, tint))
-                val t = Ui.text(a, text, 14.5f, Ui.TEXT)
+                val t = Ui.text(a, text, 14f, Ui.TEXT, bold = bold)
                 t.setPadding(Ui.dp(a, 10), 0, 0, 0)
                 r.addView(Ui.weight(t, 1f))
                 card.addView(r)
                 card.addView(Ui.spacer(a, 6))
             }
-            digest.adherencePct?.let { line("ic_pill", "Medication: $it% of doses taken") }
             val painTint = when (digest.painTrend) {
                 com.recoverwell.core.logic.WeeklyDigest.Trend.DOWN -> Ui.DONE
                 com.recoverwell.core.logic.WeeklyDigest.Trend.UP -> Ui.WARN
                 else -> Ui.PRIMARY
             }
             line("ic_pulse", digest.painDetail, painTint)
-            line("ic_exercises", "${digest.exercisesDone} exercise session" +
-                "${if (digest.exercisesDone == 1) "" else "s"} completed")
             if (digest.milestonesThisWeek.isNotEmpty()) {
                 line("ic_flag", "Reached: ${digest.milestonesThisWeek.joinToString(", ")}", Ui.DONE)
             }
-            val focusCard = Ui.card(a, Ui.INFO_BG)
-            val fr = Ui.row(a)
-            fr.gravity = android.view.Gravity.TOP
-            fr.addView(Ui.icon(a, "ic_info", 18, Ui.ON_INFO_BG))
-            val ft = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
-            ft.setPadding(Ui.dp(a, 10), 0, 0, 0)
-            ft.addView(Ui.text(a, "Focus for the week ahead", 13f, Ui.ON_INFO_BG, bold = true))
-            ft.addView(Ui.text(a, digest.focus, 14.5f, Ui.ON_INFO_BG))
-            fr.addView(Ui.weight(ft, 1f))
-            focusCard.addView(fr)
-            card.addView(focusCard)
+            val insights = com.recoverwell.core.logic.Insights.generate(
+                profile, logs, a.store.allEvents(), a.store.medications(), a.store.tasks(), today)
+            for (ins in insights.take(2)) {
+                val (icon, tint) = when (ins.tone) {
+                    com.recoverwell.core.logic.Insights.Tone.POSITIVE -> "ic_check" to Ui.DONE
+                    com.recoverwell.core.logic.Insights.Tone.CAUTION -> "ic_alert" to Ui.WARN
+                    com.recoverwell.core.logic.Insights.Tone.NEUTRAL -> "ic_info" to Ui.PRIMARY
+                }
+                line(icon, "${ins.title}. ${ins.detail}", tint)
+            }
+            line("ic_info", "Focus this week: ${digest.focus}", Ui.PRIMARY, bold = false)
             col.addView(card)
         }
 
         // ---- trends ----
-        col.addView(Ui.section(a, "Trends"))
+        // what the chart shows is one control beside the heading (was a row of four chips)
         val metrics = if (AiScreen.enabled(a) && a.store.journalEntries().isNotEmpty())
             listOf("Pain", "Swelling", "Mood", "Energy", "Journal")
         else listOf("Pain", "Swelling", "Mood", "Energy")
-        col.addView(Forms.choiceRow(a, metrics, { it }, chartMetric) {
-            chartMetric = it
-            a.refresh()
-        })
-        col.addView(Ui.spacer(a, 8))
+        val trendHead = Ui.row(a)
+        trendHead.addView(Ui.weight(Ui.section(a, "Trends"), 1f))
+        trendHead.addView(Ui.textButton(a, "$chartMetric ▾") {
+            android.app.AlertDialog.Builder(a)
+                .setTitle("Show on the chart")
+                .setSingleChoiceItems(metrics.toTypedArray(), metrics.indexOf(chartMetric)) { d, which ->
+                    chartMetric = metrics[which]; d.dismiss(); a.refresh()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }.apply { contentDescription = "Chart shows $chartMetric. Change" })
+        col.addView(trendHead)
         val series = when (chartMetric) {
             "Swelling" -> TrendMath.swelling(logs)
             "Mood" -> TrendMath.mood(logs)
@@ -346,42 +327,39 @@ object TrackerScreen {
             "$chartMetric trend chart. " + if (last == null) "No entries yet."
             else "${series.points.size} entries, latest ${last.value}."
         }
-        chartCard.addView(chart, ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(a, 210))
+        chartCard.addView(chart, ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(a, 160))
         col.addView(chartCard, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         col.addView(Ui.spacer(a, 6))
-        col.addView(Ui.caption(a, "Solid line: daily entries · dashed: 7-entry average"))
+        col.addView(Ui.caption(a, "Line: each entry · dashed: 7-entry average"))
 
-        // ---- your pace (personalised vs the typical timeline) ----
-        col.addView(Ui.section(a, "Your pace"))
-        col.addView(paceCard(a, a.store.profile(), today))
+        // ---- your road back: pace, the timeline, milestones and return to sport in one
+        // card (were "Your pace" and "Milestones", each with its own card) ----
+        col.addView(Ui.section(a, "Your road back"))
+        col.addView(paceCard(a, a.store.profile(), today) { card -> addMilestones(a, card, today) })
+    }
 
-        val insights = com.recoverwell.core.logic.Insights.generate(
-            a.store.profile(), logs, a.store.allEvents(), a.store.medications(), a.store.tasks(), today)
-        if (insights.isNotEmpty()) {
-            col.addView(Ui.section(a, "Insights"))
-            for (ins in insights) col.addView(TodayScreen.insightCard(a, ins))
-        }
-
-        // ---- milestone timeline ----
-        col.addView(Ui.section(a, "Milestones"))
-        col.addView(Ui.pillBadge(a, ProtocolRegistry.forProfile(a.store.profile()).placeholderNote, Ui.WARN, Ui.WARN_BG))
-        col.addView(Ui.spacer(a, 8))
+    /** Milestones inside the road-back card: what's behind you is one line, the next one is the detail. */
+    private fun addMilestones(a: MainActivity, timeline: LinearLayout, today: LocalDate) {
         val profile = a.store.profile()
-        val timeline = Ui.card(a)
+        val fmt = DateTimeFormatter.ofPattern("d MMM")
         val all = MilestoneTimeline.build(profile, today)
         // what's behind you is one line; what's next is the detail - full list on request
         val reached = all.count { it.status == MilestoneTimeline.Status.REACHED }
         val entries = if (showAllMilestones) all
-            else all.filter { it.status != MilestoneTimeline.Status.REACHED }.take(3)
-        if (!showAllMilestones && reached > 0) {
-            val r = Ui.row(a)
-            r.addView(Ui.icon(a, "ic_check", 18, Ui.DONE))
-            val t = Ui.text(a, "$reached milestone${if (reached == 1) "" else "s"} reached", 15f, Ui.DONE, bold = true)
-            t.setPadding(Ui.dp(a, 10), 0, 0, Ui.dp(a, 8))
-            r.addView(t)
-            timeline.addView(r)
-        }
+            else all.filter { it.status != MilestoneTimeline.Status.REACHED }.take(1)
+        // "N reached · all 12" is one line and one control (the full list opens in place)
+        val r = Ui.row(a)
+        r.addView(Ui.icon(a, "ic_check", 18, Ui.DONE))
+        val t = Ui.text(a, if (showAllMilestones) "All ${all.size} milestones"
+            else "$reached milestone${if (reached == 1) "" else "s"} reached", 15f, Ui.DONE, bold = true)
+        t.setPadding(Ui.dp(a, 10), 0, 0, 0)
+        r.addView(Ui.weight(t, 1f))
+        r.addView(Ui.textButton(a, if (showAllMilestones) "Show fewer" else "See all ${all.size}") {
+            showAllMilestones = !showAllMilestones
+            a.refresh()
+        })
+        timeline.addView(r)
         entries.forEachIndexed { i, e ->
             val row = Ui.row(a)
             row.gravity = android.view.Gravity.TOP
@@ -423,14 +401,6 @@ object TrackerScreen {
                 "physio's go-ahead · " else "${e.expectedDate.format(fmt)} · ") + e.milestone.detail))
             row.addView(Ui.weight(texts, 1f))
             timeline.addView(row)
-        }
-        col.addView(timeline)
-        if (all.size > entries.size || showAllMilestones) {
-            col.addView(Ui.fullWidth(Ui.textButton(a,
-                if (showAllMilestones) "Show fewer" else "Show all ${all.size} milestones") {
-                showAllMilestones = !showAllMilestones
-                a.refresh()
-            }, a, 2))
         }
     }
 }

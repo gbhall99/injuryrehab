@@ -364,11 +364,38 @@ object TodayScreen {
         }
         // Daily care: repeated care-task times collapse to ONE row per task with
         // a counter; the daily check-in lives here too (tap it to open the form).
+        // exercises are grouped into uniform daily SESSIONS - same routine each session.
+        // Daily care shows the one that's next (with how many there are); the Exercises
+        // tab has them all - three near-identical rows here were three choices for one job
+        fun addExerciseSessions() {
+            val exItems = items.filter { it.kind == ScheduleEngine.ItemKind.EXERCISE }
+            if (exItems.isEmpty()) return
+            val bySession = LinkedHashMap<String, MutableList<ScheduleEngine.ChecklistItem>>()
+            for (it in exItems) bySession.getOrPut(it.slotKey) { ArrayList() }.add(it)
+            val keys = bySession.keys.sorted()
+            if (exItems.all { it.isDone }) {
+                col.addView(Ui.checkRow(a, "All ${keys.size} exercise session${if (keys.size == 1) "" else "s"} done",
+                    "", null, true, null) { a.show(MainActivity.Tab.EXERCISES) })
+                return
+            }
+            val nextIdx = keys.indexOfFirst { k -> bySession[k]!!.any { !it.isDone } }.let { if (it < 0) 0 else it }
+            val key = keys[nextIdx]
+            val sess = bySession[key]!!
+            val sessionsDone = keys.count { k -> bySession[k]!!.all { it.isDone } }
+            col.addView(Ui.progressRow(a, "Exercise session ${nextIdx + 1}",
+                "${sess.size} exercise${if (sess.size == 1) "" else "s"} · $sessionsDone of ${keys.size} sessions done today",
+                sess.count { it.isDone }, sess.size) {
+                a.pushOverlay("Exercise session ${nextIdx + 1}") {
+                    exerciseSession(a, nextIdx + 1, key, sess.map { it.refId })
+                }
+            })
+        }
         fun addDailyCare() {
             col.addView(Ui.section(a, "Daily care"))
             val group = items.filter { it.kind == ScheduleEngine.ItemKind.TASK }
-            if (group.all { it.isDone } && a.store.dailyLog(today).pain != null &&
-                folded("care", "Daily care and check-in done")) return
+            val exercisesDone = items.filter { it.kind == ScheduleEngine.ItemKind.EXERCISE }.all { it.isDone }
+            if (group.all { it.isDone } && exercisesDone && a.store.dailyLog(today).pain != null &&
+                folded("care", "Daily care, exercises and check-in done")) return
             val byRef = LinkedHashMap<String, MutableList<ScheduleEngine.ChecklistItem>>()
             for (it in group) byRef.getOrPut(it.refId) { ArrayList() }.add(it)
             // the most frequent task first (elevation 3x a day before a once-a-day check):
@@ -384,6 +411,7 @@ object TodayScreen {
                     col.addView(Ui.checkRow(a, first.title, first.subtitle, null, done == total, null) { tap() })
                 }
             }
+            addExerciseSessions()
             // once logged, the check-in is a done row here that opens the full form to
             // update or add detail (before that it has its own section, higher up)
             val log = a.store.dailyLog(today)
@@ -392,28 +420,6 @@ object TodayScreen {
                     "Pain ${log.pain}/10 logged · tap to change or add mood, swelling, a note",
                     null, true, null) {
                     a.pushOverlay("Daily check-in") { checkInOverlay(a, today) }
-                })
-            }
-        }
-        // exercises are grouped into uniform daily SESSIONS - same routine each
-        // session - so they're clear and consistent, not 2x here / 4x there
-        fun addExerciseSessions() {
-            val exItems = items.filter { it.kind == ScheduleEngine.ItemKind.EXERCISE }
-            if (exItems.isEmpty()) return
-            col.addView(Ui.section(a, "Exercise sessions · tap to do"))
-            val bySession = LinkedHashMap<String, MutableList<ScheduleEngine.ChecklistItem>>()
-            for (it in exItems) bySession.getOrPut(it.slotKey) { ArrayList() }.add(it)
-            if (exItems.all { it.isDone } && folded("exercise",
-                    "All ${bySession.size} exercise session${if (bySession.size == 1) "" else "s"} done")) return
-            bySession.keys.sorted().forEachIndexed { idx, key ->
-                val sess = bySession[key]!!
-                val total = sess.size
-                val done = sess.count { it.isDone }
-                col.addView(Ui.progressRow(a, "Exercise session ${idx + 1}",
-                    "$total exercise${if (total == 1) "" else "s"}", done, total) {
-                    a.pushOverlay("Exercise session ${idx + 1}") {
-                        exerciseSession(a, idx + 1, key, sess.map { it.refId })
-                    }
                 })
             }
         }
@@ -439,7 +445,6 @@ object TodayScreen {
             col.addView(quickPainCard(a))
         }
         addDailyCare()
-        addExerciseSessions()
 
         // ---- one nudge at a time: pinned prompts (the phase gate) always show as
         // full cards; once the user has a few check-ins, the single most important
@@ -755,7 +760,19 @@ object TodayScreen {
         card.addView(r)
         card.addView(Ui.spacer(a, 3))
         card.addView(Ui.text(a, p.body, 14f, toneBody(p.tone)))
-        card.addView(Ui.fullWidth(Ui.button(a, p.action) { p.onTap() }, a))
+        // safety and the phase gate get a full button; a suggestion is one tappable card
+        // whose last line says where it goes
+        if (p.safety || p.pinned || p.secondaryLabel != null) {
+            card.addView(Ui.fullWidth(Ui.button(a, p.action) { p.onTap() }, a))
+        } else {
+            card.addView(Ui.spacer(a, 6))
+            card.addView(Ui.text(a, p.action + "  ›", 14f, toneFg(p.tone), bold = true))
+            card.background = Ui.ripple(a, Ui.rounded(toneBg(p.tone)))
+            card.isClickable = true
+            card.isFocusable = true
+            card.contentDescription = "${p.title}. ${p.action}"
+            card.setOnClickListener { p.onTap() }
+        }
         if (p.secondaryLabel != null && p.onSecondary != null) {
             card.addView(Ui.fullWidth(Ui.textButton(a, p.secondaryLabel) { p.onSecondary.invoke() }, a, 2))
         }
@@ -781,7 +798,7 @@ object TodayScreen {
                 "${spec.title}\n\nFocus now:\n• " + spec.goals.take(3).joinToString("\n• ") +
                     "\n\nNewly OK:\n• " + spec.allowed.take(3).joinToString("\n• ") +
                     "\n\nYour exercise sessions now follow phase $number (${spec.exercises.size} exercises). " +
-                    "The phase guide on Today has the full do's and don'ts.")
+                    "Guide › Your plan has the full do's and don'ts.")
         }
     }
 }

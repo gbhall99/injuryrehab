@@ -34,11 +34,11 @@ object MoreScreen {
         // and what to expect are in Guide, stay fit is in Exercises).
         col.addView(Ui.section(a, "Your plan"))
         col.addView(Ui.listRow(a, "ic_heart", "Injury & goal",
-            "Injury date, side, sport, boot and clinic number") { a.pushOverlay("Injury & goal") { profileEditor(a) } })
+            "Injury date, side, sport and clinic number") { a.pushOverlay("Injury & goal") { profileEditor(a) } })
         col.addView(Ui.listRow(a, "ic_pill", "Medications",
             "Doses, times and reminders") { a.pushOverlay("Medications") { medsEditor(a) } })
         col.addView(Ui.listRow(a, "ic_progress", "Configure my plan",
-            "Phases, exercises, boot & weight-bearing - each set to your physio's guidance") {
+            "Boot, weight-bearing, phases and exercises - as your physio set them") {
             a.pushOverlay("Configure my plan") { planEditor(a) }
         })
         // one Reminders hub: medications, daily care, exercises, check-ins and the reliability checker
@@ -276,23 +276,11 @@ object MoreScreen {
             col.addView(goalCard)
         }
 
-        col.addView(Ui.section(a, "Boot / cast"))
-        val bootCard = Ui.card(a)
-        // device-type picker: VACOped (degrees) vs Aircast (wedges) vs cast
-        val devices = ProtocolRegistry.byId(p.protocolId).supportedDeviceIds
-            .mapNotNull { com.recoverwell.core.protocol.DeviceRegistry.byId(it) }
-        if (devices.size > 1) {
-            bootCard.addView(Forms.label(a, "What are you in?"))
-            bootCard.addView(Forms.choiceRow(a, devices, { it.name },
-                devices.firstOrNull { it.id == ProtocolRegistry.deviceFor(p)?.id }) { dev ->
-                // switching device resets the plan to that device's defaults
-                p = p.copy(deviceId = dev.id, wedgePlan = dev.plan, currentWedges = dev.plan.initialWedges)
-                rebuildBootSettings(a, p, bootCard, devicePickerCount = 2, showWean = !onboarding) { p = it }
-            })
+        // setup asks what you're in once; after that the boot has one home - Configure my plan
+        if (onboarding) {
+            col.addView(Ui.section(a, "Boot / cast"))
+            col.addView(bootCard(a, p, showWean = false) { p = withBoot(p, it) })
         }
-        rebuildBootSettings(a, p, bootCard, devicePickerCount = if (devices.size > 1) 2 else 0,
-            showWean = !onboarding) { p = it }
-        col.addView(bootCard)
 
         // one-tap "call my clinic" from the red-flag guide needs the number to hand
         col.addView(Ui.section(a, "Your clinic"))
@@ -323,6 +311,55 @@ object MoreScreen {
         }, a, 8))
     }
 
+    /** The device picker and its settings, editing a working copy of the profile via [onChange]. */
+    private fun bootCard(a: MainActivity, p0: Profile, showWean: Boolean, onChange: (Profile) -> Unit): View {
+        var p = p0
+        val bootCard = Ui.card(a)
+        // device-type picker: VACOped (degrees) vs Aircast (wedges) vs cast
+        val devices = ProtocolRegistry.byId(p.protocolId).supportedDeviceIds
+            .mapNotNull { com.recoverwell.core.protocol.DeviceRegistry.byId(it) }
+        if (devices.size > 1) {
+            bootCard.addView(Forms.label(a, "What are you in?"))
+            bootCard.addView(Forms.choiceRow(a, devices, { it.name },
+                devices.firstOrNull { it.id == ProtocolRegistry.deviceFor(p)?.id }) { dev ->
+                // switching device resets the plan to that device's defaults
+                p = p.copy(deviceId = dev.id, wedgePlan = dev.plan, currentWedges = dev.plan.initialWedges)
+                onChange(p)
+                rebuildBootSettings(a, p, bootCard, devicePickerCount = 2, showWean = showWean) { p = it; onChange(it) }
+            })
+        }
+        rebuildBootSettings(a, p, bootCard, devicePickerCount = if (devices.size > 1) 2 else 0,
+            showWean = showWean) { p = it; onChange(it) }
+        return bootCard
+    }
+
+    /**
+     * Your boot, in one place: what you're in, today's setting, whether you're out of
+     * it, the reduction schedule and the clinic's exact change dates (these used to be
+     * spread over Injury & goal, Configure my plan and Physio visits).
+     */
+    fun bootEditor(a: MainActivity): View {
+        var p = a.store.profile()
+        val col = Ui.column(a)
+        col.addView(Ui.backRow(a, "Your boot") { a.popOverlay() })
+        col.addView(bootCard(a, p, showWean = true) { p = it })
+        val device = ProtocolRegistry.deviceFor(p)
+        if (device != null && device.kind != com.recoverwell.core.protocol.DeviceKind.CAST) {
+            col.addView(Ui.listRow(a, "ic_calendar", "Pin changes to your clinic's dates",
+                "Each change defaults to your plan's timing") { a.pushOverlay("Boot change dates") { bootDatesEditor(a) } })
+        }
+        col.addView(Ui.spacer(a, 12))
+        return Ui.withActionBar(a, Ui.scroll(a, col), Ui.fullWidth(Ui.button(a, "Save") {
+            a.store.saveProfile(withBoot(a.store.profile(), p))
+            Reminders.reschedule(a)
+            a.popOverlay()
+        }, a, 8))
+    }
+
+    /** [into] with only the boot fields taken from [from] - so a boot edit never undoes another field's. */
+    private fun withBoot(into: Profile, from: Profile): Profile = into.copy(deviceId = from.deviceId,
+        wedgePlan = from.wedgePlan, currentWedges = from.currentWedges, bootWeanedDate = from.bootWeanedDate)
+
     /** (Re)builds the device-dependent boot controls below the device picker. */
     private fun rebuildBootSettings(
         a: MainActivity, p0: Profile, bootCard: android.widget.LinearLayout,
@@ -336,8 +373,8 @@ object MoreScreen {
             // up with phase timing - record it here and boot checks, boot-change
             // reminders and the leg view all follow
             if (showWean) {
-                bootCard.addView(Forms.label(a, "Fully out of the ${device.name.lowercase()}?"))
-                bootCard.addView(Forms.toggle(a, prof.bootWeanedDate != null) { on ->
+                bootCard.addView(Ui.spacer(a, 6))
+                bootCard.addView(Forms.switchRow(a, "Fully out of the ${device.name.lowercase()}", prof.bootWeanedDate != null) { on ->
                     prof = prof.copy(bootWeanedDate = if (on) LocalDate.now() else null)
                     onChange(prof)
                     rebuildBootSettings(a, prof, bootCard, devicePickerCount, showWean, onChange)
@@ -350,7 +387,7 @@ object MoreScreen {
                 })
                 bootCard.addView(Ui.caption(a, "Only set this once your physio has agreed you can stop " +
                     "using the ${device.name.lowercase()}. From this date the daily boot check and any " +
-                    "remaining boot-change reminders stop, and My leg shows you out of it."))
+                    "remaining boot-change reminders stop, and the Guide shows you out of it."))
                 bootCard.addView(Ui.spacer(a, 6))
             }
             if (weaned == null && device.operation.isNotBlank()) {
@@ -408,48 +445,41 @@ object MoreScreen {
     fun planEditor(a: MainActivity): View {
         val col = Ui.column(a)
         col.addView(Ui.backRow(a, "Configure my plan") { a.popOverlay() })
-        col.addView(Ui.caption(a, "Everything your physio can change, in one place. Each part moves " +
-            "independently - set each to match what you were told."))
+        col.addView(Ui.caption(a, "Everything your physio can change, in one place. Each part moves on its own."))
 
         val profile = a.store.profile()
         val protocol = ProtocolRegistry.forProfile(profile)
-        val current = com.recoverwell.core.logic.PhaseEngine.currentPhase(profile, LocalDate.now()).number
+        val today = LocalDate.now()
+        val current = com.recoverwell.core.logic.PhaseEngine.currentPhase(profile, today).number
 
-        // weight-bearing: an independent current status
-        col.addView(Ui.section(a, "Weight-bearing now"))
-        val wbCard = Ui.card(a)
-        wbCard.addView(Ui.caption(a, "Update this whenever your physio changes it - independent of your " +
-            "boot and your phase."))
-        wbCard.addView(Forms.choiceRow(a, WeightBearing.values().toList(), { it.shortLabel }, profile.weightBearing) {
-            a.store.saveProfile(a.store.profile().copy(weightBearing = it))
-            Reminders.reschedule(a)
-        })
-        col.addView(wbCard)
-
-        // boot / reduction: an independent, date-driven schedule
+        // ---- right now: three settings, one row each (details open on tap) ----
+        col.addView(Ui.section(a, "Right now"))
+        col.addView(Ui.listRow(a, "ic_leg", "Weight-bearing", profile.weightBearing.shortLabel +
+            " · change it when your physio does") { pickWeightBearing(a) })
         ProtocolRegistry.deviceFor(profile)?.let { device ->
-            col.addView(Ui.section(a, "Boot / cast"))
-            val bootCard = Ui.card(a)
-            bootCard.addView(Ui.caption(a, "Your ${device.name.lowercase()} setting and its reduction " +
-                "schedule run on their own dates, separate from the phases below - reduce it only when " +
-                "your clinic agrees, even if other things are progressing."))
-            bootCard.addView(Ui.fullWidth(Ui.tonalButton(a, "Edit boot setting & reduction") {
-                a.pushOverlay("Injury & goal") { profileEditor(a) }
-            }, a))
-            if (device.kind != com.recoverwell.core.protocol.DeviceKind.CAST) {
-                bootCard.addView(Ui.fullWidth(Ui.textButton(a, "Pin boot changes to your clinic's dates") {
-                    a.pushOverlay("Boot change dates") { bootDatesEditor(a) }
-                }, a, 2))
+            val next = if (device.kind == com.recoverwell.core.protocol.DeviceKind.CAST || profile.bootWeanedDate != null) null
+                else profile.wedgePlan.removalSchedule(profile.injuryDate, profile.wedgeDateOverrides)
+                    .firstOrNull { !it.first.isBefore(today) }
+            val summary = when {
+                profile.bootWeanedDate != null -> "Out of it since ${Forms.friendlyDate(profile.bootWeanedDate!!)}"
+                device.kind == com.recoverwell.core.protocol.DeviceKind.CAST -> "Re-set by your clinic"
+                else -> "Now ${device.format(profile.currentWedges)}" +
+                    (next?.let { " · next change ${Forms.friendlyDate(it.first)}" } ?: "")
             }
-            col.addView(bootCard)
+            col.addView(Ui.listRow(a, "ic_boot", "Your ${device.name.lowercase()}", summary) {
+                a.pushOverlay("Your boot") { bootEditor(a) }
+            })
         }
+        col.addView(Ui.listRow(a, "ic_flag", "Physio-confirmed phase",
+            "Phase ${profile.physioConfirmedPhase} · the app moves on only when you confirm") { pickConfirmedPhase(a) })
 
-        // per-phase: start date + which exercises are included. Each phase is one
-        // summary line; tap to open it (the current phase starts open)
+        // ---- phases: when each starts and what's in it - tap one to change it ----
         col.addView(Ui.section(a, "Phases"))
-        val open = planPhaseOpen ?: current
+        val open = planPhaseOpen ?: 0
+        // one list, a row per phase (was a card each)
+        val card = Ui.card(a)
         for (phase in protocol.phases) {
-            val card = Ui.card(a)
+            if (phase.number != protocol.phases.first().number) card.addView(Ui.divider(a))
             val head = Ui.row(a)
             head.isClickable = true
             head.isFocusable = true
@@ -469,10 +499,7 @@ object MoreScreen {
                 rotation = if (open == phase.number) 90f else 0f
             })
             card.addView(head)
-            if (open != phase.number) {
-                col.addView(card)
-                continue
-            }
+            if (open != phase.number) continue
 
             val defaultDate = profile.injuryDate.plusWeeks(phase.startWeek.toLong())
             val overridden = profile.phaseStartOverrides[phase.number]
@@ -492,41 +519,62 @@ object MoreScreen {
 
             if (phase.exercises.isNotEmpty()) {
                 card.addView(Ui.spacer(a, 6))
-                card.addView(Forms.label(a, "Exercises included in this phase"))
+                card.addView(Forms.label(a, "Exercises in this phase"))
                 val overrides = a.store.exerciseOverrides()
                 for (spec in phase.exercises) {
                     val enabled = overrides[spec.id]?.enabled ?: true
-                    val row = Ui.row(a)
-                    row.addView(Ui.weight(Ui.text(a, spec.name, 14.5f, if (enabled) Ui.TEXT else Ui.TEXT_DIM), 1f))
-                    row.addView(Forms.toggle(a, enabled, "On", "Off") { on ->
+                    card.addView(Forms.switchRow(a, spec.name, enabled,
+                        labelColor = if (enabled) Ui.TEXT else Ui.TEXT_DIM) { on ->
                         val base = a.store.exerciseOverrides()[spec.id]
                             ?: ExerciseOverride(spec.id, null, null, null, null, true)
                         a.store.saveExerciseOverride(base.copy(enabled = on))
                         Reminders.reschedule(a)
                         a.refresh()
                     })
-                    card.addView(row)
                 }
             }
-            col.addView(card)
         }
-
-        // the progression gate - the app advances a phase only once confirmed
-        val confirmCard = Ui.card(a)
-        confirmCard.addView(Ui.text(a, "Physio-confirmed phase", 15.5f, Ui.TEXT, bold = true))
-        confirmCard.addView(Ui.caption(a, "The app advances a phase only once you confirm your physio " +
-            "agreed. Wind this back if you progressed by mistake."))
-        confirmCard.addView(Forms.stepper(a, "Confirmed up to", profile.physioConfirmedPhase, 1, protocol.phases.size) { v ->
-            val pp = a.store.profile()
-            val dates = if (v > pp.physioConfirmedPhase) pp.phaseConfirmedDates + (v to LocalDate.now())
-            else pp.phaseConfirmedDates
-            a.store.saveProfile(pp.copy(physioConfirmedPhase = v, phaseConfirmedDates = dates))
-            Reminders.reschedule(a)
-        })
-        col.addView(confirmCard)
+        col.addView(card)
 
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)
+    }
+
+    /** Weight-bearing as one short list to pick from (was four always-open chips). */
+    private fun pickWeightBearing(a: MainActivity) {
+        val options = WeightBearing.values()
+        AlertDialog.Builder(a)
+            .setTitle("Weight-bearing now")
+            .setSingleChoiceItems(options.map { it.shortLabel }.toTypedArray(),
+                options.indexOf(a.store.profile().weightBearing)) { d, which ->
+                a.store.saveProfile(a.store.profile().copy(weightBearing = options[which]))
+                Reminders.reschedule(a)
+                d.dismiss()
+                a.refresh()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    /** The progression gate, wound back or forward in a small dialog (only if progressed by mistake). */
+    private fun pickConfirmedPhase(a: MainActivity) {
+        val profile = a.store.profile()
+        val phases = ProtocolRegistry.forProfile(profile).phases
+        AlertDialog.Builder(a)
+            .setTitle("Physio-confirmed phase")
+            .setSingleChoiceItems(phases.map { "Phase ${it.number} · ${it.title}" }.toTypedArray(),
+                (profile.physioConfirmedPhase - 1).coerceIn(0, phases.size - 1)) { d, which ->
+                val v = which + 1
+                val pp = a.store.profile()
+                val dates = if (v > pp.physioConfirmedPhase) pp.phaseConfirmedDates + (v to LocalDate.now())
+                    else pp.phaseConfirmedDates
+                a.store.saveProfile(pp.copy(physioConfirmedPhase = v, phaseConfirmedDates = dates))
+                Reminders.reschedule(a)
+                d.dismiss()
+                a.refresh()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     // ------------------------------------------------------------------
@@ -582,7 +630,7 @@ object MoreScreen {
             }
             col.addView(card)
         }
-        col.addView(Ui.caption(a, "Tip: changing the reduction schedule under \"Injury & goal\" updates " +
+        col.addView(Ui.caption(a, "Tip: changing the reduction schedule under \"Your boot\" updates " +
             "the defaults above but leaves any pinned dates as you set them."))
         col.addView(Ui.spacer(a, 24))
         return Ui.scroll(a, col)

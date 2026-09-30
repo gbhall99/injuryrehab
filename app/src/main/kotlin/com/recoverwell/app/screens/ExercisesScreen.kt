@@ -149,7 +149,7 @@ object ExercisesScreen {
         demoCard.clipToOutline = true
         // the user's own offline clip, when they've added one, replaces the animation
         val ownClip = OwnClips.clipFor(a, spec) != null
-        demoCard.addView(OwnClips.demoView(a, spec), ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(a, 200))
+        demoCard.addView(OwnClips.demoView(a, spec), ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(a, 184))
         // "Quick reference" tag, top-left
         val tag = Ui.text(a, if (ownClip) "Your clip" else "Quick reference", 11.5f, Ui.TEXT_DIM, bold = true)
         tag.background = Ui.rounded(com.recoverwell.draw.Palette.withAlpha(Ui.CARD, 0xE6), 10f)
@@ -158,31 +158,33 @@ object ExercisesScreen {
             ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         tagLp.setMargins(Ui.dp(a, 10), Ui.dp(a, 10), 0, 0)
         demoCard.addView(tag, tagLp)
+
         col.addView(demoCard, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
-        // primary CTA: watch a real demonstration on YouTube
-        val watchRow = Ui.row(a)
-        watchRow.background = Ui.ripple(a, Ui.rounded(Ui.PRIMARY, 25f), 0x33FFFFFF)
-        watchRow.minimumHeight = Ui.dp(a, 50)
-        watchRow.setPadding(Ui.dp(a, 18), Ui.dp(a, 8), Ui.dp(a, 18), Ui.dp(a, 8))
-        watchRow.isClickable = true
-        watchRow.contentDescription = "Watch a video demonstration"
-        watchRow.setOnClickListener { VideoScreen.watch(a, spec) }
-        watchRow.addView(Ui.icon(a, "ic_play", 20, com.recoverwell.draw.Palette.ON_PRIMARY))
-        val wlabel = Ui.text(a, "Watch video demonstration", 15.5f, com.recoverwell.draw.Palette.ON_PRIMARY, bold = true)
-        wlabel.setPadding(Ui.dp(a, 10), 0, 0, 0)
-        watchRow.addView(Ui.weight(wlabel, 1f))
-        watchRow.addView(Ui.text(a, if (playInApp) "In-app" else "YouTube",
-            12f, com.recoverwell.draw.Palette.withAlpha(com.recoverwell.draw.Palette.ON_PRIMARY, 0xCC)))
-        // no safe YouTube search exists for some exercises: say why instead of offering one
-        if (VideoScreen.hasVideo(a, spec)) col.addView(Ui.fullWidth(watchRow, a, 10))
-        else col.addView(VideoScreen.noVideoCard(a, spec))
-
+        // primary CTA: watch a real demonstration, right under the demo (not over it -
+        // an overlay would hide the foot the animation is showing)
+        if (VideoScreen.hasVideo(a, spec)) {
+            val watch = Ui.row(a)
+            watch.background = Ui.ripple(a, Ui.rounded(Ui.PRIMARY, 25f), 0x33FFFFFF)
+            watch.minimumHeight = Ui.dp(a, Ui.MIN_TOUCH_DP)
+            watch.setPadding(Ui.dp(a, 18), Ui.dp(a, 6), Ui.dp(a, 18), Ui.dp(a, 6))
+            watch.isClickable = true
+            watch.isFocusable = true
+            watch.contentDescription = "Watch a video demonstration" + if (playInApp) "" else ", opens YouTube"
+            watch.setOnClickListener { VideoScreen.watch(a, spec) }
+            watch.addView(Ui.icon(a, "ic_play", 20, com.recoverwell.draw.Palette.ON_PRIMARY))
+            watch.addView(Ui.weight(Ui.text(a, "Watch video demonstration", 15.5f,
+                com.recoverwell.draw.Palette.ON_PRIMARY, bold = true).apply { setPadding(Ui.dp(a, 10), 0, 0, 0) }, 1f))
+            col.addView(Ui.fullWidth(watch, a, 8))
+        } else {
+            // no safe YouTube search exists for some exercises: say why instead of offering one
+            col.addView(VideoScreen.noVideoCard(a, spec))
+        }
 
         // prescription as stat tiles (they label themselves - no heading needed)
-        col.addView(Ui.spacer(a, 10))
         val stats = Ui.row(a)
+        stats.setPadding(0, Ui.dp(a, 8), 0, 0)
         fun tile(v: String, l: String) {
             val t = Ui.statTile(a, v, l)
             val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
@@ -290,12 +292,12 @@ object ExercisesScreen {
                         "Not scheduled today - this one is done on alternate days to give the tendon a recovery day."
                     else "Not in today's plan."))
                 } else if (next != null) {
-                    col.addView(Ui.fullWidth(Ui.tonalButton(a, "Mark session $next done") {
+                    col.addView(Ui.fullWidth(Ui.tonalButton(a,
+                        "Mark session $next done · $doneCount of ${sessionsToday.size} today") {
                         Reminders.recordEvent(a, ScheduleEngine.ItemKind.EXERCISE, spec.id,
                             ScheduleEngine.sessionSlot(next), EventStatus.DONE)
                         a.popOverlay()
                     }, a))
-                    col.addView(Ui.caption(a, "In ${sessionsToday.size} of today's sessions · $doneCount done"))
                 } else {
                     val last = sessionsToday.last()
                     col.addView(Ui.fullWidth(Ui.tonalButton(a, "All ${sessionsToday.size} done today · undo last") {
